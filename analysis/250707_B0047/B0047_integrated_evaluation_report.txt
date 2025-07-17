@@ -1,0 +1,159 @@
+=== B0047 통합 모델 평가 보고서 ===
+
+1. 모델별 개별 성능 지표:
+--------------------------------------------------
+
+Huber 모델:
+  Voltage_measured:
+    MSE: 0.006062
+    MAE: 0.040997
+    RMSE: 0.077858
+    MAPE: 1.26%
+  Current_measured:
+    MSE: 0.000378
+    MAE: 0.013233
+    RMSE: 0.019432
+    MAPE: 285.23%
+  Temperature_measured:
+    MSE: 0.486307
+    MAE: 0.559007
+    RMSE: 0.697357
+    MAPE: 6.54%
+  Current_load:
+    MSE: 0.001670
+    MAE: 0.006354
+    RMSE: 0.040867
+    MAPE: 184.65%
+  Voltage_load:
+    MSE: 0.440876
+    MAE: 0.142361
+    RMSE: 0.663985
+    MAPE: inf%
+  Time:
+    MSE: 7374.915242
+    MAE: 25.988963
+    RMSE: 85.877327
+    MAPE: inf%
+  전체 피쳐 평균:
+    평균 MSE: 1229.308422
+    평균 MAE: 4.458486
+    평균 RMSE: 14.562804
+
+MAE 모델:
+  Voltage_measured:
+    MSE: 0.007291
+    MAE: 0.045621
+    RMSE: 0.085389
+    MAPE: 1.42%
+  Current_measured:
+    MSE: 0.000398
+    MAE: 0.009850
+    RMSE: 0.019954
+    MAPE: 786.55%
+  Temperature_measured:
+    MSE: 0.447885
+    MAE: 0.494886
+    RMSE: 0.669242
+    MAPE: 5.99%
+  Current_load:
+    MSE: 0.002892
+    MAE: 0.007226
+    RMSE: 0.053776
+    MAPE: 463.55%
+  Voltage_load:
+    MSE: 0.423273
+    MAE: 0.129576
+    RMSE: 0.650595
+    MAPE: inf%
+  Time:
+    MSE: 9201.004094
+    MAE: 30.746791
+    RMSE: 95.921865
+    MAPE: inf%
+  전체 피쳐 평균:
+    평균 MSE: 1533.647639
+    평균 MAE: 5.238992
+    평균 RMSE: 16.233470
+
+MSE 모델:
+  Voltage_measured:
+    MSE: 0.004820
+    MAE: 0.030013
+    RMSE: 0.069424
+    MAPE: 0.91%
+  Current_measured:
+    MSE: 0.000296
+    MAE: 0.014522
+    RMSE: 0.017197
+    MAPE: 163.83%
+  Temperature_measured:
+    MSE: 0.359926
+    MAE: 0.470160
+    RMSE: 0.599938
+    MAPE: 5.80%
+  Current_load:
+    MSE: 0.002316
+    MAE: 0.007985
+    RMSE: 0.048120
+    MAPE: 143.97%
+  Voltage_load:
+    MSE: 0.432399
+    MAE: 0.153208
+    RMSE: 0.657571
+    MAPE: inf%
+  Time:
+    MSE: 7088.464002
+    MAE: 23.988839
+    RMSE: 84.193016
+    MAPE: inf%
+  전체 피쳐 평균:
+    평균 MSE: 1181.543960
+    평균 MAE: 4.110788
+    평균 RMSE: 14.264211
+
+
+2. 통합 성능 지표:
+--------------------------------------------------
+
+Voltage_measured:
+  평균 MSE: 0.006058
+  평균 MAE: 0.038877
+  평균 RMSE: 0.077557
+  모델 일관성: 0.184039
+
+Current_measured:
+  평균 MSE: 0.000357
+  평균 MAE: 0.012535
+  평균 RMSE: 0.018861
+  모델 일관성: 0.378855
+
+Temperature_measured:
+  평균 MSE: 0.431373
+  평균 MAE: 0.508018
+  평균 RMSE: 0.655513
+  모델 일관성: 0.169375
+
+Current_load:
+  평균 MSE: 0.002292
+  평균 MAE: 0.007188
+  평균 RMSE: 0.047588
+  모델 일관성: 0.118481
+
+Voltage_load:
+  평균 MSE: 0.432183
+  평균 MAE: 0.141715
+  평균 RMSE: 0.657383
+  모델 일관성: 0.130051
+
+Time:
+  평균 MSE: 7888.127779
+  평균 MAE: 26.908198
+  평균 RMSE: 88.664069
+  모델 일관성: 0.160227
+
+
+3. 통합 평가 결론:
+--------------------------------------------------
+전체적으로 가장 좋은 성능을 보인 모델: MSE (평균 MSE: 1181.543960)
+모델 간 평균 일관성: 0.190171
+(값이 낮을수록 모델들이 일관된 결과를 보임)

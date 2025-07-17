@@ -1,0 +1,16 @@
+{
+    "input_dim": 6,
+    "hidden_dim": 128,
+    "compressed_len": 64,
+    "compressed_features": 3,
+    "num_layers": 2,
+    "dropout": 0.1,
+    "reconstruct_len": 128,
+    "reconstruct_features": 6,
+    "seq_len": 128,
+    "dff": 512,
+    "num_heads": 4,
+    "d_model": 128,
+    "max_len": 128,
+    "d_comp": 3
+}
