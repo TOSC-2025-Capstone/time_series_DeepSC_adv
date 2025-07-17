@@ -96,6 +96,7 @@ def train_model(
 
         # === 정규화된 입력과 output 비교 plot (3개 배치만) ===
         if epoch == 10:
+            os.makedirs(save_fig_dir, exist_ok=True)
             # batch: [batch_size, window, feature]
             input_norm = batch[:6, :, :6].detach().cpu().numpy()   # [6, window, 6]
             output_norm = output[:6, :, :6].detach().cpu().numpy() # [6, window, 6]

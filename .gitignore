@@ -1,2 +1,4 @@
 checkpoints
 reconstruction
+__pycache__
+parameters/__pycache__

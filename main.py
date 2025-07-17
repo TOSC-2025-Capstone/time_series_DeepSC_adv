@@ -66,7 +66,7 @@ if __name__ == '__main__':
     # pdb.set_trace()
     if model_type == 'deepsc':
         model = DeepSC(params=model_params).to(device)
-        # 아래와 같이 개별 변수를 정의하는 것도 가능은 함
+        # 아래와 같이 개별 변수를 정의하는 것도 가능은 함, model_parameters에서 방법 1 주석 해제
         # model = DeepSC(
         #     num_layers=num_layers,
         #     input_dim=input_dim,

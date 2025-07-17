@@ -143,7 +143,7 @@ def reconstruct_battery_series(
                 plt.subplot(2, 3, i+1)
                 # 오차율(%) 계산
                 residual_percent = np.abs(df_orig[col] - df_recon[col]) / (np.abs(df_orig[col]) + epsilon) * 100
-                pdb.set_trace()
+                # pdb.set_trace()
                 plt.plot(residual_percent, label='Residual %', color='orange', alpha=0.8)
                 plt.title(f'Residual %: {col}')
                 plt.ylabel('Residual (%)')
