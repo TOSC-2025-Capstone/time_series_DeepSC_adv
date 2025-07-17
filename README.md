@@ -1,7 +1,7 @@
 # time_series_DeepSC_adv
 모듈화 이후 버전
 
-# Time Series DeepSC Advanced - 실행 및 파라미터 변경 가이드
+# Time Series DeepSC adv - 실행 및 파라미터 변경 가이드
 
 ## 1. 프로젝트 구조
 
