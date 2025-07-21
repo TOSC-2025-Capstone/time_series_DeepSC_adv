@@ -26,8 +26,8 @@ model_params = {
     # lstm, gru, at_lstm
     "input_dim": 6,
     "hidden_dim": 128,
-    "compressed_len": 32,
-    "compressed_features": 6,
+    "compressed_len": 64,
+    "compressed_features": 3,
     "num_layers": 2,
     "dropout": 0.1,
     "reconstruct_len": 128,

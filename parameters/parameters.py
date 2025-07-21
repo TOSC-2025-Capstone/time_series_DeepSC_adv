@@ -17,7 +17,7 @@ is_first = False
 window_arr = [32, 64, 128, 256] 
 # models arr 
 models_type_arr = ['deepsc', 'lstm', 'gru', 'at_lstm']
-case_index = 5
+case_index = 4
 loss_type = 'MSE'
 model_select = 0
 model_type = models_type_arr[model_select]
