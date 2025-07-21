@@ -11,33 +11,36 @@ from typing import List
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 처음 실행 여부 -> 처음 1번만 preprocess하고 나서는 실행 x
-is_first = False
+is_first = True
 
 # window arr
 window_arr = [32, 64, 128, 256] 
 # models arr 
 models_type_arr = ['deepsc', 'lstm', 'gru', 'at_lstm']
-case_index = 4
+case_index = 6
 loss_type = 'MSE'
 model_select = 0
 model_type = models_type_arr[model_select]
 channel_type = 'no_channel'
 
+# feature cols (inputs)
+# feature_cols = [
+#     'Voltage_measured', 'Current_measured', 'Temperature_measured', 'Current_load', 'Voltage_load', 'Time'
+# ]
+feature_cols = [
+    'Voltage_measured', 'Temperature_measured', 'Voltage_load', 'Time'
+]
+
 # 전처리 입력으로 사용할 데이터 경로 (merged)
 original_data_path = "./data/merged"
 # 중간에 이상치 제거 버전 저장할 경로 -> 나중에 이걸 csv 복원 비교의 원본 csv으로 사용
-outlier_cut_csv_path = "./data/merged_outlier_cut"
+outlier_cut_csv_path = f"./data/merged_outlier_cut_{len(feature_cols)}_features"
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
-preprocessed_data_path = "./preprocessed/preprocessed_data_0717_outlier_cut"
+preprocessed_data_path = f"./preprocessed/preprocessed_data_outlier_cut_{len(feature_cols)}"
 # 모델 저장 경로 
 model_checkpoint_path = f"./checkpoints/case{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 # 복원 후 데이터 경로
 reconstructed_data_path = f'./recons/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}'
-
-# feature cols (inputs)
-feature_cols = [
-    'Voltage_measured', 'Current_measured', 'Temperature_measured', 'Current_load', 'Voltage_load', 'Time'
-]
 
 ## model params
 # epochs
