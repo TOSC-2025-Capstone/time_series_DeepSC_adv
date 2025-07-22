@@ -70,6 +70,7 @@ def load_all_valid_csv_tensors(folder_path, feature_cols, batch_size=8, save_spl
             df = df[df['Voltage_load'] < 10]
             df = df[df['Current_load'] < 2]
 
+            os.makedirs(PREPROCESSED_DIR, exist_ok=True)
             save_path = os.path.join(PREPROCESSED_DIR, fname)
             if not isinstance(df, pd.DataFrame):
                 df = pd.DataFrame(df, columns=feature_cols)
