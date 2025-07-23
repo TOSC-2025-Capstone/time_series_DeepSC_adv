@@ -3,3 +3,5 @@ reconstruction
 __pycache__
 parameters/__pycache__
 samba_mixer
+
+*.pyc

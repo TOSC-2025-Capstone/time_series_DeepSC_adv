@@ -23,7 +23,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 import math
 import pdb
-from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
+# from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
 from utils import Channels 
 
 class PositionalEncoding(nn.Module):
@@ -201,10 +201,10 @@ class Encoder(nn.Module):
         
         self.d_model = d_model
         # nn.Embedding 대신 nn.Linear 사용 (시계열 데이터용)
-        # self.input_projection = nn.Linear(input_dim, d_model)
-        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
+        self.input_projection = nn.Linear(input_dim, d_model)
+        self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
         # input_proj + pos_encoding + cycle_diff
-        self.pos_encoding = LinearProjectionWithLocalTimeAndGlobalDiffEmbedding(d_model)
+        # self.pos_encoding = LinearProjectionWithLocalTimeAndGlobalDiffEmbedding(d_model)
         self.enc_layers = nn.ModuleList([EncoderLayer(d_model, num_heads, dff, dropout) 
                                             for _ in range(num_layers)])
         
@@ -213,7 +213,7 @@ class Encoder(nn.Module):
         "Pass the input (and mask) through each layer in turn."
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
         
-        # x = self.input_projection(x)  # (batch_size, seq_len, d_model)
+        x = self.input_projection(x)  # (batch_size, seq_len, d_model)
         x = self.pos_encoding(x)
         
         for enc_layer in self.enc_layers:
