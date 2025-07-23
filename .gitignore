@@ -3,5 +3,8 @@ reconstruction
 __pycache__
 parameters/__pycache__
 samba_mixer
+original_dataset
 
 *.pyc
+
+cycle_preprocess/analysis/reshaped/

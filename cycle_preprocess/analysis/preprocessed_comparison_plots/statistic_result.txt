@@ -1,0 +1,32 @@
+# dataset 1 = minmax
+# dataset 2 = zscore 
+
+Voltage_measured:
+Dataset 1 - Mean: 0.5630, Std: 0.1441
+Dataset 2 - Mean: 0.0048, Std: 1.0013
+Absolute Difference in Mean: 0.5582
+
+Current_measured:
+Dataset 1 - Mean: 0.5736, Std: 0.3072
+Dataset 2 - Mean: 0.0016, Std: 1.0034
+Absolute Difference in Mean: 0.5720
+
+Temperature_measured:
+Dataset 1 - Mean: 0.3551, Std: 0.2179
+Dataset 2 - Mean: -0.0059, Std: 0.9964
+Absolute Difference in Mean: 0.3610
+
+Current_load:
+Dataset 1 - Mean: 0.5874, Std: 0.2295
+Dataset 2 - Mean: -0.0006, Std: 1.0016
+Absolute Difference in Mean: 0.5880
+
+Voltage_load:
+Dataset 1 - Mean: 0.4314, Std: 0.2637
+Dataset 2 - Mean: -0.0048, Std: 1.0025
+Absolute Difference in Mean: 0.4361
+
+Time:
+Dataset 1 - Mean: 0.2945, Std: 0.2154
+Dataset 2 - Mean: -0.0001, Std: 0.9992
+Absolute Difference in Mean: 0.2946
