@@ -1,0 +1,14 @@
+case 1,2,3 -> lagacy
+case 4 : MSE, no_channel, 직관 이상치 제거, model_params 기본 옵션, 압축률 25%로 진행
+case 5 : MSE, no_channel, 직관 이상치 제거, model_params에서 compressed_len = 32, compressed_features = 6으로 수정, 압축률 25%로 진행
+
+# 25.07.23
+case 0 : MSE, no_channel, 이상치 제거 x, merged_simple 에서 B0005.csv만 가지고 학습 및 평가 진행
+    preprocessed_data_6 에서 6은 feature 수를 의미함
+    Saved train_data.pt (1254 samples), test_data.pt (314 samples) to ./preprocessed/case_0/preprocessed_data_6
+    Saved scaler to ./preprocessed/case_0/preprocessed_data_6\scaler.pkl
+    Saved window_meta to ./preprocessed/case_0/preprocessed_data_6\window_meta.pkl
+case 0.1 : case 0과 동일, stride=64, epoch=80로만 변경해서 진행
+case 6.0 : MSE, no_channel, z-3 이상치 제거, minmax 정규화, cycle 단위 256 squencelength preprocessed data로 학습 진행, model_params에서 d_model 256으로 변경
+    best val loss : 0.001053 으로 아주 성공적임, 6.1과 비교 필요
+case 6.1 : MSE, no_channel, z-3 이상치 제거, z-score 정규화, cycle 단위 256 squencelength preprocessed data로 학습 진행, model_params에서 d_model 256으로 변경

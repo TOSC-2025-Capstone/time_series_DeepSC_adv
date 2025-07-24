@@ -8,3 +8,4 @@ original_dataset
 *.pyc
 
 cycle_preprocess/analysis/reshaped/
+cycle_preprocess/csv/

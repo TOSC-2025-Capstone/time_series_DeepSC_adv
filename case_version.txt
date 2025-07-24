@@ -1,3 +1,0 @@
-case 1,2,3 -> lagacy
-case 4 : MSE, no_channel, 직관 이상치 제거, model_params 기본 옵션, 압축률 25%로 진행
-case 5 : MSE, no_channel, 직관 이상치 제거, model_params에서 compressed_len = 32, compressed_features = 6으로 수정, 압축률 25%로 진행

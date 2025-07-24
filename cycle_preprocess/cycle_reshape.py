@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from scipy import interpolate
-
+import pdb
 
 """
 # cycle_reshape.py
@@ -28,6 +28,16 @@ def resample_to_fixed_length(df, target_length=256):
     current_indices = np.arange(len(df))
     # 목표 인덱스 생성 (균일한 간격)
     target_indices = np.linspace(0, len(df) - 1, target_length)
+
+    if len(current_indices) < 150:
+        pdb.set_trace()  # 디버깅용
+
+    # test_curr_ind = np.arange(100)
+    # test_target_ind = np.linspace(0, 100 - 1, target_length)
+    # # 1D 보간 함수 생성
+    # f_t = interpolate.interp1d(test_curr_ind, np.arange(100))
+    # # 새로운 인덱스에 대한 값 계산
+    # res = f(test_target_ind)
 
     resampled_data = {}
     for column in df.columns:
@@ -62,6 +72,7 @@ def process_discharge_files():
     for fname in sorted(discharge_files):
         fpath = os.path.join(input_folder, fname)
         if os.path.exists(fpath):
+            # pdb.set_trace()  # 디버깅용
             print(f"처리 중: {fname}")
             # 파일 읽기
             df = pd.read_csv(fpath)

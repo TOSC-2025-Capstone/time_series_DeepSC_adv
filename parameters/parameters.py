@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
-
 from models.lstm import LSTMDeepSC
-from models.gru import GRUDeepSC  
+from models.gru import GRUDeepSC
 from models.attention_lstm import LSTMAttentionDeepSC
 from models.transceiver import DeepSC
 
@@ -10,41 +9,50 @@ from typing import List
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# 처음 실행 여부 -> 처음 1번만 preprocess하고 나서는 실행 x
-is_first = True
+# 처음 실행 여부 -> True면 preprocess 실행, False면 이미 전처리된 데이터로 학습 및 평가 진행
+# is_first = True
+is_first = False
 
 # window arr
-window_arr = [32, 64, 128, 256] 
-# models arr 
-models_type_arr = ['deepsc', 'lstm', 'gru', 'at_lstm']
-case_index = 6
-loss_type = 'MSE'
+window_arr = [32, 64, 128, 256]
+# models arr
+models_type_arr = ["deepsc", "lstm", "gru", "at_lstm"]
+case_index = 6.1
+loss_type = "MSE"
 model_select = 0
 model_type = models_type_arr[model_select]
-channel_type = 'no_channel'
+channel_type = "no_channel"
 
 # feature cols (inputs)
-# feature_cols = [
-#     'Voltage_measured', 'Current_measured', 'Temperature_measured', 'Current_load', 'Voltage_load', 'Time'
-# ]
 feature_cols = [
-    'Voltage_measured', 'Temperature_measured', 'Voltage_load', 'Time'
+    "Voltage_measured",
+    "Current_measured",
+    "Temperature_measured",
+    "Current_load",
+    "Voltage_load",
+    "Time",
 ]
 
+# 이상치 제거 여부 -> 아래 경로 지정에 쓰임
+is_outlier_cut = False
+
 # 전처리 입력으로 사용할 데이터 경로 (merged)
-original_data_path = "./data/merged"
+original_data_path = "./data/merged_simple"
 # 중간에 이상치 제거 버전 저장할 경로 -> 나중에 이걸 csv 복원 비교의 원본 csv으로 사용
-outlier_cut_csv_path = f"./data/merged_outlier_cut_{len(feature_cols)}_features"
+outlier_cut_csv_path = f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}_{len(feature_cols)}_features"
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
-preprocessed_data_path = f"./preprocessed/preprocessed_data_outlier_cut_{len(feature_cols)}"
-# 모델 저장 경로 
-model_checkpoint_path = f"./checkpoints/case{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
+# preprocessed_data_path = f"./preprocessed/case_{case_index}/preprocessed_data{'_outlier_cut' if is_outlier_cut else ''}_{len(feature_cols)}"
+preprocessed_data_path = f"./cycle_preprocess/preprocessed/processed_zscore"
+# 모델 저장 경로
+model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 # 복원 후 데이터 경로
-reconstructed_data_path = f'./recons/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}'
+reconstructed_data_path = (
+    f"./recons/case_{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
+)
 
 ## model params
 # epochs
-train_epochs = 30
+train_epochs = 80
 # batch size
 train_batch_size = 32
 # learning rate
@@ -54,13 +62,14 @@ input_dim = 6
 # window size
 window_size = window_arr[2]
 # stride
-stride = window_size//4
+stride = window_size // 2
 
 ## reconstruction save path
-save_recon_dir = f'reconstruction/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}'
-save_fig_dir = f'results/case{case_index}/{channel_type}_{model_type}_{loss_type}'
+save_recon_dir = f"reconstruction/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
+save_fig_dir = f"results/case{case_index}/{channel_type}_{model_type}_{loss_type}"
 
-# preprocess 
+
+# preprocess
 @dataclass(unsafe_hash=True)
 class PreprocessParams:
     folder_path: str = original_data_path
@@ -72,19 +81,21 @@ class PreprocessParams:
     stride: int = 32
     sample_num: int = 1000
     PREPROCESSED_DIR: str = outlier_cut_csv_path
-    
-# train 
+
+
+# train
 @dataclass
 class TrainDeepSCParams:
-    train_pt: str = preprocessed_data_path+'/train_data.pt'
-    test_pt: str = preprocessed_data_path+'/test_data.pt'
-    scaler_path: str = preprocessed_data_path+'/scaler.pkl'
+    train_pt: str = preprocessed_data_path + "/train_data.pt"
+    test_pt: str = preprocessed_data_path + "/test_data.pt"
+    scaler_path: str = preprocessed_data_path + "/scaler.pkl"
     model_save_path: str = model_checkpoint_path
     num_epochs: int = train_epochs
     batch_size: int = train_batch_size
     lr: float = tratin_lr
-    
-# test 
+
+
+# test
 @dataclass
 class TestParams:
     loss_type: str = loss_type
@@ -92,5 +103,4 @@ class TestParams:
     channel_type: str = channel_type
     csv_origin_path: str = original_data_path
     preprocessed_path: str = preprocessed_data_path
-    window_meta_path: str = preprocessed_data_path+'/window_meta.pkl'
-
+    window_meta_path: str = preprocessed_data_path + "/window_meta.pkl"
