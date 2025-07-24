@@ -124,7 +124,7 @@ def plot_dataset_comparison(data1_path, data2_path, save_path="comparison_plots"
 
 
 if __name__ == "__main__":
-    data1_path = "./cycle_preprocess/preprocessed/processed_minmax/train_data.pt"
+    data1_path = "./cycle_preprocess/total_preprocessed/processed_minmax/train_data.pt"
     # data2_path = "./cycle_preprocess/preprocessed/processed_zscore/train_data.pt"
     data2_path = "./preprocessed/preprocessed_data_0717_outlier_cut/train_data.pt"
     save_path = "./cycle_preprocess/analysis/preprocessed_comparison_plots_2"

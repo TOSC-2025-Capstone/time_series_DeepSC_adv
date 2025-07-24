@@ -22,6 +22,7 @@ from models.attention_lstm import LSTMAttentionDeepSC
 from models.transceiver import DeepSC
 
 from preprocess import load_all_valid_csv_tensors
+from cycle_preprocess.cycle_preprocess import cycle_preprocess
 from train import train_model
 from performance import reconstruct_battery_series
 
@@ -50,19 +51,8 @@ def setup_seed(seed):
 
 if __name__ == "__main__":
     # setup_seed(10)
-
-    """define optimizer and loss function"""
-    # preprocess
     if is_first == True:
-        load_all_valid_csv_tensors(
-            folder_path=preprocess_params.folder_path,
-            feature_cols=preprocess_params.feature_cols,
-            batch_size=preprocess_params.batch_size,
-            save_split_path=preprocess_params.save_split_path,
-            split_ratio=preprocess_params.split_ratio,
-            window_size=preprocess_params.window_size,
-            stride=preprocess_params.stride,
-        )
+        cycle_preprocess()
 
     # model create
     model = None

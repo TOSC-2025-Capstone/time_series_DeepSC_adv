@@ -3,11 +3,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import pdb
 
 
 def plot_all_features_distribution():
     # 데이터 폴더 경로
-    data_dir = "./cycle_preprocess/analysis/reshaped/resampled_256"
+    data_dir = "./cycle_preprocess/csv/total_preprocessed"
 
     # 피처 이름 정의
     feature_names = [
@@ -57,7 +58,7 @@ def plot_all_features_distribution():
         plt.subplot(2, 3, idx)
 
         # 무지개 색상 맵 생성 (파란색에서 보라색으로)
-        num_cycles = min(len(all_feature_data[feature]), 100)  # 처음 100개 파일만
+        num_cycles = len(all_feature_data[feature])  # 처음 100개 파일만
         colors = plt.cm.rainbow(np.linspace(0, 1, num_cycles))
 
         # 모든 파일의 해당 피처 데이터 플롯 (색상 그라데이션 적용)
@@ -65,6 +66,7 @@ def plot_all_features_distribution():
             plt.plot(cycle_data, alpha=0.4, color=colors[idx], linewidth=0.8)
 
         # 평균선 추가 (검정색으로 변경하여 더 잘 보이게)
+        pdb.set_trace()
         mean_data = np.mean(all_feature_data[feature], axis=0)
         plt.plot(mean_data, color="black", linewidth=2, label="Mean", linestyle="--")
 

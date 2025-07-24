@@ -20,6 +20,7 @@ metadata에서 discharge 파일 목록 추출
 """
 
 
+# P2.3
 def resample_to_fixed_length(df, target_length=256):
     """
     데이터프레임의 각 컬럼을 target_length 개수로 리샘플링
@@ -29,16 +30,6 @@ def resample_to_fixed_length(df, target_length=256):
     # 목표 인덱스 생성 (균일한 간격)
     target_indices = np.linspace(0, len(df) - 1, target_length)
 
-    if len(current_indices) < 150:
-        pdb.set_trace()  # 디버깅용
-
-    # test_curr_ind = np.arange(100)
-    # test_target_ind = np.linspace(0, 100 - 1, target_length)
-    # # 1D 보간 함수 생성
-    # f_t = interpolate.interp1d(test_curr_ind, np.arange(100))
-    # # 새로운 인덱스에 대한 값 계산
-    # res = f(test_target_ind)
-
     resampled_data = {}
     for column in df.columns:
         if column != "cycle_idx":  # cycle_idx는 제외
@@ -47,14 +38,14 @@ def resample_to_fixed_length(df, target_length=256):
             # 새로운 인덱스에 대한 값 계산
             resampled_data[column] = f(target_indices)
 
-    # cycle_idx는 원래 값 유지
-    if "cycle_idx" in df.columns:
-        resampled_data["cycle_idx"] = [df["cycle_idx"].iloc[0]] * target_length
+    # # cycle_idx는 원래 값 유지
+    # if "cycle_idx" in df.columns:
+    #     resampled_data["cycle_idx"] = [df["cycle_idx"].iloc[0]] * target_length
 
     return pd.DataFrame(resampled_data)
 
 
-def process_discharge_files():
+def process_discharge_files(input_folder, output_folder):
     # 1. metadata에서 discharge 파일 정보 추출
     meta = pd.read_csv("original_dataset/metadata.csv")
     discharge_data = meta[meta["type"] == "discharge"]
@@ -63,16 +54,13 @@ def process_discharge_files():
     )
     print(f"총 {len(discharge_files)}개의 discharge 파일 발견")
 
-    # 2. 입력/출력 폴더 설정
-    input_folder = "original_dataset/data/"
-    output_folder = "cycle_preprocess/analysis/reshaped/resampled_256/"
-    os.makedirs(output_folder, exist_ok=True)
+    # 2. 입력/출력 폴더 설정 (입력은 꼭 이상치 제거버전으로)
+    # 이동
 
     # 3. 각 discharge 파일 처리
     for fname in sorted(discharge_files):
         fpath = os.path.join(input_folder, fname)
         if os.path.exists(fpath):
-            # pdb.set_trace()  # 디버깅용
             print(f"처리 중: {fname}")
             # 파일 읽기
             df = pd.read_csv(fpath)
@@ -89,4 +77,7 @@ def process_discharge_files():
 
 
 if __name__ == "__main__":
-    process_discharge_files()
+    input_folder = "cycle_preprocess/csv/outlier_cut/"
+    output_folder = "cycle_preprocess/analysis/reshaped/resampled_256/"
+    os.makedirs(output_folder, exist_ok=True)
+    process_discharge_files(input_folder, output_folder)
