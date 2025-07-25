@@ -218,8 +218,6 @@ def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
     metrics = {}
     epsilon = 1e-9  # 0으로 나누기 방지
 
-    # pdb.set_trace()
-
     for col in feature_cols:
         true = original_df[col].values
         pred = reconstructed_df[col].values
@@ -382,11 +380,8 @@ def performance_cycle(model=None, device=None):
     input_dim = test_tensor.shape[2]
     window_size = test_tensor.shape[1]
 
-    save_dir = "cycle_preprocess/performance_test/"
-    # cycle_idx = 1
-
     # 3. 전체 배터리 시계열 복원 및 성능 평가
-    save_dir = "cycle_preprocess/performance_test/"
+    save_dir = "results/performance_test/"
     os.makedirs(save_dir, exist_ok=True)
 
     # 복원된 사이클 얻기

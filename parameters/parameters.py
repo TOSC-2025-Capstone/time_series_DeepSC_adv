@@ -10,8 +10,8 @@ from typing import List
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 처음 실행 여부 -> True면 preprocess 실행, False면 이미 전처리된 데이터로 학습 및 평가 진행
-# is_first = True
-is_first = False
+is_first = True
+# is_first = False
 
 # window arr
 window_arr = [32, 64, 128, 256]
