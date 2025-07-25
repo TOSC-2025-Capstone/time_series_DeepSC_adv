@@ -291,31 +291,41 @@ def split_and_transform_data(scaled_df, discharge_files, test_ratio=0.2):
 
     Args:
         scaled_df (pd.DataFrame): 스케일링된 데이터
-        discharge_files (list): 전체 파일 목록
+        discharge_files (list): 전체 파일 목록 (파일명 format: 00001.csv)
         test_ratio (float): 테스트 세트 비율
 
     Returns:
         torch.Tensor: 학습 데이터
         torch.Tensor: 테스트 데이터
+        list: 학습 세트 파일 인덱스
+        list: 테스트 세트 파일 인덱스
     """
+    pdb.set_trace()  # 디버깅용
     n_files = len(discharge_files)
     n_samples_per_file = 256
     n_features = len(scaled_df.columns)
 
-    # 테스트 세트 인덱스 선택
-    # np.random.seed(42) -> main.py에서 설정
-    test_indices = np.random.choice(
-        np.arange(0, n_files) * n_samples_per_file,
-        size=int(n_files * test_ratio),
-        replace=False,
+    # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
+    file_indices = discharge_files
+
+    # 테스트 세트 파일 인덱스 선택
+    # seed 42에 따라 동일한 테스트 세트가 생성되도록 설정 (pesudo-random)
+    np.random.seed(42)
+    test_file_idx = np.random.choice(
+        np.arange(n_files), size=int(n_files * test_ratio), replace=False
     )
-    test_indices = np.concatenate(
-        [np.arange(idx, idx + n_samples_per_file) for idx in test_indices]
-    )
+    test_file_indices = [file_indices[i] for i in test_file_idx]
+    train_file_indices = [idx for idx in file_indices if idx not in test_file_indices]
+
+    # 데이터 인덱스로 변환
+    test_data_indices = []
+    for idx in test_file_idx:
+        start_idx = idx * n_samples_per_file
+        test_data_indices.extend(range(start_idx, start_idx + n_samples_per_file))
 
     # 마스크 생성
     is_test = np.zeros(len(scaled_df), dtype=bool)
-    is_test[test_indices] = True
+    is_test[test_data_indices] = True
 
     # 데이터 변환
     train_samples = scaled_df[~is_test].values
@@ -324,6 +334,7 @@ def split_and_transform_data(scaled_df, discharge_files, test_ratio=0.2):
     n_train_files = len(train_samples) // n_samples_per_file
     n_test_files = len(test_samples) // n_samples_per_file
 
+    # 텐서로 변환
     train_data = torch.FloatTensor(train_samples).view(
         n_train_files, n_samples_per_file, n_features
     )
@@ -331,7 +342,7 @@ def split_and_transform_data(scaled_df, discharge_files, test_ratio=0.2):
         n_test_files, n_samples_per_file, n_features
     )
 
-    return train_data, test_data
+    return train_data, test_data, sorted(train_file_indices), sorted(test_file_indices)
 
 
 # P2.5
@@ -357,7 +368,7 @@ def save_tensor_dataset(train_data, test_data, scaler, output_folder):
     train_dataset = TensorDataset(train_data)
     test_dataset = TensorDataset(test_data)
 
-    # 데이터셋 저장
+    # 데이터셋 저장 -> 6 2 2
     torch.save(train_dataset, os.path.join(output_folder, "train_data.pt"))
     torch.save(test_dataset, os.path.join(output_folder, "test_data.pt"))
 

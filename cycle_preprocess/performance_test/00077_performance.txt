@@ -1,0 +1,32 @@
+=== Cycle 00077 Performance Report ===
+
+
+[Voltage_measured]
+MSE: 0.0001
+MAE: 0.0010
+MAPE: 0.0341
+
+[Current_measured]
+MSE: 0.0007
+MAE: 0.0032
+MAPE: 39.3101
+
+[Temperature_measured]
+MSE: 0.0002
+MAE: 0.0074
+MAPE: 0.0883
+
+[Current_load]
+MSE: 0.0007
+MAE: 0.0027
+MAPE: 220.9226
+
+[Voltage_load]
+MSE: 0.0056
+MAE: 0.0065
+MAPE: 97177.6691
+
+[Time]
+MSE: 0.0061
+MAE: 0.0144
+MAPE: 0.0479

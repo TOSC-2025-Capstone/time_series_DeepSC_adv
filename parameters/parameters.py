@@ -10,14 +10,14 @@ from typing import List
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 처음 실행 여부 -> True면 preprocess 실행, False면 이미 전처리된 데이터로 학습 및 평가 진행
-# is_first = True
-is_first = False
+is_first = True
+# is_first = False
 
 # window arr
 window_arr = [32, 64, 128, 256]
 # models arr
 models_type_arr = ["deepsc", "lstm", "gru", "at_lstm"]
-case_index = 6.1
+case_index = 7.1
 loss_type = "MSE"
 model_select = 0
 model_type = models_type_arr[model_select]
@@ -37,12 +37,12 @@ feature_cols = [
 is_outlier_cut = False
 
 # 전처리 입력으로 사용할 데이터 경로 (merged)
-original_data_path = "./data/merged_simple"
+original_data_path = "./cycle_preprocess/csv/outlier_cut/"
 # 중간에 이상치 제거 버전 저장할 경로 -> 나중에 이걸 csv 복원 비교의 원본 csv으로 사용
 outlier_cut_csv_path = f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}_{len(feature_cols)}_features"
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
 # preprocessed_data_path = f"./preprocessed/case_{case_index}/preprocessed_data{'_outlier_cut' if is_outlier_cut else ''}_{len(feature_cols)}"
-preprocessed_data_path = f"./cycle_preprocess/preprocessed/processed_zscore"
+preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_minmax"
 # 모델 저장 경로
 model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 # 복원 후 데이터 경로

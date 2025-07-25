@@ -1,0 +1,32 @@
+=== Cycle 00081 Performance Report ===
+
+
+[Voltage_measured]
+MSE: 0.0000
+MAE: 0.0008
+MAPE: 0.0234
+
+[Current_measured]
+MSE: 0.0006
+MAE: 0.0028
+MAPE: 48.9913
+
+[Temperature_measured]
+MSE: 0.0002
+MAE: 0.0070
+MAPE: 0.0837
+
+[Current_load]
+MSE: 0.0006
+MAE: 0.0024
+MAPE: 344.2258
+
+[Voltage_load]
+MSE: 0.0049
+MAE: 0.0058
+MAPE: 82000.0647
+
+[Time]
+MSE: 0.0057
+MAE: 0.0135
+MAPE: 0.0469

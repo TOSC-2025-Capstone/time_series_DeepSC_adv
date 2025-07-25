@@ -156,7 +156,7 @@ def reconstruct_battery_series(
                     / (np.abs(df_orig[col]) + epsilon)
                     * 100
                 )
-                # pdb.set_trace()
+
                 plt.plot(
                     residual_percent, label="Residual %", color="orange", alpha=0.8
                 )

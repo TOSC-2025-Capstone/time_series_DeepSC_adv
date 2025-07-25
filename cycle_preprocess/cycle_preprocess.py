@@ -4,10 +4,12 @@ import numpy as np
 import torch
 from torch.utils.data import TensorDataset
 import pickle
-from methods import *
-from outlier_eliminate import process_and_save_outlier_data
-from cycle_reshape import resample_to_fixed_length, process_discharge_files
-from prepare_dataset import prepare_dataset
+from .methods import *
+from .outlier_eliminate import process_and_save_outlier_data
+from .cycle_reshape import (
+    resample_to_fixed_length,
+    process_discharge_files,
+)
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import joblib
 
@@ -34,6 +36,7 @@ def cycle_preprocess():
     # 1. P1의 통합된 데이터프레임을 사용하여 피쳐 별 스케일 정규화를 진행
     # 이 때 file_index 컬럼은 스케일링에서 제외 후 다시 추가
     file_index_col = df_cleaned["file_index"].values
+    df_cleaned = df_cleaned.drop(columns="file_index")
 
     if scaler_type == "minmax":
         scaler = MinMaxScaler()
@@ -72,17 +75,23 @@ def cycle_preprocess():
     # resmapled_dfs를 모두 합쳐서 하나의 데이터프레임으로 변경
     resampled_total_df = pd.concat(resampled_dfs.values(), ignore_index=True)
 
-    train_data, test_data = split_and_transform_data(
+    train_data, test_data, train_indices, test_indices = split_and_transform_data(
         resampled_total_df, list(grouped_dfs.keys()), test_ratio=test_ratio
     )
 
     # 5. 학습,테스트 데이터를 데이터셋으로 바꾸고,전처리에 사용한 스케일러 객체를 pickle, pt로 저장
     total_preprocessed_dataset_folder = "cycle_preprocess/total_preprocessed/"
+
+    # 파일 인덱스 정보도 함께 저장
+    indices_info = {"train_indices": train_indices, "test_indices": test_indices}
+    with open(
+        os.path.join(total_preprocessed_dataset_folder, "file_indices.pkl"), "wb"
+    ) as f:
+        pickle.dump(indices_info, f)
+
     save_tensor_dataset(
         train_data, test_data, scaler, total_preprocessed_dataset_folder
     )
-
-    pdb.set_trace()  # 디버깅용
 
 
 if __name__ == "__main__":

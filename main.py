@@ -26,6 +26,8 @@ from cycle_preprocess.cycle_preprocess import cycle_preprocess
 from train import train_model
 from performance import reconstruct_battery_series
 
+# from performance_cycle import reconstruct_battery_series2
+
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.parameters import *
 from parameters.model_parameters import *
@@ -50,7 +52,7 @@ def setup_seed(seed):
 
 
 if __name__ == "__main__":
-    # setup_seed(10)
+    setup_seed(42)
     if is_first == True:
         cycle_preprocess()
 
@@ -79,6 +81,6 @@ if __name__ == "__main__":
     # train
     train_model(model=model, device=device)
 
-    pdb.set_trace()
+    # pdb.set_trace()
     # test + result figuring
-    reconstruct_battery_series(model=model, device=device)
+    # reconstruct_battery_series(model=model, device=device)

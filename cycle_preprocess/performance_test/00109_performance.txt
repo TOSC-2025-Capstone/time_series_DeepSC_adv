@@ -1,0 +1,32 @@
+=== Cycle 00109 Performance Report ===
+
+
+[Voltage_measured]
+MSE: 0.0001
+MAE: 0.0011
+MAPE: 0.0377
+
+[Current_measured]
+MSE: 0.0007
+MAE: 0.0033
+MAPE: 60.8287
+
+[Temperature_measured]
+MSE: 0.0002
+MAE: 0.0082
+MAPE: 0.0977
+
+[Current_load]
+MSE: 0.0007
+MAE: 0.0029
+MAPE: 272.6572
+
+[Voltage_load]
+MSE: 0.0042
+MAE: 0.0065
+MAPE: 165089.1189
+
+[Time]
+MSE: 0.0045
+MAE: 0.0129
+MAPE: 0.0428

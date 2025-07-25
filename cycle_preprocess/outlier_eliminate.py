@@ -5,7 +5,7 @@ from torch.utils.data import TensorDataset
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pdb
-from methods import *
+from .methods import *
 
 """
 주요 변경사항:
@@ -14,6 +14,9 @@ rows_to_keep 마스크를 사용하여 이상치가 없는 행만 추적
 모든 컬럼에 대해 이상치 검사 후, 하나라도 이상치가 있는 행은 제거
 보간 관련 코드 제거
 
+00001.csv (rows=480)
+480 -> preprocess -> 256 (하나의 모델 단위 입력) -> 모델 처리 -> 256 -> 역보간 -> 480
+비교 480 단위 (이상치가 제거된) 
 
 상세한 통계 정보 출력:
 

@@ -49,7 +49,7 @@ model_params = {
     # 공통
     "input_dim": 6,  # 모든 모델의 입력 피쳐 수
     "compressed_len": 64,  # 모든 모델의 압축된 시퀀스 길이
-    "num_layers": 2,  # 모든 모델의 레이어 수
+    "num_layers": 4,  # 모든 모델의 레이어 수
     "dropout": 0.1,
     # lstm, gru, at_lstm
     "hidden_dim": 256,  # lstm, gru, at_lstm hidden dim
