@@ -24,9 +24,10 @@ from models.transceiver import DeepSC
 from preprocess import load_all_valid_csv_tensors
 from cycle_preprocess.cycle_preprocess import cycle_preprocess
 from train import train_model
-from performance import reconstruct_battery_series
 
-# from performance_cycle import reconstruct_battery_series2
+# from performance import reconstruct_battery_series
+
+from performance_cycle import performance_cycle
 
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.parameters import *
@@ -53,10 +54,13 @@ def setup_seed(seed):
 
 if __name__ == "__main__":
     setup_seed(42)
+
+    print("========================== preprocess ==========================\n")
     if is_first == True:
-        cycle_preprocess()
+        cycle_preprocess(scaler_type=scaler_type)
 
     # model create
+    print("========================== model_select ==========================\n")
     model = None
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
@@ -79,8 +83,31 @@ if __name__ == "__main__":
         model = LSTMAttentionDeepSC(params=model_params).to(device)
 
     # train
+    print("========================== train ==========================\n")
+    model.train()
+    if model.training:
+        print("현재 모델은 training 모드입니다.")
+    else:
+        print("현재 모델은 evaluation (eval) 모드입니다.")
     train_model(model=model, device=device)
 
-    # pdb.set_trace()
+    print(
+        "========================== best checkpoint load ==========================\n"
+    )
+    # best checkpoint parameters load
+    try:
+        if os.path.exists(model_checkpoint_path):
+            model.load_state_dict(
+                torch.load(f"{model_checkpoint_path}best.pth", map_location=device)
+            )
+    except Exception as e:
+        print(f"모델 로드 실패: {e}")
+
     # test + result figuring
-    # reconstruct_battery_series(model=model, device=device)
+    print("========================== test ==========================\n")
+    model.eval()
+    if model.training:
+        print("현재 모델은 training 모드입니다.")
+    else:
+        print("현재 모델은 evaluation (eval) 모드입니다.")
+    performance_cycle(model=model, device=device)

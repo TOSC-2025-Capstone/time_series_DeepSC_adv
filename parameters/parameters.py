@@ -10,8 +10,8 @@ from typing import List
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 처음 실행 여부 -> True면 preprocess 실행, False면 이미 전처리된 데이터로 학습 및 평가 진행
-is_first = True
-# is_first = False
+# is_first = True
+is_first = False
 
 # window arr
 window_arr = [32, 64, 128, 256]
@@ -22,6 +22,9 @@ loss_type = "MSE"
 model_select = 0
 model_type = models_type_arr[model_select]
 channel_type = "no_channel"
+
+# scaler_type
+scaler_type = "minmax"  # or "zscore"
 
 # feature cols (inputs)
 feature_cols = [
@@ -37,18 +40,17 @@ feature_cols = [
 is_outlier_cut = False
 
 # 전처리 입력으로 사용할 데이터 경로 (merged)
-original_data_path = "./cycle_preprocess/csv/outlier_cut/"
+original_data_path = "./original_data/cycle_data/"
 # 중간에 이상치 제거 버전 저장할 경로 -> 나중에 이걸 csv 복원 비교의 원본 csv으로 사용
-outlier_cut_csv_path = f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}_{len(feature_cols)}_features"
+outlier_cut_csv_path = (
+    f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}"
+)
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
-# preprocessed_data_path = f"./preprocessed/case_{case_index}/preprocessed_data{'_outlier_cut' if is_outlier_cut else ''}_{len(feature_cols)}"
 preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_minmax"
 # 모델 저장 경로
 model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 # 복원 후 데이터 경로
-reconstructed_data_path = (
-    f"./recons/case_{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
-)
+reconstructed_data_path = f"./reconstruction/case_{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
 
 ## model params
 # epochs
@@ -60,7 +62,7 @@ tratin_lr = 1e-5
 # input dimension
 input_dim = 6
 # window size
-window_size = window_arr[2]
+window_size = window_arr[3]
 # stride
 stride = window_size // 2
 
@@ -87,7 +89,7 @@ class PreprocessParams:
 @dataclass
 class TrainDeepSCParams:
     train_pt: str = preprocessed_data_path + "/train_data.pt"
-    test_pt: str = preprocessed_data_path + "/test_data.pt"
+    validate_pt: str = preprocessed_data_path + "/val_data.pt"
     scaler_path: str = preprocessed_data_path + "/scaler.pkl"
     model_save_path: str = model_checkpoint_path
     num_epochs: int = train_epochs

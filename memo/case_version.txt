@@ -12,3 +12,6 @@ case 0.1 : case 0과 동일, stride=64, epoch=80로만 변경해서 진행
 case 6.0 : MSE, no_channel, z-3 이상치 제거, minmax 정규화, cycle 단위 256 squencelength preprocessed data로 학습 진행, model_params에서 d_model 256으로 변경
     best val loss : 0.001053 으로 아주 성공적임, 6.1과 비교 필요
 case 6.1 : MSE, no_channel, z-3 이상치 제거, z-score 정규화, cycle 단위 256 squencelength preprocessed data로 학습 진행, model_params에서 d_model 256으로 변경
+
+# 25.07.25
+case 7.1 : 6.1에서 이상한 데이터 제거, train-val-test (6-2-2) 구조 반영 및 performance_cycle.py 적용 후 결과 검증

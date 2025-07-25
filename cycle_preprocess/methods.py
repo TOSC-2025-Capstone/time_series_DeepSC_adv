@@ -285,22 +285,25 @@ def grouping_df(df):
 
 
 # P2.4
-def split_and_transform_data(scaled_df, discharge_files, test_ratio=0.2):
+def split_and_transform_data(scaled_df, discharge_files, val_ratio=0.2, test_ratio=0.2):
     """
-    데이터를 학습/테스트 세트로 분할하고 텐서로 변환
+    데이터를 학습/검증/테스트 세트로 분할하고 텐서로 변환 (6:2:2 비율)
 
     Args:
         scaled_df (pd.DataFrame): 스케일링된 데이터
         discharge_files (list): 전체 파일 목록 (파일명 format: 00001.csv)
+        val_ratio (float): 검증 세트 비율
         test_ratio (float): 테스트 세트 비율
 
     Returns:
         torch.Tensor: 학습 데이터
+        torch.Tensor: 검증 데이터
         torch.Tensor: 테스트 데이터
         list: 학습 세트 파일 인덱스
+        list: 검증 세트 파일 인덱스
         list: 테스트 세트 파일 인덱스
     """
-    pdb.set_trace()  # 디버깅용
+    # pdb.set_trace()  # 디버깅용
     n_files = len(discharge_files)
     n_samples_per_file = 256
     n_features = len(scaled_df.columns)
@@ -308,47 +311,74 @@ def split_and_transform_data(scaled_df, discharge_files, test_ratio=0.2):
     # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
     file_indices = discharge_files
 
-    # 테스트 세트 파일 인덱스 선택
-    # seed 42에 따라 동일한 테스트 세트가 생성되도록 설정 (pesudo-random)
+    # seed 42에 따라 동일한 세트가 생성되도록 설정
     np.random.seed(42)
-    test_file_idx = np.random.choice(
-        np.arange(n_files), size=int(n_files * test_ratio), replace=False
-    )
+    all_indices = np.arange(n_files)
+
+    # 테스트 세트 선택
+    n_test = int(n_files * test_ratio)
+    test_file_idx = np.random.choice(all_indices, size=n_test, replace=False)
+    remaining_idx = np.array([i for i in all_indices if i not in test_file_idx])
+
+    # 검증 세트 선택
+    n_val = int(n_files * val_ratio)
+    val_file_idx = np.random.choice(remaining_idx, size=n_val, replace=False)
+    train_file_idx = np.array([i for i in remaining_idx if i not in val_file_idx])
+
+    # 각 세트의 파일 인덱스 추출
     test_file_indices = [file_indices[i] for i in test_file_idx]
-    train_file_indices = [idx for idx in file_indices if idx not in test_file_indices]
+    val_file_indices = [file_indices[i] for i in val_file_idx]
+    train_file_indices = [file_indices[i] for i in train_file_idx]
 
     # 데이터 인덱스로 변환
-    test_data_indices = []
-    for idx in test_file_idx:
-        start_idx = idx * n_samples_per_file
-        test_data_indices.extend(range(start_idx, start_idx + n_samples_per_file))
+    def create_data_indices(file_idx):
+        indices = []
+        for idx in file_idx:
+            start_idx = idx * n_samples_per_file
+            indices.extend(range(start_idx, start_idx + n_samples_per_file))
+        return indices
 
-    # 마스크 생성
-    is_test = np.zeros(len(scaled_df), dtype=bool)
-    is_test[test_data_indices] = True
+    test_data_indices = create_data_indices(test_file_idx)
+    val_data_indices = create_data_indices(val_file_idx)
+    train_data_indices = create_data_indices(train_file_idx)
+
+    # 마스크 생성 및 데이터 분할
+    def create_mask_and_transform(indices, total_length):
+        mask = np.zeros(total_length, dtype=bool)
+        mask[indices] = True
+        return mask
+
+    is_test = create_mask_and_transform(test_data_indices, len(scaled_df))
+    is_val = create_mask_and_transform(val_data_indices, len(scaled_df))
+    is_train = create_mask_and_transform(train_data_indices, len(scaled_df))
 
     # 데이터 변환
-    train_samples = scaled_df[~is_test].values
+    train_samples = scaled_df[is_train].values
+    val_samples = scaled_df[is_val].values
     test_samples = scaled_df[is_test].values
-
-    n_train_files = len(train_samples) // n_samples_per_file
-    n_test_files = len(test_samples) // n_samples_per_file
 
     # 텐서로 변환
     train_data = torch.FloatTensor(train_samples).view(
-        n_train_files, n_samples_per_file, n_features
+        -1, n_samples_per_file, n_features
     )
-    test_data = torch.FloatTensor(test_samples).view(
-        n_test_files, n_samples_per_file, n_features
-    )
+    val_data = torch.FloatTensor(val_samples).view(-1, n_samples_per_file, n_features)
+    test_data = torch.FloatTensor(test_samples).view(-1, n_samples_per_file, n_features)
 
-    return train_data, test_data, sorted(train_file_indices), sorted(test_file_indices)
+    return (
+        train_data,
+        val_data,
+        test_data,
+        sorted(train_file_indices),
+        sorted(val_file_indices),
+        sorted(test_file_indices),
+    )
 
 
 # P2.5
-def save_tensor_dataset(train_data, test_data, scaler, output_folder):
+def save_tensor_dataset(train_data, val_data, test_data, scaler, output_folder):
     print(f"\n데이터 shape 확인:")
     print(f"train_data: {train_data.shape} (파일 수 x 256 x 특성 수)")
+    print(f"val_data: {val_data.shape} (파일 수 x 256 x 특성 수)")
     print(f"test_data: {test_data.shape} (파일 수 x 256 x 특성 수)")
 
     # scaler가 minmax인지 zscore인지 확인
@@ -366,10 +396,12 @@ def save_tensor_dataset(train_data, test_data, scaler, output_folder):
 
     # TensorDataset 생성 (향후 추가 레이블이나 메타데이터를 위해 확장 가능)
     train_dataset = TensorDataset(train_data)
+    val_dataset = TensorDataset(val_data)
     test_dataset = TensorDataset(test_data)
 
-    # 데이터셋 저장 -> 6 2 2
+    # 데이터셋 저장 (6:2:2 비율)
     torch.save(train_dataset, os.path.join(output_folder, "train_data.pt"))
+    torch.save(val_dataset, os.path.join(output_folder, "val_data.pt"))
     torch.save(test_dataset, os.path.join(output_folder, "test_data.pt"))
 
     # 스케일러 저장

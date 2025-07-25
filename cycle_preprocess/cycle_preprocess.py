@@ -17,7 +17,7 @@ from tqdm import tqdm
 import pdb
 
 
-def cycle_preprocess():
+def cycle_preprocess(scaler_type="minmax"):
     # P1 variables
     exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
     input_folder = "original_dataset/data/"
@@ -29,7 +29,6 @@ def cycle_preprocess():
     )
 
     # P2 variables
-    scaler_type = "minmax"  # or "zscore"
     test_ratio = 0.2
 
     # P2 : prepare_dataset.py
@@ -69,28 +68,35 @@ def cycle_preprocess():
             total_preprocessed_csv_folder, f"{int(file_index):05d}.csv"
         )
         resampled_df.to_csv(output_path, index=False)
-        print(f"파일 저장 완료: {output_path} ({len(resampled_df)} rows)")
+        # print(f"파일 저장 완료: {output_path} ({len(resampled_df)} rows)")
 
     # 4. 각 샘플들을 텐서로 변환
     # resmapled_dfs를 모두 합쳐서 하나의 데이터프레임으로 변경
     resampled_total_df = pd.concat(resampled_dfs.values(), ignore_index=True)
 
-    train_data, test_data, train_indices, test_indices = split_and_transform_data(
-        resampled_total_df, list(grouped_dfs.keys()), test_ratio=test_ratio
+    # 4. 데이터를 train/val/test로 분할 (6:2:2)
+    train_data, val_data, test_data, train_indices, val_indices, test_indices = (
+        split_and_transform_data(
+            resampled_total_df, list(grouped_dfs.keys()), val_ratio=0.2, test_ratio=0.2
+        )
     )
 
-    # 5. 학습,테스트 데이터를 데이터셋으로 바꾸고,전처리에 사용한 스케일러 객체를 pickle, pt로 저장
+    # 5. 학습/검증/테스트 데이터를 데이터셋으로 바꾸고,전처리에 사용한 스케일러 객체를 pickle, pt로 저장
     total_preprocessed_dataset_folder = "cycle_preprocess/total_preprocessed/"
 
     # 파일 인덱스 정보도 함께 저장
-    indices_info = {"train_indices": train_indices, "test_indices": test_indices}
+    indices_info = {
+        "train_indices": train_indices,
+        "val_indices": val_indices,
+        "test_indices": test_indices,
+    }
     with open(
         os.path.join(total_preprocessed_dataset_folder, "file_indices.pkl"), "wb"
     ) as f:
         pickle.dump(indices_info, f)
 
     save_tensor_dataset(
-        train_data, test_data, scaler, total_preprocessed_dataset_folder
+        train_data, val_data, test_data, scaler, total_preprocessed_dataset_folder
     )
 
 

@@ -39,6 +39,8 @@ from models.transceiver import DeepSC
 from parameters.model_parameters import *
 from cycle_preprocess.reverse_cycle_reshape import *
 
+from parameters.parameters import reconstructed_data_path
+
 
 def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
     """
@@ -55,15 +57,6 @@ def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
 
     # 1. 텐서를 2D 배열로 변환 (reshape)
     data_2d = tensor_data.reshape(-1, tensor_data.shape[-1]).numpy()
-
-    # 디버깅: 스케일러와 데이터의 shape 확인
-    # print("\n=== 디버깅 정보 ===")
-    # print(f"입력 데이터 shape: {data_2d.shape}")
-    # print(f"스케일러 min_ shape: {scaler.min_.shape}")
-    # print(f"스케일러 scale_ shape: {scaler.scale_.shape}")
-    # if hasattr(scaler, "feature_names_in_"):
-    #     print(f"스케일러 특성 이름: {scaler.feature_names_in_}")
-    # print("===================\n")
 
     # 2. 스케일러에서 특성 이름 가져오기
     feature_names = (
@@ -161,29 +154,46 @@ def visualize_cycle_performance(
     for i, col in enumerate(feature_cols):
         plt.subplot(2, 3, i + 1)
         residual = original_df[col] - reconstructed_df[col]
+
+        # 원본 데이터의 범위 계산
+        original_range = original_df[col].max() - original_df[col].min()
+        y_limit = original_range * 0.5  # 원본 데이터 범위의 ±50%로 설정
+
         plt.plot(residual, label="Residual", color="orange", alpha=0.8)
         plt.title(f"Residual: {col}")
         plt.axhline(0, color="gray", linestyle="--", linewidth=1)
+        plt.ylim(-y_limit, y_limit)  # y축 범위 설정
         plt.legend()
         plt.grid(True)
+
+        # y축에 원본 데이터 범위의 백분율 표시
+        plt.ylabel(f"Error (±{(y_limit/original_range*100):.1f}% of range)")
+
     plt.suptitle(f"Cycle Residuals: {base}")
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(os.path.join(save_fig_dir, f"{base}_residual.png"), dpi=200)
     plt.close()
 
-    # 3. 복원 오차율(%) 플롯
+    # 3. 복원 오차율(%) 플롯 - 원본 데이터 범위 대비 상대 오차
     plt.figure(figsize=(15, 10))
-    epsilon = 1e-9  # 0으로 나누기 방지
     for i, col in enumerate(feature_cols):
         plt.subplot(2, 3, i + 1)
-        residual_percent = (
-            np.abs(original_df[col] - reconstructed_df[col])
-            / (np.abs(original_df[col]) + epsilon)
-            * 100
-        )
-        plt.plot(residual_percent, label="Residual %", color="orange", alpha=0.8)
-        plt.title(f"Residual %: {col}")
-        plt.ylabel("Residual (%)")
+
+        # 원본 데이터의 범위 계산
+        original_max = np.max(original_df[col])
+        original_min = np.min(original_df[col])
+        original_range = original_max - original_min
+
+        # 절대 오차 계산
+        diff = np.abs(original_df[col] - reconstructed_df[col])
+
+        # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
+        relative_error = (diff / original_range) * 100
+
+        plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
+        plt.title(f"Relative Error: {col}")
+        plt.ylabel("Error (% of data range)")
+        plt.ylim(0, 50)  # 데이터 범위의 0~50%로 제한
         plt.axhline(0, color="gray", linestyle="--", linewidth=1)
         plt.legend()
         plt.grid(True)
@@ -195,7 +205,7 @@ def visualize_cycle_performance(
 
 def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
     """
-    성능 지표 계산 (MSE, MAE, MAPE)
+    원래 스케일로 복원 성능 지표 계산 (MSE, MAE, MAPE)
 
     Args:
         original_df (pd.DataFrame): 원본 사이클 데이터
@@ -207,6 +217,8 @@ def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
     """
     metrics = {}
     epsilon = 1e-9  # 0으로 나누기 방지
+
+    # pdb.set_trace()
 
     for col in feature_cols:
         true = original_df[col].values
@@ -334,11 +346,11 @@ def total_performance_plot(feature_cols, all_metrics, save_dir):
     stats_df.to_csv(os.path.join(save_dir, "performance_statistics.csv"), index=False)
 
 
-def performance_cycle():
+def performance_cycle(model=None, device=None):
     train_pt = "cycle_preprocess/total_preprocessed/processed_minmax/train_data.pt"
     test_pt = "cycle_preprocess/total_preprocessed/processed_minmax/test_data.pt"
     scaler_path = "cycle_preprocess/total_preprocessed/processed_minmax/scaler.pkl"
-    model_checkpoint_path = "checkpoints/case_7.1/MSE/DeepSC_battery_epoch"
+    # model_checkpoint_path = "checkpoints/case_7.1/MSE/DeepSC_battery_epoch"
 
     # 1. 데이터 및 메타 정보 로드
     train_data = torch.load(train_pt)
@@ -365,21 +377,10 @@ def performance_cycle():
     else:
         print("스케일러에서 특성 이름을 가져올 수 없습니다. 기본값 사용")
 
-    # 2. 모델 로드
+    # 2. 입력 형태 정의 및 모델 로드
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     input_dim = test_tensor.shape[2]
     window_size = test_tensor.shape[1]
-
-    model = DeepSC(params=model_params)
-
-    try:
-        if os.path.exists(model_checkpoint_path):
-            model.load_state_dict(
-                torch.load(f"{model_checkpoint_path}best.pth", map_location=device)
-            )
-        model.eval()
-    except Exception as e:
-        print(f"모델 로드 실패: {e}")
 
     save_dir = "cycle_preprocess/performance_test/"
     # cycle_idx = 1
@@ -392,6 +393,20 @@ def performance_cycle():
     post_processed_cycles = post_process(
         tensor_data=test_tensor, scaler=scaler, preprocessed_folder="cycle_preprocess/"
     )
+
+    print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
+    # 복원된 사이클 저장 경로 생성
+    os.makedirs(reconstructed_data_path, exist_ok=True)
+    # 복원된 사이클 csv로 저장
+    for cycle_idx, cycle_df in post_processed_cycles.items():
+        # 사이클 데이터프레임을 CSV로 저장
+        cycle_df.to_csv(
+            os.path.join(
+                reconstructed_data_path, f"{int(cycle_idx):05d}_reconstructed.csv"
+            ),
+            index=False,
+        )
+        print(f"사이클 {cycle_idx} 복원 완료 및 저장")
 
     # 모든 사이클의 성능 지표를 저장할 딕셔너리
     all_metrics = {
@@ -410,9 +425,11 @@ def performance_cycle():
         if os.path.exists(original_path):
             original_df = pd.read_csv(original_path)
 
-            print(
-                f"사이클 {cycle_idx} 원본 데이터 로드 완료 (shape: {original_df.shape})"
-            )
+            if reconstruct_count % 100 == 0:
+                print(
+                    f"사이클 {cycle_idx} 원본 데이터 로드 완료 (shape: {original_df.shape})"
+                )
+
             # 특성 이름은 reconstructed_df의 컬럼 순서 사용
             feature_cols = reconstructed_df.columns.tolist()
 
@@ -437,7 +454,6 @@ def performance_cycle():
                         metrics[feature][metric_name]
                     )
 
-            print(f"사이클 {cycle_idx} 성능 평가 완료")
         else:
             print(
                 f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}"
@@ -446,5 +462,5 @@ def performance_cycle():
     total_performance_plot(feature_cols, all_metrics, save_dir)
 
 
-if __name__ == "__main__":
-    performance_cycle()
+# if __name__ == "__main__":
+# performance_cycle(model=model, device=device)
