@@ -52,8 +52,8 @@ model_params = {
     "num_layers": 4,  # 모든 모델의 레이어 수
     "dropout": 0.1,
     # lstm, gru, at_lstm
-    "hidden_dim": 256,  # lstm, gru, at_lstm hidden dim
-    "compressed_features": 3,  # lstm, gru 압축 피쳐 수
+    "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    "compressed_features": 6,  # lstm, gru 압축 피쳐 수
     "reconstruct_len": 256,  # lstm, gru, at_lstm 모델 입/출력 sequence length
     "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
     "seq_len": 256,  # lstm, gru, at_lstm 입력 시퀀스 길이

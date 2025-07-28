@@ -10,8 +10,11 @@ from typing import List
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 처음 실행 여부 -> True면 preprocess 실행, False면 이미 전처리된 데이터로 학습 및 평가 진행
-is_first = True
-# is_first = False
+# is_first = True
+is_first = False
+
+# 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
+is_trained = True
 
 # window arr
 window_arr = [32, 64, 128, 256]
@@ -43,7 +46,8 @@ is_outlier_cut = False
 original_data_path = "./original_data/cycle_data/"
 # 중간에 이상치 제거 버전 저장할 경로 -> 나중에 이걸 csv 복원 비교의 원본 csv으로 사용
 outlier_cut_csv_path = (
-    f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}"
+    # f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}"
+    "./cycle_preprocess/csv/outlier_cut/"
 )
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
 preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_minmax"
@@ -67,8 +71,11 @@ window_size = window_arr[3]
 stride = window_size // 2
 
 ## reconstruction save path
-save_recon_dir = f"reconstruction/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
 save_fig_dir = f"results/case{case_index}/{channel_type}_{model_type}_{loss_type}"
+save_reconstruct_dir = f"reconstruction/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
+save_performance_dir = (
+    f"results/performance_test/case{case_index}/{channel_type}_{model_type}_{loss_type}"
+)
 
 
 # preprocess
@@ -103,6 +110,11 @@ class TestParams:
     loss_type: str = loss_type
     model_type: str = model_type
     channel_type: str = channel_type
-    csv_origin_path: str = original_data_path
+    csv_origin_path: str = outlier_cut_csv_path  # 복원본과 비교할 대상 (이상치제거본)
     preprocessed_path: str = preprocessed_data_path
-    window_meta_path: str = preprocessed_data_path + "/window_meta.pkl"
+    save_performance_dir = save_performance_dir
+    save_reconstruct_dir = save_reconstruct_dir
+    feature_cols: List[str] = field(default_factory=lambda: feature_cols.copy())
+    train_pt = preprocessed_data_path + "/train_data.pt"
+    test_pt = preprocessed_data_path + "/test_data.pt"
+    scaler_path = preprocessed_data_path + "/scaler.pkl"

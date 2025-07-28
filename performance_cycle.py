@@ -39,7 +39,7 @@ from models.transceiver import DeepSC
 from parameters.model_parameters import *
 from cycle_preprocess.reverse_cycle_reshape import *
 
-from parameters.parameters import reconstructed_data_path
+from parameters.parameters import TestParams
 
 
 def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
@@ -251,7 +251,7 @@ def save_performance_report(metrics, cycle_idx, save_dir):
                 f.write(f"{metric_name}: {value:.4f}\n")
 
 
-def post_process(tensor_data, scaler, preprocessed_folder="cycle_preprocess/"):
+def post_process(tensor_data, scaler, preprocessed_folder):
     """
     모델 출력 텐서를 원본 데이터 형식으로 복원하는 메인 함수
 
@@ -264,9 +264,8 @@ def post_process(tensor_data, scaler, preprocessed_folder="cycle_preprocess/"):
         dict: 사이클별로 복원된 데이터프레임 딕셔너리
     """
     # 파일 인덱스 정보 로드
-    indices_path = os.path.join(
-        preprocessed_folder, "total_preprocessed/file_indices.pkl"
-    )
+    indices_path = os.path.join(preprocessed_folder, "file_indices.pkl")
+    test_indices = None
     if os.path.exists(indices_path):
         with open(indices_path, "rb") as f:
             indices_info = pickle.load(f)
@@ -344,36 +343,30 @@ def total_performance_plot(feature_cols, all_metrics, save_dir):
     stats_df.to_csv(os.path.join(save_dir, "performance_statistics.csv"), index=False)
 
 
-def performance_cycle(model=None, device=None):
-    train_pt = "cycle_preprocess/total_preprocessed/processed_minmax/train_data.pt"
-    test_pt = "cycle_preprocess/total_preprocessed/processed_minmax/test_data.pt"
-    scaler_path = "cycle_preprocess/total_preprocessed/processed_minmax/scaler.pkl"
+def performance_cycle(params: TestParams, model=None, device=None):
+
+    train_pt = params.train_pt
+    test_pt = params.test_pt
+    scaler_path = params.scaler_path
+    preprocessed_folder = params.preprocessed_path
+    # train_pt = "cycle_preprocess/total_preprocessed/processed_minmax/train_data.pt"
+    # test_pt = "cycle_preprocess/total_preprocessed/processed_minmax/test_data.pt"
+    # scaler_path = "cycle_preprocess/total_preprocessed/processed_minmax/scaler.pkl"
     # model_checkpoint_path = "checkpoints/case_7.1/MSE/DeepSC_battery_epoch"
 
     # 1. 데이터 및 메타 정보 로드
     train_data = torch.load(train_pt)
     test_data = torch.load(test_pt)
-    train_tensor = train_data.tensors[0]
     test_tensor = test_data.tensors[0]
     scaler = joblib.load(scaler_path)
-    train_len = len(train_data.tensors[0])
 
-    # 스케일러가 학습된 순서대로 feature_cols 설정
-    feature_cols = [
-        "Voltage_measured",
-        "Current_measured",
-        "Temperature_measured",
-        "Current_load",
-        "Voltage_load",
-        "Time",
-    ]
-    # 스케일러에서 학습된 특성 순서 가져오기
-    if hasattr(scaler, "feature_names_in_"):
-        feature_cols = list(scaler.feature_names_in_)
-    elif hasattr(scaler, "get_feature_names_out"):
-        feature_cols = list(scaler.get_feature_names_out())
-    else:
-        print("스케일러에서 특성 이름을 가져올 수 없습니다. 기본값 사용")
+    feature_cols = params.feature_cols.copy()
+
+    # 저장 경로 설정
+    save_performance_dir = params.save_performance_dir
+    save_reconstruction_dir = params.save_reconstruct_dir
+    os.makedirs(save_performance_dir, exist_ok=True)
+    os.makedirs(save_reconstruction_dir, exist_ok=True)
 
     # 2. 입력 형태 정의 및 모델 로드
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -381,23 +374,28 @@ def performance_cycle(model=None, device=None):
     window_size = test_tensor.shape[1]
 
     # 3. 전체 배터리 시계열 복원 및 성능 평가
-    save_dir = "results/performance_test/"
-    os.makedirs(save_dir, exist_ok=True)
+    if model is None:
+        print("모델을 전달해주세요!")
+        return
+    else:
+        with torch.no_grad():
+            output_tensor = model(test_tensor.to(device))
 
     # 복원된 사이클 얻기
     post_processed_cycles = post_process(
-        tensor_data=test_tensor, scaler=scaler, preprocessed_folder="cycle_preprocess/"
+        tensor_data=output_tensor.cpu(),
+        scaler=scaler,
+        preprocessed_folder=preprocessed_folder,
     )
 
     print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
-    # 복원된 사이클 저장 경로 생성
-    os.makedirs(reconstructed_data_path, exist_ok=True)
+
     # 복원된 사이클 csv로 저장
     for cycle_idx, cycle_df in post_processed_cycles.items():
         # 사이클 데이터프레임을 CSV로 저장
         cycle_df.to_csv(
             os.path.join(
-                reconstructed_data_path, f"{int(cycle_idx):05d}_reconstructed.csv"
+                save_reconstruction_dir, f"{int(cycle_idx):05d}_reconstructed.csv"
             ),
             index=False,
         )
@@ -415,7 +413,7 @@ def performance_cycle(model=None, device=None):
         reconstruct_count += 1
         # 원본 데이터 로드 (길이 제각각)
         original_path = os.path.join(
-            "cycle_preprocess/csv/outlier_cut/", f"{int(cycle_idx):05d}.csv"
+            params.csv_origin_path, f"{int(cycle_idx):05d}.csv"
         )
         if os.path.exists(original_path):
             original_df = pd.read_csv(original_path)
@@ -434,7 +432,11 @@ def performance_cycle(model=None, device=None):
             # 시각화 (100개당 하나)
             if reconstruct_count % 100 == 0:
                 visualize_cycle_performance(
-                    original_df, reversed_df, feature_cols, save_dir, cycle_idx
+                    original_df,
+                    reversed_df,
+                    feature_cols,
+                    save_performance_dir,
+                    cycle_idx,
                 )
 
             # 성능 지표 계산 및 저장
@@ -454,7 +456,7 @@ def performance_cycle(model=None, device=None):
                 f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}"
             )
 
-    total_performance_plot(feature_cols, all_metrics, save_dir)
+    total_performance_plot(feature_cols, all_metrics, save_performance_dir)
 
 
 # if __name__ == "__main__":

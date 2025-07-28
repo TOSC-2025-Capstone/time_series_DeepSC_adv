@@ -61,7 +61,9 @@ def cycle_preprocess(scaler_type="minmax"):
         resampled_dfs[file_index] = resampled_df
 
     # 3.1 resampled_dfs 순회하면서 전처리 완료된 사이클 별 csv 파일 저장
-    total_preprocessed_csv_folder = "cycle_preprocess/csv/total_preprocessed/"
+    total_preprocessed_csv_folder = (
+        f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}"
+    )
     os.makedirs(total_preprocessed_csv_folder, exist_ok=True)
     for file_index, resampled_df in resampled_dfs.items():
         output_path = os.path.join(

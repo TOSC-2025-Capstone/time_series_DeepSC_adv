@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # CSV 파일 읽기
-df = pd.read_csv("./data/merged/B0025.csv")
+df = pd.read_csv("./data/merged/B0005.csv")
 
 # 필요한 컬럼 정의
 features = [

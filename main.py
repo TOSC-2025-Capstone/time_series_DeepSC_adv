@@ -58,12 +58,14 @@ if __name__ == "__main__":
     print("========================== preprocess ==========================\n")
     if is_first == True:
         cycle_preprocess(scaler_type=scaler_type)
+        print("사이클 전처리가 완료되었습니다.")
 
     # model create
     print("========================== model_select ==========================\n")
     model = None
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
+        print("DeepSC 모델이 선택되었습니다.")
         # 아래와 같이 개별 변수를 정의하는 것도 가능은 함, model_parameters에서 방법 1 주석
         # model = DeepSC(
         #     num_layers=num_layers,
@@ -77,37 +79,56 @@ if __name__ == "__main__":
         # )
     elif model_type == "lstm":
         model = LSTMDeepSC(params=model_params).to(device)
+        print("LSTMDeepSC 모델이 선택되었습니다.")
     elif model_type == "gru":
         model = GRUDeepSC(params=model_params).to(device)
+        print("GRUDeepSC 모델이 선택되었습니다.")
     elif model_type == "at_lstm":
         model = LSTMAttentionDeepSC(params=model_params).to(device)
+        print("LSTMAttentionDeepSC 모델이 선택되었습니다.")
 
     # train
-    print("========================== train ==========================\n")
-    model.train()
-    if model.training:
-        print("현재 모델은 training 모드입니다.")
-    else:
-        print("현재 모델은 evaluation (eval) 모드입니다.")
-    train_model(model=model, device=device)
+    if is_trained == False:
+        print("========================== train ==========================\n")
+        model.train()
+        if model.training:
+            print("현재 모델은 training 모드입니다.")
+        else:
+            print("현재 모델은 evaluation (eval) 모드입니다.")
+        train_model(model=model, device=device)
 
     print(
         "========================== best checkpoint load ==========================\n"
     )
     # best checkpoint parameters load
+    for name, param in model.named_parameters():
+        print(
+            f"{name}: mean={param.data.mean().item():.4f}, std={param.data.std().item():.4f}"
+        )
+        break  # 한 개만 확인 (전체 보려면 break 제거) encoder.lstm.weight_ih_l0: mean=-0.0001, std=0.0255
+
     try:
         if os.path.exists(model_checkpoint_path):
             model.load_state_dict(
                 torch.load(f"{model_checkpoint_path}best.pth", map_location=device)
             )
+            print("모델이 성공적으로 로드되었습니다.")
     except Exception as e:
         print(f"모델 로드 실패: {e}")
 
+    for name, param in model.named_parameters():
+        print(
+            f"{name}: mean={param.data.mean().item():.4f}, std={param.data.std().item():.4f}"
+        )
+        break  # 한 개만 확인 (전체 보려면 break 제거) encoder.lstm.weight_ih_l0: mean=0.0031, std=0.0262
+
     # test + result figuring
+    pdb.set_trace()
     print("========================== test ==========================\n")
     model.eval()
+    params = TestParams()
     if model.training:
         print("현재 모델은 training 모드입니다.")
     else:
         print("현재 모델은 evaluation (eval) 모드입니다.")
-    performance_cycle(model=model, device=device)
+    performance_cycle(params=params, model=model, device=device)
