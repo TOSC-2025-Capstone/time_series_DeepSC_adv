@@ -44,7 +44,6 @@ import pickle
 #     "d_comp": 6
 # }
 
-# case 6
 model_params = {
     # 공통
     "input_dim": 6,  # 모든 모델의 입력 피쳐 수
@@ -54,9 +53,9 @@ model_params = {
     # lstm, gru, at_lstm
     "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
     "compressed_features": 6,  # lstm, gru 압축 피쳐 수
-    "reconstruct_len": 256,  # lstm, gru, at_lstm 모델 입/출력 sequence length
-    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
+    "reconstruct_len": 256,  # lstm, gru, at_lstm 모델 출력 sequence length
     "seq_len": 256,  # lstm, gru, at_lstm 입력 시퀀스 길이
+    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
     # deepsc
     "dff": 512,  # deepsc 모델 최대 노드 수
     "num_heads": 4,  # deepsc 모델 헤드 수

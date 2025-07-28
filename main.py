@@ -21,11 +21,8 @@ from models.gru import GRUDeepSC
 from models.attention_lstm import LSTMAttentionDeepSC
 from models.transceiver import DeepSC
 
-from preprocess import load_all_valid_csv_tensors
 from cycle_preprocess.cycle_preprocess import cycle_preprocess
 from train import train_model
-
-# from performance import reconstruct_battery_series
 
 from performance_cycle import performance_cycle
 
@@ -33,7 +30,10 @@ from performance_cycle import performance_cycle
 from parameters.parameters import *
 from parameters.model_parameters import *
 
-preprocess_params = PreprocessParams()
+# 파라미터 클래스 가져오기
+# preprocess_params = PreprocessParams()
+train_params = TrainParams()
+test_params = TestParams()
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--data-dir', default='data/train_data.pkl', type=str)
@@ -59,6 +59,8 @@ if __name__ == "__main__":
     if is_preprocessed == False:
         cycle_preprocess(scaler_type=scaler_type)
         print("사이클 전처리가 완료되었습니다.")
+    else:
+        print("사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.")
 
     # model create
     print("========================== model_select ==========================\n")
@@ -95,7 +97,7 @@ if __name__ == "__main__":
             print("현재 모델은 training 모드입니다.")
         else:
             print("현재 모델은 evaluation (eval) 모드입니다.")
-        train_model(model=model, device=device)
+        train_model(params=train_params, model=model, device=device)
 
     print(
         "========================== best checkpoint load ==========================\n"
@@ -113,9 +115,8 @@ if __name__ == "__main__":
     pdb.set_trace()
     print("========================== test ==========================\n")
     model.eval()
-    params = TestParams()
     if model.training:
         print("현재 모델은 training 모드입니다.")
     else:
         print("현재 모델은 evaluation (eval) 모드입니다.")
-    performance_cycle(params=params, model=model, device=device)
+    performance_cycle(params=test_params, model=model, device=device)

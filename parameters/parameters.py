@@ -6,8 +6,13 @@ from models.transceiver import DeepSC
 
 import torch
 from typing import List
+from enum import Enum, auto
 
+# model을 실행할 때 사용하는 디바이스 설정
+# CUDA가 사용 가능하면 GPU를, 그렇지 않으면 CPU를 사용
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+""" =========================== main.py 흐름 제어 변수 =========================== """
 
 # 처음 실행 여부 -> True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
 is_preprocessed = True
@@ -17,18 +22,64 @@ is_preprocessed = True
 # is_trained = True
 is_trained = False
 
-# window arr
-window_arr = [32, 64, 128, 256]
-# models arr
-models_type_arr = ["deepsc", "lstm", "gru", "at_lstm"]
-case_index = 7.3
-loss_type = "MSE"
-model_select = 2
-model_type = models_type_arr[model_select]
-channel_type = "no_channel"
+"""  =========================== 모델 파라미터 설정 =========================== """
+"""
+    자신이 사용하는 모델에 따라 아래처럼 작성
+        DeepSC => models_type_arr[0], case_index는 8.1.x 로 작성 (8.1.0, 8.1.1, ...) 
+        LSTMDeepSC => models_type_arr[1], case_index는 8.2.x 로 작성 (8.2.0, 8.2.1, ...)
+        GRUDeepSC => models_type_arr[2], case_index는 8.3.x 로 작성 (8.3.0, 8.3.1, ...)
 
-# scaler_type
-scaler_type = "minmax"  # or "zscore"
+    train.py의 figure, performance_test.py의 figure, 복원 csv 저장 경로 등에서 이 case_index, loss_type, model_type 들을 사용하므로
+    테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
+"""
+# 테스트 케이스 인덱스
+case_index = 7.3
+
+
+# 모델 종류
+class ModelType(Enum):
+    DEEPSC = "deepsc"
+    LSTM = "lstm"
+    GRU = "gru"
+    ATTENTION_LSTM = "at_lstm"
+
+
+# 손실함수 종류
+class LossType(Enum):
+    MSE = "MSE"
+    MAE = "MAE"
+    SMOOTH_L1 = "SmoothL1Loss"
+
+
+# 채널 타입
+class ChannelType(Enum):
+    NO_CHANNEL = "no_channel"
+    AWGN = "AWGN"
+    RAYLEIGH = "rayleigh"
+    RICIAN = "rician"
+
+
+# 스케일러 타입
+class ScalerType(Enum):
+    MINMAX = "minmax"
+    ZSCORE = "zscore"
+
+
+# 각 타입의 모든 값을 얻기 위한 리스트 (사용 안해도 됨)
+MODEL_TYPES = [
+    model.value for model in ModelType
+]  # ['deepsc', 'lstm', 'gru', 'at_lstm']
+LOSS_TYPES = [loss.value for loss in LossType]  # ['MSE', 'MAE', 'SmoothL1Loss']
+CHANNEL_TYPES = [
+    channel.value for channel in ChannelType
+]  # ['no_channel', 'AWGN', 'rayleigh', 'rician']
+SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
+
+# 현재 사용할 설정들
+model_type = ModelType.GRU.value  # GRU 선택
+loss_type = LossType.MSE.value  # MSE로 설정
+channel_type = ChannelType.NO_CHANNEL.value  # no_channel 선택
+scaler_type = ScalerType.MINMAX.value  # minmax 선택
 
 # feature cols (inputs)
 feature_cols = [
@@ -40,24 +91,34 @@ feature_cols = [
     "Time",
 ]
 
-# 이상치 제거 여부 -> 아래 경로 지정에 쓰임
-is_outlier_cut = False
+""" =========================== 경로 설정 =========================== """
 
 # 전처리 입력으로 사용할 데이터 경로 (merged)
-original_data_path = "./original_data/cycle_data/"
+original_data_path = "original_dataset/data/"
+
 # 중간에 이상치 제거 버전 저장할 경로 -> 나중에 이걸 csv 복원 비교의 원본 csv으로 사용
-outlier_cut_csv_path = (
-    # f"./data/case_{case_index}/merged{'_outlier_cut' if is_outlier_cut else ''}"
-    "./cycle_preprocess/csv/outlier_cut/"
-)
+outlier_cut_csv_path = "./cycle_preprocess/csv/outlier_cut/"
+
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
 preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_minmax"
+
 # 모델 저장 경로
 model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
-# 복원 후 데이터 경로
-reconstructed_data_path = f"./reconstruction/case_{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
 
-## model params
+
+# train 중 validation 복원 plot 저장 경로
+save_fig_dir = f"results/case{case_index}/{channel_type}_{model_type}_{loss_type}"
+
+# 복원 csv 저장 경로
+save_reconstruct_dir = f"reconstruction/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
+
+# 복원 성능 plot 저장 경로
+save_performance_dir = (
+    f"results/performance_test/case{case_index}/{channel_type}_{model_type}_{loss_type}"
+)
+
+""" ========================= 모델 파라미터 설정 ======================== """
+
 # epochs
 train_epochs = 80
 # batch size
@@ -66,20 +127,12 @@ train_batch_size = 32
 tratin_lr = 1e-5
 # input dimension
 input_dim = 6
-# window size
-window_size = window_arr[3]
-# stride
-stride = window_size // 2
-
-## reconstruction save path
-save_fig_dir = f"results/case{case_index}/{channel_type}_{model_type}_{loss_type}"
-save_reconstruct_dir = f"reconstruction/case{case_index}/reconstructed_{channel_type}_{model_type}_{loss_type}"
-save_performance_dir = (
-    f"results/performance_test/case{case_index}/{channel_type}_{model_type}_{loss_type}"
-)
 
 
-# preprocess
+""" ========================= 각 기능 모듈별 파라미터 정리 ========================= """
+
+
+# preprocess -> 이제 사용안함
 @dataclass(unsafe_hash=True)
 class PreprocessParams:
     folder_path: str = original_data_path
@@ -87,7 +140,7 @@ class PreprocessParams:
     batch_size: int = 8
     save_split_path: str = preprocessed_data_path
     split_ratio: float = 0.8
-    window_size: int = window_size
+    # window_size: int = window_size
     stride: int = 32
     sample_num: int = 1000
     PREPROCESSED_DIR: str = outlier_cut_csv_path
@@ -95,7 +148,7 @@ class PreprocessParams:
 
 # train
 @dataclass
-class TrainDeepSCParams:
+class TrainParams:
     train_pt: str = preprocessed_data_path + "/train_data.pt"
     validate_pt: str = preprocessed_data_path + "/val_data.pt"
     scaler_path: str = preprocessed_data_path + "/scaler.pkl"

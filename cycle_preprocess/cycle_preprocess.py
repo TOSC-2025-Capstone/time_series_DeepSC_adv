@@ -29,6 +29,7 @@ def cycle_preprocess(scaler_type="minmax"):
     )
 
     # P2 variables
+    val_ratio = 0.2
     test_ratio = 0.2
 
     # P2 : prepare_dataset.py
@@ -79,12 +80,17 @@ def cycle_preprocess(scaler_type="minmax"):
     # 4. 데이터를 train/val/test로 분할 (6:2:2)
     train_data, val_data, test_data, train_indices, val_indices, test_indices = (
         split_and_transform_data(
-            resampled_total_df, list(grouped_dfs.keys()), val_ratio=0.2, test_ratio=0.2
+            resampled_total_df,
+            list(grouped_dfs.keys()),
+            val_ratio=val_ratio,
+            test_ratio=test_ratio,
         )
     )
 
     # 5. 학습/검증/테스트 데이터를 데이터셋으로 바꾸고,전처리에 사용한 스케일러 객체를 pickle, pt로 저장
-    total_preprocessed_dataset_folder = "cycle_preprocess/total_preprocessed/"
+    total_preprocessed_dataset_folder = (
+        "cycle_preprocess/total_preprocessed/processed_{scaler_type}"
+    )
 
     # 파일 인덱스 정보도 함께 저장
     indices_info = {

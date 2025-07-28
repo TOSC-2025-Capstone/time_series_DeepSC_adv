@@ -371,7 +371,6 @@ def performance_cycle(params: TestParams, model=None, device=None):
     # 2. 입력 형태 정의 및 모델 로드
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     input_dim = test_tensor.shape[2]
-    window_size = test_tensor.shape[1]
 
     # 3. 전체 배터리 시계열 복원 및 성능 평가
     if model is None:

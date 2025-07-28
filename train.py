@@ -15,26 +15,20 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from parameters.parameters import TrainDeepSCParams, save_fig_dir
+from parameters.parameters import TrainParams, save_fig_dir
 
 """
 # train_model 
 
 모델과 파라미터를 입력받아 학습을 진행하는 함수
 """
-params = TrainDeepSCParams()
+# params = TrainDeepSCParams()
 
 
 # 기본값으로 train parameter 셋을 그대로 입력함 , model, device만 전달
 def train_model(
     model=None,
-    train_pt=params.train_pt,
-    validate_pt=params.validate_pt,
-    scaler_path=params.scaler_path,
-    model_save_path=params.model_save_path,
-    num_epochs=params.num_epochs,
-    batch_size=params.batch_size,
-    lr=params.lr,
+    params: TrainParams = None,
     device=None,
 ):
     if device is None:
@@ -43,6 +37,19 @@ def train_model(
     if model is None:
         print("model을 전달해주세요!")
         return
+
+    if params is None:
+        print("params를 전달해주세요!")
+        return
+
+    # 파라미터에서 필요한 값들 추출
+    train_pt = params.train_pt
+    validate_pt = params.validate_pt
+    scaler_path = params.scaler_path
+    model_save_path = params.model_save_path
+    num_epochs = params.num_epochs
+    batch_size = params.batch_size
+    lr = params.lr
 
     # 1. 데이터 로드 (절대 경로로 변환)
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -63,7 +70,6 @@ def train_model(
 
     # 3. 모델 초기화
     input_dim = train_tensor.shape[2]
-    window_size = train_tensor.shape[1]
     # model = return_model("deepsc") # 파라미터에서 가져온 모델
 
     # 4. 손실함수 및 옵티마이저
