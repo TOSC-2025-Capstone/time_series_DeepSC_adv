@@ -56,7 +56,7 @@ if __name__ == "__main__":
     setup_seed(42)
 
     print("========================== preprocess ==========================\n")
-    if is_first == True:
+    if is_preprocessed == False:
         cycle_preprocess(scaler_type=scaler_type)
         print("사이클 전처리가 완료되었습니다.")
 
@@ -100,13 +100,6 @@ if __name__ == "__main__":
     print(
         "========================== best checkpoint load ==========================\n"
     )
-    # best checkpoint parameters load
-    for name, param in model.named_parameters():
-        print(
-            f"{name}: mean={param.data.mean().item():.4f}, std={param.data.std().item():.4f}"
-        )
-        break  # 한 개만 확인 (전체 보려면 break 제거) encoder.lstm.weight_ih_l0: mean=-0.0001, std=0.0255
-
     try:
         if os.path.exists(model_checkpoint_path):
             model.load_state_dict(
@@ -115,12 +108,6 @@ if __name__ == "__main__":
             print("모델이 성공적으로 로드되었습니다.")
     except Exception as e:
         print(f"모델 로드 실패: {e}")
-
-    for name, param in model.named_parameters():
-        print(
-            f"{name}: mean={param.data.mean().item():.4f}, std={param.data.std().item():.4f}"
-        )
-        break  # 한 개만 확인 (전체 보려면 break 제거) encoder.lstm.weight_ih_l0: mean=0.0031, std=0.0262
 
     # test + result figuring
     pdb.set_trace()

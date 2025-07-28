@@ -9,20 +9,21 @@ from typing import List
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# 처음 실행 여부 -> True면 preprocess 실행, False면 이미 전처리된 데이터로 학습 및 평가 진행
-# is_first = True
-is_first = False
+# 처음 실행 여부 -> True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
+is_preprocessed = True
+# is_preprocessed = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
-is_trained = True
+# is_trained = True
+is_trained = False
 
 # window arr
 window_arr = [32, 64, 128, 256]
 # models arr
 models_type_arr = ["deepsc", "lstm", "gru", "at_lstm"]
-case_index = 7.1
+case_index = 7.3
 loss_type = "MSE"
-model_select = 0
+model_select = 2
 model_type = models_type_arr[model_select]
 channel_type = "no_channel"
 
