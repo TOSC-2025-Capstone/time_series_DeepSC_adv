@@ -8,7 +8,6 @@ from .methods import *
 from .outlier_eliminate import process_and_save_outlier_data
 from .cycle_reshape import (
     resample_to_fixed_length,
-    process_discharge_files,
 )
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import joblib
@@ -16,16 +15,33 @@ import joblib
 from tqdm import tqdm
 import pdb
 
+from parameters.parameters import PreprocessParams
 
-def cycle_preprocess(scaler_type="minmax"):
-    # P1 variables
-    exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
-    input_folder = "original_dataset/data/"
-    output_folder = "cycle_preprocess/csv/outlier_cut/"
+
+def cycle_preprocess(preprocess_params: PreprocessParams = None):
+
+    # params load
+    scaler_type = preprocess_params.scaler_type
+    target_length = preprocess_params.target_length
+    exclude_batteries = preprocess_params.exclude_batteries
+    # 입력 경로
+    input_folder = preprocess_params.original_data_path
+    # resampled - 이제 안씀
+    resampled_csv_folder = preprocess_params.resampled_csv_folder
+    # 이상치 제거 결과 csv 경로
+    outlier_output_folder = preprocess_params.outlier_cut_csv_path
+    # 전처리 다 된 csv 경로
+    preprocessed_csv_path = preprocess_params.preprocessed_csv_path
+    # 전처리 다 된 .pt 경로
+    preprocessed_data_path = preprocess_params.preprocessed_data_path
+    outlier_threshold = preprocess_params.outlier_threshold
 
     # P1
     df_cleaned, total_df = process_and_save_outlier_data(
-        exclude_batteries, input_folder, output_folder
+        exclude_batteries,
+        input_folder,
+        outlier_output_folder,
+        outlier_threshold=outlier_threshold,
     )
 
     # P2 variables
@@ -58,18 +74,18 @@ def cycle_preprocess(scaler_type="minmax"):
 
     # 3. 각 파일을 256개 샘플로 리샘플링하고 resampled_dfs에 저장
     for file_index, discharge_df in tqdm(grouped_dfs.items()):
-        resampled_df = resample_to_fixed_length(discharge_df, target_length=256)
+        resampled_df = resample_to_fixed_length(
+            discharge_df,
+            target_length=target_length,
+            # resampled_output_folder=resampled_csv_folder,
+        )
         resampled_dfs[file_index] = resampled_df
 
     # 3.1 resampled_dfs 순회하면서 전처리 완료된 사이클 별 csv 파일 저장
-    total_preprocessed_csv_folder = (
-        f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}"
-    )
-    os.makedirs(total_preprocessed_csv_folder, exist_ok=True)
+    # total_preprocessed_csv_folder = f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}"
+    os.makedirs(preprocessed_csv_path, exist_ok=True)
     for file_index, resampled_df in resampled_dfs.items():
-        output_path = os.path.join(
-            total_preprocessed_csv_folder, f"{int(file_index):05d}.csv"
-        )
+        output_path = os.path.join(preprocessed_csv_path, f"{int(file_index):05d}.csv")
         resampled_df.to_csv(output_path, index=False)
         # print(f"파일 저장 완료: {output_path} ({len(resampled_df)} rows)")
 
@@ -88,9 +104,7 @@ def cycle_preprocess(scaler_type="minmax"):
     )
 
     # 5. 학습/검증/테스트 데이터를 데이터셋으로 바꾸고,전처리에 사용한 스케일러 객체를 pickle, pt로 저장
-    total_preprocessed_dataset_folder = (
-        "cycle_preprocess/total_preprocessed/processed_{scaler_type}"
-    )
+    os.makedirs(preprocessed_data_path, exist_ok=True)
 
     # 파일 인덱스 정보도 함께 저장
     indices_info = {
@@ -98,14 +112,10 @@ def cycle_preprocess(scaler_type="minmax"):
         "val_indices": val_indices,
         "test_indices": test_indices,
     }
-    with open(
-        os.path.join(total_preprocessed_dataset_folder, "file_indices.pkl"), "wb"
-    ) as f:
+    with open(os.path.join(preprocessed_data_path, "file_indices.pkl"), "wb") as f:
         pickle.dump(indices_info, f)
 
-    save_tensor_dataset(
-        train_data, val_data, test_data, scaler, total_preprocessed_dataset_folder
-    )
+    save_tensor_dataset(train_data, val_data, test_data, scaler, preprocessed_data_path)
 
 
 if __name__ == "__main__":

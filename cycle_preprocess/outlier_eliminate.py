@@ -95,9 +95,8 @@ def detect_and_eliminate_outliers(df, threshold=3):
     return df_cleaned
 
 
-# 모듈화해서 main.py에서 호출할 수 있도록 변경
 def process_and_save_outlier_data(
-    exclude_batteries=None, input_folder=None, output_folder=None
+    exclude_batteries=None, input_folder=None, output_folder=None, outlier_threshold=3
 ):
     """
     메인 함수: 이상치 탐지 및 제거 후 데이터프레임을 CSV로 저장
@@ -108,13 +107,14 @@ def process_and_save_outlier_data(
 
     # 2. 이상치 탐지 및 제거
     print("이상치 탐지 및 제거 시작")
-    df_cleaned = detect_and_eliminate_outliers(total_df, threshold=3)
+    df_cleaned = detect_and_eliminate_outliers(total_df, threshold=outlier_threshold)
 
     # 3. 데이터프레임 그룹화 후 csv로 저장
     print("데이터프레임 그룹화 및 저장 시작")
     count = df_cleaned["file_index"].nunique()
     print(f"총 {count}개의 파일 인덱스 발견")
 
+    os.makedirs(output_folder, exist_ok=True)
     df_grouped = grouping_df(df_cleaned)
     for file_index, df in tqdm(df_grouped.items()):
         output_path = output_folder + f"{int(file_index):05d}.csv"
@@ -124,23 +124,23 @@ def process_and_save_outlier_data(
     if count == 0:
         print("outlier_eliminate.py, 모든 파일이 정상적으로 저장되었습니다.")
 
+    # 3. 결과 시각화 자료 저장
+    # file_index 컬럼을 제외한 feature_names 생성
+    feature_names = [col for col in total_df.columns if col != "file_index"]
+    visualize_data_comparison(
+        total_df.drop(columns=["file_index"]),
+        df_cleaned.drop(columns=["file_index"]),
+        feature_names=feature_names,
+        output_dir=f"cycle_preprocess/analysis/outlier_comparison_{outlier_threshold}/",
+    )
+
     return df_cleaned, total_df
 
 
-if __name__ == "__main__":
-    exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
-    input_folder = "original_dataset/data/"
-    output_folder = "cycle_preprocess/csv/outlier_cut/"
-    df_cleaned, total_df = process_and_save_outlier_data(
-        exclude_batteries, input_folder, output_folder
-    )
-
-    # # 3. 결과 시각화 자료 저장
-    # # file_index 컬럼을 제외한 feature_names 생성
-    # feature_names = [col for col in total_df.columns if col != "file_index"]
-    # visualize_data_comparison(
-    #     total_df.drop(columns=["file_index"]),
-    #     df_cleaned.drop(columns=["file_index"]),
-    #     feature_names=feature_names,
-    #     output_dir="cycle_preprocess/analysis/outlier_comparison/",
-    # )
+# if __name__ == "__main__":
+# exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
+# input_folder = "original_dataset/data/"
+# output_folder = "cycle_preprocess/csv/outlier_cut/"
+# df_cleaned, total_df = process_and_save_outlier_data(
+#     exclude_batteries, input_folder, output_folder
+# )

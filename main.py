@@ -31,7 +31,7 @@ from parameters.parameters import *
 from parameters.model_parameters import *
 
 # 파라미터 클래스 가져오기
-# preprocess_params = PreprocessParams()
+preprocess_params = PreprocessParams()
 train_params = TrainParams()
 test_params = TestParams()
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     print("========================== preprocess ==========================\n")
     if is_preprocessed == False:
-        cycle_preprocess(scaler_type=scaler_type)
+        cycle_preprocess(preprocess_params=preprocess_params)
         print("사이클 전처리가 완료되었습니다.")
     else:
         print("사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.")
@@ -112,7 +112,6 @@ if __name__ == "__main__":
         print(f"모델 로드 실패: {e}")
 
     # test + result figuring
-    pdb.set_trace()
     print("========================== test ==========================\n")
     model.eval()
     if model.training:

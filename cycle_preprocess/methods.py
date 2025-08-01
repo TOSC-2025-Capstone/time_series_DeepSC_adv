@@ -310,9 +310,6 @@ def split_and_transform_data(scaled_df, discharge_files, val_ratio=0.2, test_rat
 
     # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
     file_indices = discharge_files
-
-    # seed 42에 따라 동일한 세트가 생성되도록 설정
-    np.random.seed(42)
     all_indices = np.arange(n_files)
 
     # 테스트 세트 선택
@@ -391,7 +388,6 @@ def save_tensor_dataset(train_data, val_data, test_data, scaler, output_folder):
     print(train_data[0][:3])  # 처음 3개 행의 값을 출력
 
     # 6. TensorDataset 생성 및 결과 저장
-    output_folder = output_folder + f"processed_{scaler_type}/"
     os.makedirs(output_folder, exist_ok=True)
 
     # TensorDataset 생성 (향후 추가 레이블이나 메타데이터를 위해 확장 가능)
