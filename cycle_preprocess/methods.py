@@ -285,7 +285,9 @@ def grouping_df(df):
 
 
 # P2.4
-def split_and_transform_data(scaled_df, discharge_files, val_ratio=0.2, test_ratio=0.2):
+def split_and_transform_data(
+    scaled_df, discharge_files, val_ratio=0.2, test_ratio=0.2, target_length=None
+):
     """
     데이터를 학습/검증/테스트 세트로 분할하고 텐서로 변환 (6:2:2 비율)
 
@@ -303,9 +305,8 @@ def split_and_transform_data(scaled_df, discharge_files, val_ratio=0.2, test_rat
         list: 검증 세트 파일 인덱스
         list: 테스트 세트 파일 인덱스
     """
-    # pdb.set_trace()  # 디버깅용
     n_files = len(discharge_files)
-    n_samples_per_file = 256
+    # target_length = 256 -> 가변으로 변함
     n_features = len(scaled_df.columns)
 
     # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
@@ -331,8 +332,8 @@ def split_and_transform_data(scaled_df, discharge_files, val_ratio=0.2, test_rat
     def create_data_indices(file_idx):
         indices = []
         for idx in file_idx:
-            start_idx = idx * n_samples_per_file
-            indices.extend(range(start_idx, start_idx + n_samples_per_file))
+            start_idx = idx * target_length
+            indices.extend(range(start_idx, start_idx + target_length))
         return indices
 
     test_data_indices = create_data_indices(test_file_idx)
@@ -355,11 +356,9 @@ def split_and_transform_data(scaled_df, discharge_files, val_ratio=0.2, test_rat
     test_samples = scaled_df[is_test].values
 
     # 텐서로 변환
-    train_data = torch.FloatTensor(train_samples).view(
-        -1, n_samples_per_file, n_features
-    )
-    val_data = torch.FloatTensor(val_samples).view(-1, n_samples_per_file, n_features)
-    test_data = torch.FloatTensor(test_samples).view(-1, n_samples_per_file, n_features)
+    train_data = torch.FloatTensor(train_samples).view(-1, target_length, n_features)
+    val_data = torch.FloatTensor(val_samples).view(-1, target_length, n_features)
+    test_data = torch.FloatTensor(test_samples).view(-1, target_length, n_features)
 
     return (
         train_data,

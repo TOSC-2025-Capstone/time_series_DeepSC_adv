@@ -22,4 +22,4 @@ case 7.1 : 6.1에서 이상한 데이터 제거, train-val-test (6-2-2) 구조 �
 case 8.1 : 7.1에서 resampled_length = 256->512, outlier-threshold = 3 -> 7
 
 # 25.08.01
-case 9.1 : 8.1에서 다시 resmaple_length만 256으로 진행
+case 9.1 : 8.1에서 compressed_len = 64->128, 모델 파라미터 중 입력/출력 차원 수 256->512로 적용

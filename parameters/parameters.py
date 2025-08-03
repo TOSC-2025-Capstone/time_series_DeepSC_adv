@@ -15,8 +15,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
 # 처음 실행 여부 -> True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
-# is_preprocessed = True
-is_preprocessed = False
+is_preprocessed = True
+# is_preprocessed = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
 # is_trained = True
@@ -94,7 +94,7 @@ feature_cols = [
 # outlier elimination threshold
 outlier_threshold = 7  # 3, 5, 7, 10
 # cycle preprocess length
-target_length = 256  # 256, 512
+target_length = 512  # 256, 512
 # exclude batteries
 exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
 
@@ -113,9 +113,7 @@ outlier_cut_csv_path = (
 resampled_csv_folder = f"cycle_preprocess/csv/reshaped/resampled_{target_length}/"
 
 # 중간에 전처리 다 된 버전 csv 저장할 경로 -> 확인용
-preprocessed_csv_path = (
-    f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}_{target_length}/"
-)
+preprocessed_csv_path = f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}_{target_length}_threshold_{outlier_threshold}/"
 
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
 preprocessed_data_path = (
@@ -192,3 +190,4 @@ class TestParams:
     train_pt = preprocessed_data_path + "/train_data.pt"
     test_pt = preprocessed_data_path + "/test_data.pt"
     scaler_path = preprocessed_data_path + "/scaler.pkl"
+    target_length = target_length  # P2.4에 사용

@@ -68,17 +68,6 @@ if __name__ == "__main__":
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
         print("DeepSC 모델이 선택되었습니다.")
-        # 아래와 같이 개별 변수를 정의하는 것도 가능은 함, model_parameters에서 방법 1 주석
-        # model = DeepSC(
-        #     num_layers=num_layers,
-        #     input_dim=input_dim,
-        #     max_len=max_len,
-        #     d_model=d_model,
-        #     num_heads=num_heads,
-        #     dff=dff,
-        #     dropout=dropout,
-        #     compressed_len=compressed_len
-        # )
     elif model_type == "lstm":
         model = LSTMDeepSC(params=model_params).to(device)
         print("LSTMDeepSC 모델이 선택되었습니다.")

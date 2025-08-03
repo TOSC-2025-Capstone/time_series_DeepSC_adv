@@ -100,6 +100,7 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
             list(grouped_dfs.keys()),
             val_ratio=val_ratio,
             test_ratio=test_ratio,
+            target_length=target_length,
         )
     )
 

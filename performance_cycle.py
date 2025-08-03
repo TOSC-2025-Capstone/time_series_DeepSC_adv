@@ -85,20 +85,20 @@ def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
     return pd.DataFrame(data_original_scale, columns=feature_names)
 
 
-def split_to_cycles(df_original, sequence_length=256, file_indices=None):
+def split_to_cycles(df_original, target_length=None, file_indices=None):
     """
     연속된 데이터프레임을 사이클 단위로 분할
 
     Args:
         df_original (pd.DataFrame): 연속된 데이터가 있는 데이터프레임
-        sequence_length (int): 각 사이클의 길이 (기본값: 256)
+        target_length (int): 각 사이클의 길이 (기본값: 256)
         file_indices (list): 테스트 세트의 파일 인덱스 리스트
 
     Returns:
         dict: 파일 인덱스를 키로 하고 해당 사이클의 데이터프레임을 값으로 하는 딕셔너리
     """
     # 사이클의 개수 계산 (역정규화하느라 합쳐놓은 데이터 256row씩으로 다시 나누기)
-    n_cycles = len(df_original) // sequence_length
+    n_cycles = len(df_original) // target_length
     cycle_dfs = {}
 
     if file_indices is None or len(file_indices) != n_cycles:
@@ -108,8 +108,8 @@ def split_to_cycles(df_original, sequence_length=256, file_indices=None):
         file_indices = list(range(1, n_cycles + 1))
 
     for i, file_idx in enumerate(file_indices):
-        start_idx = i * sequence_length
-        end_idx = (i + 1) * sequence_length
+        start_idx = i * target_length
+        end_idx = (i + 1) * target_length
         cycle_df = df_original.iloc[start_idx:end_idx].copy()
         cycle_dfs[file_idx] = cycle_df  # 실제 파일 인덱스를 키로 사용
 
@@ -153,6 +153,8 @@ def visualize_cycle_performance(
     plt.figure(figsize=(15, 10))
     for i, col in enumerate(feature_cols):
         plt.subplot(2, 3, i + 1)
+
+        # 그냥 오차 계산
         residual = original_df[col] - reconstructed_df[col]
 
         # 원본 데이터의 범위 계산
@@ -187,8 +189,25 @@ def visualize_cycle_performance(
         # 절대 오차 계산
         diff = np.abs(original_df[col] - reconstructed_df[col])
 
-        # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
-        relative_error = (diff / original_range) * 100
+        mae_relative_error = (diff / original_range) * 100  # MAE 기반 상대 오차 %
+
+        relative_error = None
+
+        # 이진화 기반 오차율 계산 (0.5 기준)
+        if col == "Current_measured" or col == "Current_load":
+            y_true_binary = (original_df[col] >= 0.5).astype(int)
+            y_pred_binary = (reconstructed_df[col] >= 0.5).astype(int)
+            binary_diff = np.abs(y_true_binary - y_pred_binary)
+
+            binary_error_rate = (
+                binary_diff * 100
+            )  # 각 시점별 binary 오차 (0% 또는 100%)
+            relative_error = binary_error_rate  # 이진화 기반 복원 실패 시점 표시
+
+        else:
+            # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
+            # relative_error = (diff / original_range) * 100
+            relative_error = (diff / original_df[col]) * 100
 
         plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
         plt.title(f"Relative Error: {col}")
@@ -200,6 +219,52 @@ def visualize_cycle_performance(
     plt.suptitle(f"Cycle Residual Percent: {base}")
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(os.path.join(save_fig_dir, f"{base}_residual_percent.png"), dpi=200)
+    plt.close()
+
+    # 복원 오차율 (min-max scale로 구한 버전)
+    plt.figure(figsize=(15, 10))
+    for i, col in enumerate(feature_cols):
+        plt.subplot(2, 3, i + 1)
+
+        # 원본 데이터의 범위 계산
+        original_max = np.max(original_df[col])
+        original_min = np.min(original_df[col])
+        original_range = original_max - original_min
+
+        # 절대 오차 계산
+        diff = np.abs(original_df[col] - reconstructed_df[col])
+
+        mae_relative_error = (diff / original_range) * 100  # MAE 기반 상대 오차 %
+
+        relative_error = None
+
+        # 이진화 기반 오차율 계산 (0.5 기준)
+        if col == "Current_measured" or col == "Current_load":
+            y_true_binary = (original_df[col] >= 0.5).astype(int)
+            y_pred_binary = (reconstructed_df[col] >= 0.5).astype(int)
+            binary_diff = np.abs(y_true_binary - y_pred_binary)
+
+            binary_error_rate = (
+                binary_diff * 100
+            )  # 각 시점별 binary 오차 (0% 또는 100%)
+            relative_error = binary_error_rate  # 이진화 기반 복원 실패 시점 표시
+
+        else:
+            # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
+            relative_error = (diff / original_range) * 100
+
+        plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
+        plt.title(f"Relative Error: {col}")
+        plt.ylabel("Error (% of data range)")
+        plt.ylim(0, 50)  # 데이터 범위의 0~50%로 제한
+        plt.axhline(0, color="gray", linestyle="--", linewidth=1)
+        plt.legend()
+        plt.grid(True)
+    plt.suptitle(f"Cycle Residual Percent: {base}")
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(
+        os.path.join(save_fig_dir, f"{base}_residual_percent_minmax.png"), dpi=200
+    )
     plt.close()
 
 
@@ -251,7 +316,7 @@ def save_performance_report(metrics, cycle_idx, save_dir):
                 f.write(f"{metric_name}: {value:.4f}\n")
 
 
-def post_process(tensor_data, scaler, preprocessed_folder):
+def post_process(tensor_data, scaler, preprocessed_folder, target_length):
     """
     모델 출력 텐서를 원본 데이터 형식으로 복원하는 메인 함수
 
@@ -277,7 +342,9 @@ def post_process(tensor_data, scaler, preprocessed_folder):
     print(f"텐서 데이터 역변환 완료 (shape: {df_original.shape})")
 
     # 2. 사이클 단위로 분할
-    cycle_dfs = split_to_cycles(df_original, file_indices=test_indices)
+    cycle_dfs = split_to_cycles(
+        df_original, target_length=target_length, file_indices=test_indices
+    )
     print(f"총 {len(cycle_dfs)}개의 사이클로 분할 완료")
     print(f"파일 인덱스: {sorted(cycle_dfs.keys())}")
 
@@ -349,6 +416,7 @@ def performance_cycle(params: TestParams, model=None, device=None):
     test_pt = params.test_pt
     scaler_path = params.scaler_path
     preprocessed_folder = params.preprocessed_path
+    target_length = params.target_length
     # train_pt = "cycle_preprocess/total_preprocessed/processed_minmax/train_data.pt"
     # test_pt = "cycle_preprocess/total_preprocessed/processed_minmax/test_data.pt"
     # scaler_path = "cycle_preprocess/total_preprocessed/processed_minmax/scaler.pkl"
@@ -385,6 +453,7 @@ def performance_cycle(params: TestParams, model=None, device=None):
         tensor_data=output_tensor.cpu(),
         scaler=scaler,
         preprocessed_folder=preprocessed_folder,
+        target_length=target_length,
     )
 
     print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
