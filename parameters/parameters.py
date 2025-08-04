@@ -75,21 +75,20 @@ CHANNEL_TYPES = [
 ]  # ['no_channel', 'AWGN', 'rayleigh', 'rician']
 SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
-# 현재 사용할 설정들
-# 케이스 인덱스의 마지막 숫자 1 = deepsc, ...
+# 현재 사용할 변수 설정들
 model_type = ModelType.DEEPSC.value  # default
-try:
-    c = int(str(case_index).strip().split(".")[-1])
-    if c == 1:
-        model_type = ModelType.DEEPSC.value
-    elif c == 2:
-        model_type = ModelType.LSTM.value
-    elif c == 3:
-        model_type = ModelType.GRU.value
-    else:
-        raise ValueError(f"지원되지 않는 모델 인덱스: {c}")
-except Exception as e:
-    raise ValueError(f"case_index 파싱 오류: {case_index} → {e}")
+# try:
+#     c = int(str(case_index).strip().split(".")[-1])
+#     if c == 1:
+#         model_type = ModelType.DEEPSC.value
+#     elif c == 2:
+#         model_type = ModelType.LSTM.value
+#     elif c == 3:
+#         model_type = ModelType.GRU.value
+#     else:
+#         raise ValueError(f"지원되지 않는 모델 인덱스: {c}")
+# except Exception as e:
+#     raise ValueError(f"case_index 파싱 오류: {case_index} → {e}")
 
 loss_type = LossType.Huber.value  # MSE로 설정
 channel_type = ChannelType.NO_CHANNEL.value  # no_channel 선택
