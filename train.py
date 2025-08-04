@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from parameters.parameters import TrainParams, save_fig_dir
+from parameters.parameters import TrainParams, save_fig_dir, LossType
 
 """
 # train_model 
@@ -67,15 +67,23 @@ def train_model(
     # 2. DataLoader
     train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
+    # 2-1. sample data fix
+    fixed_batch = train_tensor[:6].to(device)
 
     # 3. 모델 초기화
     input_dim = train_tensor.shape[2]
     # model = return_model("deepsc") # 파라미터에서 가져온 모델
 
     # 4. 손실함수 및 옵티마이저
-    criterion = nn.MSELoss()
-    # criterion = nn.L1Loss()
-    # criterion = nn.HuberLoss()
+    if params.loss_type == LossType.MSE.value:
+        criterion = nn.MSELoss()
+        print("학습 로스로 MSE가 설정되었습니다.")
+    elif params.loss_type == LossType.MAE.value:
+        criterion = nn.L1Loss()
+        print("학습 로스로 MAE가 설정되었습니다.")
+    elif params.loss_type == LossType.Huber.value:
+        criterion = nn.HuberLoss()
+        print("학습 로스로 HuberLoss가 설정되었습니다.")
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=10, verbose=True
@@ -140,8 +148,11 @@ def train_model(
         if (epoch + 1) % 40 == 0:
             os.makedirs(save_fig_dir, exist_ok=True)
             # batch: [batch_size, window, feature]
-            input_norm = batch[:6, :, :6].detach().cpu().numpy()  # [6, window, 6]
-            output_norm = output[:6, :, :6].detach().cpu().numpy()  # [6, window, 6]
+            sample_output = model(fixed_batch)
+            input_norm = fixed_batch[:3, :, :6].detach().cpu().numpy()  # [3, window, 6]
+            output_norm = (
+                sample_output[:3, :, :6].detach().cpu().numpy()
+            )  # [6, window, 6]
             for sample_idx in range(3):
                 plt.figure(figsize=(15, 8))
                 for i in range(input_norm.shape[2]):

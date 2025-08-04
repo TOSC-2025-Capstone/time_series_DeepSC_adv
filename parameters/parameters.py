@@ -33,7 +33,7 @@ is_trained = False
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = 9.1
+case_index = 9.2
 
 
 # 모델 종류
@@ -48,7 +48,7 @@ class ModelType(Enum):
 class LossType(Enum):
     MSE = "MSE"
     MAE = "MAE"
-    SMOOTH_L1 = "SmoothL1Loss"
+    Huber = "Huber"
 
 
 # 채널 타입
@@ -76,8 +76,22 @@ CHANNEL_TYPES = [
 SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
 # 현재 사용할 설정들
-model_type = ModelType.DEEPSC.value  # GRU 선택
-loss_type = LossType.MSE.value  # MSE로 설정
+# 케이스 인덱스의 마지막 숫자 1 = deepsc, ...
+model_type = ModelType.DEEPSC.value  # default
+try:
+    c = int(str(case_index).strip().split(".")[-1])
+    if c == 1:
+        model_type = ModelType.DEEPSC.value
+    elif c == 2:
+        model_type = ModelType.LSTM.value
+    elif c == 3:
+        model_type = ModelType.GRU.value
+    else:
+        raise ValueError(f"지원되지 않는 모델 인덱스: {c}")
+except Exception as e:
+    raise ValueError(f"case_index 파싱 오류: {case_index} → {e}")
+
+loss_type = LossType.Huber.value  # MSE로 설정
 channel_type = ChannelType.NO_CHANNEL.value  # no_channel 선택
 scaler_type = ScalerType.MINMAX.value  # minmax 선택
 
@@ -174,6 +188,7 @@ class TrainParams:
     num_epochs: int = train_epochs
     batch_size: int = train_batch_size
     lr: float = tratin_lr
+    loss_type: str = loss_type
 
 
 # test

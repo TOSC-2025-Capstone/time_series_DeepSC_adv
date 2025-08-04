@@ -23,3 +23,6 @@ case 8.1 : 7.1에서 resampled_length = 256->512, outlier-threshold = 3 -> 7
 
 # 25.08.01
 case 9.1 : 8.1에서 compressed_len = 64->128, 모델 파라미터 중 입력/출력 차원 수 256->512로 적용
+
+# 25.08.04 
+case 10.1 : 9.1 에서 minmax -> zscore로 전처리 데이터 변경 적용

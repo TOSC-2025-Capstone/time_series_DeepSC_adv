@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pdb
 
 
+# [plot] 전처리 된 데이터 피쳐의 모든 사이클을 한번에 그려보는 함수
 def plot_all_features_distribution():
     # 데이터 폴더 경로
     data_dir = "./cycle_preprocess/csv/total_preprocessed"

@@ -458,16 +458,16 @@ def performance_cycle(params: TestParams, model=None, device=None):
 
     print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
 
-    # 복원된 사이클 csv로 저장
-    for cycle_idx, cycle_df in post_processed_cycles.items():
-        # 사이클 데이터프레임을 CSV로 저장
-        cycle_df.to_csv(
-            os.path.join(
-                save_reconstruction_dir, f"{int(cycle_idx):05d}_reconstructed.csv"
-            ),
-            index=False,
-        )
-        print(f"사이클 {cycle_idx} 복원 완료 및 저장")
+    # # 복원된 사이클 csv로 저장
+    # for cycle_idx, cycle_df in post_processed_cycles.items():
+    #     # 사이클 데이터프레임을 CSV로 저장
+    #     cycle_df.to_csv(
+    #         os.path.join(
+    #             save_reconstruction_dir, f"{int(cycle_idx):05d}_reconstructed.csv"
+    #         ),
+    #         index=False,
+    #     )
+    #     print(f"사이클 {cycle_idx} 복원 완료 및 저장")
 
     # 모든 사이클의 성능 지표를 저장할 딕셔너리
     all_metrics = {
@@ -496,6 +496,15 @@ def performance_cycle(params: TestParams, model=None, device=None):
 
             # reverse sampling (256 -> 각 사이클 원래 길이)
             reversed_df = reverse_resample(reconstructed_df, len(original_df))
+
+            # 사이클 데이터프레임을 CSV로 저장
+            reversed_df.to_csv(
+                os.path.join(
+                    save_reconstruction_dir, f"{int(cycle_idx):05d}_reconstructed.csv"
+                ),
+                index=False,
+            )
+            # print(f"사이클 {cycle_idx} 복원 완료 및 저장")
 
             # 시각화 (100개당 하나)
             if reconstruct_count % 100 == 0:

@@ -364,34 +364,37 @@ class DeepSC(nn.Module):
         # pdb.set_trace()
 
         # 1단계: 인코더
-        encoded = self.encoder(x, src_mask)  # (batch, max_len, d_model)
+        # (batch, max_len, d_model)
+        encoded = self.encoder(x, src_mask)
 
         # 2단계: sequence compress (downsampling)
-        compressed = self.time_compressor(encoded)  # (batch, target_len, d_model)
+        # (batch, compressed_len, d_model)
+        compressed = self.time_compressor(encoded)
 
         # 3단계: 채널 인코더 (압축)
+        # (batch_size, compressed_len, d_comp)
         channel_encoded = self.channel_encoder(compressed)
 
         # 4단계 : 채널 상태 적용
+        # (batch_size, compressed_len, d_comp)
         channel_syms = channel_encoded
         # channel_syms = self.channels.AWGN(channel_encoded, 0.1)
         # channel_syms = self.channels.Rayleigh(channel_encoded, 0.1)
         # channel_syms = self.channels.Rician(channel_encoded, 0.1)
 
-        # 5단계: 채널 디코더 (복원)
+        # 5단계: 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
+        # (batch_size, compressed_len, max_len)
         channel_decoded = self.channel_decoder(channel_syms)
-        # channel_decoded = self.channel_decoder(channel_encoded)
 
-        # 6단계: 출력 투영 (원래 차원으로 복원)
+        # 6단계: 출력 투영
+        # (batch_size, compressed_len, input_dim => 원래 피쳐 차원으로 복원)
         output = self.output_projection(channel_decoded)
 
-        # 7단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim)
+        # 7단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
         output = output.permute(
             0, 2, 1
         )  # (batch, input_dim, compressed_len), (PyTorch의 Upsample은 (batch, channels, length) 형태를 기대하므로 형태 수정
         output = self.upsample(output)  # (batch, input_dim, max_len)
         output = output.permute(0, 2, 1)  # (batch, max_len, input_dim)
-
-        # pdb.set_trace()  # 디버깅용
 
         return output
