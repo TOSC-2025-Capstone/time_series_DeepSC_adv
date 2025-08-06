@@ -15,7 +15,7 @@
    - 성능 지표 계산 (calculate_performance_metrics)
      * MSE (Mean Squared Error)
      * MAE (Mean Absolute Error)
-     * MAPE (Mean Absolute Percentage Error)
+     * RMSE (Mean Absolute Percentage Error)
    - 성능 리포트 저장 (save_performance_report)
 
 주요 기능:
@@ -270,7 +270,7 @@ def visualize_cycle_performance(
 
 def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
     """
-    원래 스케일로 복원 성능 지표 계산 (MSE, MAE, MAPE)
+    원래 스케일로 복원 성능 지표 계산 (MSE, MAE, RMSE)
 
     Args:
         original_df (pd.DataFrame): 원본 사이클 데이터
@@ -289,9 +289,9 @@ def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
 
         mse = np.mean((true - pred) ** 2)
         mae = np.mean(np.abs(true - pred))
-        mape = np.mean(np.abs((true - pred) / (np.abs(true) + epsilon))) * 100
+        RMSE = np.sqrt(np.mean((true - pred) ** 2))
 
-        metrics[col] = {"MSE": mse, "MAE": mae, "MAPE": mape}
+        metrics[col] = {"MSE": mse, "MAE": mae, "RMSE": RMSE}
 
     return metrics
 
@@ -354,7 +354,7 @@ def post_process(tensor_data, scaler, preprocessed_folder, target_length):
 def total_performance_plot(feature_cols, all_metrics, save_dir):
     # 전체 성능 시각화
     plt.figure(figsize=(20, 15))
-    metrics_names = ["MSE", "MAE", "MAPE"]
+    metrics_names = ["MSE", "MAE", "RMSE"]
 
     for i, metric_name in enumerate(metrics_names):
         plt.subplot(3, 1, i + 1)
@@ -458,20 +458,9 @@ def performance_cycle(params: TestParams, model=None, device=None):
 
     print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
 
-    # # 복원된 사이클 csv로 저장
-    # for cycle_idx, cycle_df in post_processed_cycles.items():
-    #     # 사이클 데이터프레임을 CSV로 저장
-    #     cycle_df.to_csv(
-    #         os.path.join(
-    #             save_reconstruction_dir, f"{int(cycle_idx):05d}_reconstructed.csv"
-    #         ),
-    #         index=False,
-    #     )
-    #     print(f"사이클 {cycle_idx} 복원 완료 및 저장")
-
     # 모든 사이클의 성능 지표를 저장할 딕셔너리
     all_metrics = {
-        feature: {"MSE": [], "MAE": [], "MAPE": []} for feature in feature_cols
+        feature: {"MSE": [], "MAE": [], "RMSE": []} for feature in feature_cols
     }
 
     reconstruct_count = 0
@@ -523,7 +512,7 @@ def performance_cycle(params: TestParams, model=None, device=None):
 
             # 각 feature의 metrics를 저장
             for feature in feature_cols:
-                for metric_name in ["MSE", "MAE", "MAPE"]:
+                for metric_name in ["MSE", "MAE", "RMSE"]:
                     all_metrics[feature][metric_name].append(
                         metrics[feature][metric_name]
                     )

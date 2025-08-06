@@ -106,7 +106,7 @@ original_data_path = "original_dataset/data/"
 # 중간에 이상치 제거 버전 csv 저장할 경로 -> 나중에 이걸 최종 csv 복원 비교의 원본 csv으로 사용
 outlier_cut_csv_path = (
     # f"./cycle_preprocess/csv/outlier_cut/"
-    f"./cycle_preprocess/csv/outlier_cut/threshold_{outlier_threshold}/"
+    f"./cycle_preprocess/csv/outlier_cut/threshold_{outlier_threshold}/cycle_len_{target_length}"
 )
 
 # 중간에 resampled 된 버전 csv 저장할 경로 -> 확인용 -> 이제 preprocessed_csv와 동일해짐 -> 사용 x

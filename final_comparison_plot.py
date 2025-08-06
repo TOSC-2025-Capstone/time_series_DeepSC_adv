@@ -5,7 +5,7 @@ import pdb
 import numpy as np
 
 
-# 특정 케이스의 세 모델 복원 지표(MSE,MAE,MAPE)정보를 저장한 csv들을 받아서 plot하는 함수
+# 특정 케이스의 세 모델 복원 지표(MSE,MAE,RMSE)정보를 저장한 csv들을 받아서 plot하는 함수
 def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None):
     # 1. 데이터 읽기
     dfs = [pd.read_csv(path) for path in csv_paths]
@@ -14,7 +14,7 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
         case_labels = [f"Case {i+1}" for i in range(len(dfs))]
 
     # 2. 지표 종류 정의
-    metrics = ["MSE", "MAE", "MAPE"]
+    metrics = ["MSE", "MAE", "RMSE"]
 
     # 3. Feature 순서 정의 (첫 번째 df 기준)
     features = dfs[0]["Feature"].unique()
@@ -102,22 +102,31 @@ def plot_feature_comparison(
 if __name__ == "__main__":
     # 예시 사용법
     prefix = "./results/performance_test"
+    # csv_paths = [
+    #     prefix + "/case9.1/no_channel_deepsc_MSE/performance_statistics.csv",
+    #     prefix + "/case9.2/no_channel_lstm_MSE/performance_statistics.csv",
+    #     prefix + "/case9.3/no_channel_gru_MSE/performance_statistics.csv",
+    # ]
     csv_paths = [
+        prefix + "/case7.1/no_channel_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case8.1/no_channel_deepsc_MSE/performance_statistics.csv",
         prefix + "/case9.1/no_channel_deepsc_MSE/performance_statistics.csv",
-        prefix + "/case9.2/no_channel_lstm_MSE/performance_statistics.csv",
-        prefix + "/case9.3/no_channel_gru_MSE/performance_statistics.csv",
     ]
 
-    case_labels = ["DeepSC", "GRU", "LSTM"]
+    # case_labels = ["DeepSC", "GRU", "LSTM"]
+    case_labels = ["9.1", "9.2", "9.3"]
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path="./comparison_plots"
     )
 
     plot_feature_comparison(
         original_path="./cycle_preprocess/csv/outlier_cut/threshold_7",
-        deepsc_path="./reconstruction/case9.1/reconstructed_no_channel_deepsc_MSE",
-        lstm_path="./reconstruction/case9.2/reconstructed_no_channel_lstm_MSE",
-        gru_path="./reconstruction/case9.3/reconstructed_no_channel_gru_MSE",
+        # deepsc_path="./reconstruction/case9.1/reconstructed_no_channel_deepsc_MSE",
+        # lstm_path="./reconstruction/case9.2/reconstructed_no_channel_lstm_MSE",
+        # gru_path="./reconstruction/case9.3/reconstructed_no_channel_gru_MSE",
+        deepsc_path="./reconstruction/case7.1/reconstructed_no_channel_deepsc_MSE",
+        lstm_path="./reconstruction/case8.1/reconstructed_no_channel_deepsc_MSE",
+        gru_path="./reconstruction/case9.1/reconstructed_no_channel_deepsc_MSE",
         feature_names=[
             "Voltage_measured",
             "Current_measured",
@@ -127,5 +136,5 @@ if __name__ == "__main__":
             "Time",
         ],
         save_path="./results/final_comparision",
-        filename="06995.csv",
+        filename="01205.csv",
     )
