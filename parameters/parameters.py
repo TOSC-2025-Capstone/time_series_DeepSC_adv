@@ -33,7 +33,7 @@ is_trained = False
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = 9.1
+case_index = 0.2
 
 
 # 모델 종류
@@ -92,7 +92,7 @@ feature_cols = [
 ]
 
 # outlier elimination threshold
-outlier_threshold = 3  # 3, 5, 7, 10
+outlier_threshold = 7  # 3, 5, 7, 10
 # cycle preprocess length
 target_length = 512  # 256, 512
 # exclude batteries

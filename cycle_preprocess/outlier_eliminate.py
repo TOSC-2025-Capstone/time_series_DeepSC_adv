@@ -26,60 +26,69 @@ rows_to_keep 마스크를 사용하여 이상치가 없는 행만 추적
 """
 
 
-def detect_and_eliminate_outliers(df, threshold=3):
+def detect_and_eliminate_outliers(df, threshold=3, by_file=False):
     """
-    Z-score 기반으로 이상치(threshold 이상)를 탐지하고 해당 행을 제거
+    by_file=True면 파일(file_index)별 평균/표준편차 기반 로컬 Z-score 계산
+    False면 전체 데이터 전역 통계 기반 글로벌 Z-score 계산
     """
-    # 이상치가 있는 행을 추적하기 위한 마스크 초기화
+
     rows_to_keep = np.ones(len(df), dtype=bool)
-    outlier_file_indices = set()  # ★ 이상치 발생한 파일 index 저장
+    outlier_file_indices = set()
+    reasons = []
 
-    # 데이터 검증
-    print("\n데이터프레임 정보:")
-    print(f"데이터프레임 크기: {df.shape}")
-    print("컬럼 목록:", df.columns.tolist())
-    print("\n각 컬럼의 기본 통계:")
-    print(df.describe())
+    for col in df.columns:
+        if col == "file_index":
+            continue
 
-    for column in df.columns:
-        if column != "file_index":
-            print(f"\n처리 중인 컬럼: {column}")
+        if by_file:
+            # 파일별 평균/표준편차
+            mean_val = df.groupby("file_index")[col].transform("mean")
+            std_val = df.groupby("file_index")[col].transform("std")
+        else:
+            mean_val = df[col].mean()
+            std_val = df[col].std()
 
-            # Z-score 계산
-            mean_val = df[column].mean()
-            std_val = df[column].std()
-            print(f"평균: {mean_val:.4f}, 표준편차: {std_val:.4f}")
-
-            # std가 0이면 모든 값이 같다는 의미이므로 처리가 필요없음
-            if std_val == 0:
+        # std==0 방지
+        if by_file:
+            std_val = std_val.replace(0, np.nan)
+            z = (df[col] - mean_val) / std_val
+        else:
+            if std_val == 0 or np.isnan(std_val):
                 continue
+            z = (df[col] - mean_val) / std_val
 
-            z_scores = np.abs((df[column] - mean_val) / std_val)
+        outliers = z.abs() > threshold
 
-            # 이상치 위치 파악
-            outliers = z_scores > threshold
+        if outliers.any():
+            rows_to_keep[outliers.values] = False
+            # ★ 해당 컬럼에서 이상치가 나온 file_index 추적
+            outlier_files = df.loc[outliers, "file_index"].unique()
+            outlier_file_indices.update(outlier_files)
 
-            print(f"Z-score 범위: {z_scores.min():.4f} ~ {z_scores.max():.4f}")
-            print(f"임계값: {threshold}")
-
-            if outliers.any():
-                n_outliers = np.sum(outliers)
-                outlier_percent = (n_outliers / len(df)) * 100
-                print(
-                    f"{column}에서 이상치 발견: {n_outliers}개 ({outlier_percent:.2f}%)"
+            reasons.append(
+                pd.DataFrame(
+                    {
+                        "row_idx": df.index[outliers],
+                        "file_index": df.loc[outliers, "file_index"].values,
+                        "column": col,
+                        "value": df.loc[outliers, col].values,
+                        "zscore": z.loc[outliers].values,
+                    }
                 )
+            )
 
-                # 해당 컬럼에서 이상치가 나온 file_index 추적
-                outlier_files = df.loc[outliers, "file_index"].unique()
-                outlier_file_indices.update(outlier_files)
-
-                # 이상치가 있는 행 표시
-                rows_to_keep[outliers] = False
-
-                print(f"제거될 행의 수: {np.sum(~rows_to_keep)}개")
-
-    # 이상치가 있는 행 한번에 제거
     df_cleaned = df[rows_to_keep].copy()
+
+    outlier_report = None
+    if reasons:
+        reason_df = pd.concat(reasons, ignore_index=True)
+        outlier_report = reason_df.groupby(
+            ["row_idx", "file_index"], as_index=False
+        ).agg(
+            trigger_cols=("column", list),
+            max_abs_z=("zscore", lambda s: float(np.nanmax(np.abs(s)))),
+            any_z=("zscore", list),
+        )
 
     print("\n이상치 제거 후 데이터프레임 정보:")
     print(f"\n이상치가 발생한 파일 index 목록: {sorted(outlier_file_indices)}")
@@ -89,10 +98,7 @@ def detect_and_eliminate_outliers(df, threshold=3):
     print(f"제거된 행의 수: {len(df) - len(df_cleaned)}")
     print(f"제거된 비율: {((len(df) - len(df_cleaned)) / len(df)) * 100:.2f}%")
 
-    print("\n정제된 데이터의 기본 통계:")
-    print(df_cleaned.describe())
-
-    return df_cleaned, sorted(outlier_file_indices)
+    return df_cleaned, sorted(outlier_file_indices), outlier_report
 
 
 def process_and_save_outlier_data(
@@ -108,10 +114,19 @@ def process_and_save_outlier_data(
     # 2. 이상치 탐지 및 제거
     print("이상치 탐지 및 제거 시작")
     # df_cleaned = detect_and_eliminate_outliers(total_df, threshold=outlier_threshold)
-    df_cleaned, outlier_files = detect_and_eliminate_outliers(
+    df_cleaned, outlier_files, outlier_report = detect_and_eliminate_outliers(
         total_df, threshold=outlier_threshold
     )
     print("이상치 제거된 파일 index:", outlier_files)
+
+    # outlier_report 저장
+    if outlier_report is not None:
+        os.makedirs("./analysis/outlier_reports", exist_ok=True)
+        outlier_report.to_csv(
+            f"./analysis/outlier_reports/outlier_report_by_z={outlier_threshold}.csv",
+            index=False,
+        )
+        print(f"Outlier report saved: outlier_report.csv")
 
     # 3. 데이터프레임 그룹화 후 csv로 저장
     print("데이터프레임 그룹화 및 저장 시작")
