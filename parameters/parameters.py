@@ -15,8 +15,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
 # 처음 실행 여부 -> True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
-is_preprocessed = True
-# is_preprocessed = False
+# is_preprocessed = True
+is_preprocessed = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
 # is_trained = True
@@ -33,7 +33,7 @@ is_trained = False
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = 9.2
+case_index = 9.1
 
 
 # 모델 종류
@@ -77,7 +77,7 @@ SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
 # 현재 사용할 변수 설정들
 model_type = ModelType.DEEPSC.value  # default
-loss_type = LossType.Huber.value  # MSE로 설정
+loss_type = LossType.MSE.value  # MSE로 설정
 channel_type = ChannelType.NO_CHANNEL.value  # no_channel 선택
 scaler_type = ScalerType.MINMAX.value  # minmax 선택
 
@@ -92,7 +92,7 @@ feature_cols = [
 ]
 
 # outlier elimination threshold
-outlier_threshold = 7  # 3, 5, 7, 10
+outlier_threshold = 3  # 3, 5, 7, 10
 # cycle preprocess length
 target_length = 512  # 256, 512
 # exclude batteries
@@ -106,7 +106,7 @@ original_data_path = "original_dataset/data/"
 # 중간에 이상치 제거 버전 csv 저장할 경로 -> 나중에 이걸 최종 csv 복원 비교의 원본 csv으로 사용
 outlier_cut_csv_path = (
     # f"./cycle_preprocess/csv/outlier_cut/"
-    f"./cycle_preprocess/csv/outlier_cut/threshold_{outlier_threshold}/cycle_len_{target_length}"
+    f"./cycle_preprocess/csv/outlier_cut/threshold_{outlier_threshold}/cycle_len_{target_length}/"
 )
 
 # 중간에 resampled 된 버전 csv 저장할 경로 -> 확인용 -> 이제 preprocessed_csv와 동일해짐 -> 사용 x

@@ -32,6 +32,7 @@ def detect_and_eliminate_outliers(df, threshold=3):
     """
     # 이상치가 있는 행을 추적하기 위한 마스크 초기화
     rows_to_keep = np.ones(len(df), dtype=bool)
+    outlier_file_indices = set()  # ★ 이상치 발생한 파일 index 저장
 
     # 데이터 검증
     print("\n데이터프레임 정보:")
@@ -68,12 +69,9 @@ def detect_and_eliminate_outliers(df, threshold=3):
                     f"{column}에서 이상치 발견: {n_outliers}개 ({outlier_percent:.2f}%)"
                 )
 
-                # 이상치 값들의 통계
-                outlier_values = df[column][outliers]
-                print(
-                    f"이상치 값 범위: {outlier_values.min():.4f} ~ {outlier_values.max():.4f}"
-                )
-                print(f"이상치 평균: {outlier_values.mean():.4f}")
+                # 해당 컬럼에서 이상치가 나온 file_index 추적
+                outlier_files = df.loc[outliers, "file_index"].unique()
+                outlier_file_indices.update(outlier_files)
 
                 # 이상치가 있는 행 표시
                 rows_to_keep[outliers] = False
@@ -84,6 +82,8 @@ def detect_and_eliminate_outliers(df, threshold=3):
     df_cleaned = df[rows_to_keep].copy()
 
     print("\n이상치 제거 후 데이터프레임 정보:")
+    print(f"\n이상치가 발생한 파일 index 목록: {sorted(outlier_file_indices)}")
+    print(f"총 {len(outlier_file_indices)}개 파일에서 이상치 발견됨")
     print(f"원본 데이터 크기: {df.shape}")
     print(f"정제된 데이터 크기: {df_cleaned.shape}")
     print(f"제거된 행의 수: {len(df) - len(df_cleaned)}")
@@ -92,7 +92,7 @@ def detect_and_eliminate_outliers(df, threshold=3):
     print("\n정제된 데이터의 기본 통계:")
     print(df_cleaned.describe())
 
-    return df_cleaned
+    return df_cleaned, sorted(outlier_file_indices)
 
 
 def process_and_save_outlier_data(
@@ -107,7 +107,11 @@ def process_and_save_outlier_data(
 
     # 2. 이상치 탐지 및 제거
     print("이상치 탐지 및 제거 시작")
-    df_cleaned = detect_and_eliminate_outliers(total_df, threshold=outlier_threshold)
+    # df_cleaned = detect_and_eliminate_outliers(total_df, threshold=outlier_threshold)
+    df_cleaned, outlier_files = detect_and_eliminate_outliers(
+        total_df, threshold=outlier_threshold
+    )
+    print("이상치 제거된 파일 index:", outlier_files)
 
     # 3. 데이터프레임 그룹화 후 csv로 저장
     print("데이터프레임 그룹화 및 저장 시작")
