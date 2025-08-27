@@ -26,44 +26,82 @@ rows_to_keep 마스크를 사용하여 이상치가 없는 행만 추적
 """
 
 
-def detect_and_eliminate_outliers(df, threshold=3, by_file=False):
+def detect_and_eliminate_outliers(
+    df, threshold=3, scale_scope="total", metadata_path=None
+):
     """
-    by_file=True면 파일(file_index)별 평균/표준편차 기반 로컬 Z-score 계산
-    False면 전체 데이터 전역 통계 기반 글로벌 Z-score 계산
+    Z-score 기반 이상치 제거
+    scale_scope:
+        "total"      → 전체 데이터 기준 (글로벌 Z-score)
+        "file"       → file_index별 기준 (로컬 Z-score)
+        "battery_id" → 같은 battery_id 그룹 기준 (배터리 단위 Z-score)
+
+    metadata_path:
+        scale_scope="battery_id"일 때 필요.
+        metadata.csv는 최소 ["file_index", "battery_id"] 컬럼이 있어야 함.
     """
+
+    valid_scopes = ["total", "file", "battery_id"]
+    if scale_scope not in valid_scopes:
+        raise ValueError(f"scale_scope는 {valid_scopes} 중 하나여야 합니다.")
 
     rows_to_keep = np.ones(len(df), dtype=bool)
     outlier_file_indices = set()
     reasons = []
 
     for col in df.columns:
-        if col == "file_index":
+        if col in ["file_index", "battery_id"]:
             continue
 
-        if by_file:
-            # 파일별 평균/표준편차
+        # 스케일 범위별 평균/표준편차 계산
+        if scale_scope == "file":
             mean_val = df.groupby("file_index")[col].transform("mean")
             std_val = df.groupby("file_index")[col].transform("std")
-        else:
+        elif scale_scope == "battery_id":
+            # 배터리 단위 스케일링 준비
+            if metadata_path is None:
+                raise ValueError(
+                    "scale_scope='battery_id'일 때는 metadata_path를 지정해야 합니다."
+                )
+            meta_df = pd.read_csv(metadata_path)
+
+            # filename에서 숫자만 추출해 int로 변환 → file_index 생성
+            if "filename" in meta_df.columns:
+                meta_df["file_index"] = (
+                    meta_df["filename"].str.extract(r"(\d+)").astype(int)
+                )
+
+            required_cols = {"file_index", "battery_id"}
+            if not required_cols.issubset(meta_df.columns):
+                raise ValueError(
+                    f"metadata.csv에는 {required_cols} 컬럼이 반드시 포함되어야 합니다."
+                )
+
+            battery_map = meta_df.set_index("file_index")["battery_id"].to_dict()
+
+            # df에 battery_id 컬럼 추가
+            df = df.copy()
+            df["battery_id"] = df["file_index"].map(battery_map)
+
+            mean_val = df.groupby("battery_id")[col].transform("mean")
+            std_val = df.groupby("battery_id")[col].transform("std")
+        else:  # "total"
             mean_val = df[col].mean()
             std_val = df[col].std()
 
-        # std==0 방지
-        if by_file:
+        # 표준편차 0 방지
+        if scale_scope in ["file", "battery_id"]:
             std_val = std_val.replace(0, np.nan)
             z = (df[col] - mean_val) / std_val
-        else:
+        else:  # total
             if std_val == 0 or np.isnan(std_val):
                 continue
             z = (df[col] - mean_val) / std_val
 
         outliers = z.abs() > threshold
-
         if outliers.any():
             rows_to_keep[outliers.values] = False
-            # ★ 해당 컬럼에서 이상치가 나온 file_index 추적
-            outlier_files = df.loc[outliers, "file_index"].unique()
-            outlier_file_indices.update(outlier_files)
+            outlier_file_indices.update(df.loc[outliers, "file_index"].unique())
 
             reasons.append(
                 pd.DataFrame(
@@ -79,6 +117,10 @@ def detect_and_eliminate_outliers(df, threshold=3, by_file=False):
 
     df_cleaned = df[rows_to_keep].copy()
 
+    # bid 사용 완료 후 열 삭제
+    if scale_scope == "battery_id":
+        df_cleaned = df_cleaned.drop(columns="battery_id")
+
     outlier_report = None
     if reasons:
         reason_df = pd.concat(reasons, ignore_index=True)
@@ -89,14 +131,6 @@ def detect_and_eliminate_outliers(df, threshold=3, by_file=False):
             max_abs_z=("zscore", lambda s: float(np.nanmax(np.abs(s)))),
             any_z=("zscore", list),
         )
-
-    print("\n이상치 제거 후 데이터프레임 정보:")
-    print(f"\n이상치가 발생한 파일 index 목록: {sorted(outlier_file_indices)}")
-    print(f"총 {len(outlier_file_indices)}개 파일에서 이상치 발견됨")
-    print(f"원본 데이터 크기: {df.shape}")
-    print(f"정제된 데이터 크기: {df_cleaned.shape}")
-    print(f"제거된 행의 수: {len(df) - len(df_cleaned)}")
-    print(f"제거된 비율: {((len(df) - len(df_cleaned)) / len(df)) * 100:.2f}%")
 
     return df_cleaned, sorted(outlier_file_indices), outlier_report
 
@@ -113,9 +147,23 @@ def process_and_save_outlier_data(
 
     # 2. 이상치 탐지 및 제거
     print("이상치 탐지 및 제거 시작")
-    # df_cleaned = detect_and_eliminate_outliers(total_df, threshold=outlier_threshold)
+
+    # # 2-1. 전체 데이터 기준
+    # df_cleaned, outlier_files, report = detect_and_eliminate_outliers(
+    #     df, threshold=7, scale_scope="total"
+    # )
+
+    # # 2-2. 파일별 기준
+    # df_cleaned, outlier_files, report = detect_and_eliminate_outliers(
+    #     df, threshold=7, scale_scope="file"
+    # )
+
+    # 2-3. 배터리 ID 기준 (metadata.csv 필요)
     df_cleaned, outlier_files, outlier_report = detect_and_eliminate_outliers(
-        total_df, threshold=outlier_threshold
+        df=total_df,
+        threshold=outlier_threshold,
+        scale_scope="battery_id",
+        metadata_path="./original_dataset/metadata.csv",
     )
     print("이상치 제거된 파일 index:", outlier_files)
 

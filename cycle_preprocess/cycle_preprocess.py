@@ -62,6 +62,7 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
         raise ValueError(
             "지원하지 않는 스케일러 타입입니다. 'minmax' 또는 'zscore'를 선택하세요."
         )
+
     scaled_df = scaler.fit_transform(df_cleaned)
     scaled_df = pd.DataFrame(scaled_df, columns=df_cleaned.columns)
 
