@@ -1,0 +1,54 @@
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | env
+  | ENV
+  | _build
+  | buck-out
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+# Jupyter Notebook 지원 (선택사항)
+[tool.black.jupyter]
+line-length = 88
+target-version = ['py38']
+
+[tool.autopep8]
+max_line_length = 88
+ignore = ["E501", "W6"]
+in-place = true
+recursive = true
+aggressive = 3
+# 들여쓰기 관련 설정
+select = [
+    "E111",  # indentation is not a multiple of four
+    "E112",  # expected an indented block
+    "E113",  # unexpected indentation
+    "E114",  # indentation is not a multiple of four (comment)
+    "E115",  # expected an indented block (comment)
+    "E116",  # unexpected indentation (comment)
+    "E121",  # continuation line under-indented
+    "E122",  # continuation line missing indentation
+    "E123",  # closing bracket does not match indentation
+    "E124",  # closing bracket does not match visual indentation
+    "E125",  # continuation line with same indent as next logical line
+    "E126",  # continuation line over-indented for hanging indent
+    "E127",  # continuation line over-indented for visual indent
+    "E128",  # continuation line under-indented for visual indent
+    "E129",  # visually indented line with same indent as next logical line
+    "E131",  # continuation line unaligned for hanging indent
+    "E133"   # closing bracket is missing indentation
+]

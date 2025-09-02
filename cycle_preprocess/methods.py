@@ -1,14 +1,15 @@
 import os
-import pandas as pd
+import pdb
+import pickle
+
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import torch
 from scipy import interpolate
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import torch
 from torch.utils.data import TensorDataset
-import pickle
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import pdb
 
 # 한글깨짐 방지
 plt.rcParams["font.family"] = "Malgun Gothic"
@@ -16,10 +17,10 @@ plt.rcParams["axes.unicode_minus"] = False
 
 """
 # methods.py
-P1,2,3 에 필요한 서브 기능 함수들을 모듈화함 
+P1,2,3 에 필요한 서브 기능 함수들을 모듈화함
 
 # 처리 순서
-P1. outlier_eliminate.py 
+P1. outlier_eliminate.py
 original dataset에서 배터리 메타데이터를 로드하고 특정 배터리 데이터를 필터링
 discharge 파일 목록을 생성하고, 각 파일을 읽어서 통합된 데이터프레임을 생성
 이상치 탐지 및 제거 후 통합된 데이터프레임을 반환
@@ -133,14 +134,17 @@ def load_csv_data(discharge_files, input_folder):
 # P1.3
 def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     """
-    원본 데이터와 처리된 데이터의 비교 시각화(히스토그램, 선 그래프, 산점도)
-
-    두 가지 비교 플롯 생성:
-    분포 비교 (히스토그램): outlier_removal_comparison.png
-    각 특성별로 원본 데이터와 처리된 데이터의 분포 비교
-    시계열 비교: outlier_removal_timeseries.png
-    첫 번째 파일(256개 샘플)에 대해 원본과 처리된 시계열 비교
-    각 특성별로 시간에 따른 변화 비교 가능
+    원본 데이터와 처리된 데이터의 비교 시각화(히스토그램, 선 그래프, 산점도, 시계열 샘플, 파일별 데이터 분포)
+    다섯 가지 비교 플롯 생성:
+    1. 분포 비교 (히스토그램): distribution_comparison.png
+        각 특성별로 원본 데이터와 처리된 데이터의 분포 비교
+    2. 시계열 비교: timeseries_comparison.png
+        첫 번째 파일(256개 샘플)에 대해 원본과 처리된 시계열 비교
+    3. 산점도 비교: scatter_comparison.png
+        각 특성별로 시간에 따른 변화를 산점도로 비교
+    4. 시계열 샘플 분석: timeseries_sample_analysis.png
+        Current_measured의 시간 순서 샘플링 분석 및 파일별 데이터 분포
+    5. 추가적인 시각화가 필요한 경우 확장 가능
 
     Args:
         total_df (pd.DataFrame): 원본 데이터
@@ -148,6 +152,10 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
         feature_names (list): 특성 이름 리스트
         output_dir (str): 출력 디렉토리 경로
     """
+    import os
+
+    import matplotlib.pyplot as plt
+
     os.makedirs(output_dir, exist_ok=True)
 
     # 1. 히스토그램 비교
@@ -183,7 +191,6 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     plt.figure(figsize=(15, 10))
     first_file_data = total_df.iloc[:256]
     first_file_cleaned = cleaned_df.iloc[:256]
-
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
             plt.subplot(2, 3, i + 1)
@@ -238,6 +245,81 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "scatter_comparison.png"))
     plt.close()
+
+    # 4. 시계열 샘플 분석 및 파일별 데이터 분포 (원본 vs 처리된 데이터 비교)
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle("Current_measured Analysis: Original vs Cleaned Data", fontsize=16)
+
+    # 4-1. 원본 데이터 시계열 샘플 플롯 (왼쪽 상단)
+    tdata_original = total_df.sample(len(total_df))
+    axes[0, 0].scatter(
+        range(len(tdata_original)),
+        tdata_original["Current_measured"],
+        alpha=0.6,
+        s=1,
+        color="red",
+    )
+    axes[0, 0].set_title("Original Data - Time Series Sample Plot")
+    axes[0, 0].set_xlabel("Index")
+    axes[0, 0].set_ylabel("Current_measured")
+    axes[0, 0].grid(True, alpha=0.3)
+
+    # 4-2. 처리된 데이터 시계열 샘플 플롯 (오른쪽 상단)
+    tdata_cleaned = cleaned_df.sample(len(cleaned_df))
+    axes[0, 1].scatter(
+        range(len(tdata_cleaned)),
+        tdata_cleaned["Current_measured"],
+        alpha=0.6,
+        s=1,
+        color="blue",
+    )
+    axes[0, 1].set_title("Cleaned Data - Time Series Sample Plot")
+    axes[0, 1].set_xlabel("Index")
+    axes[0, 1].set_ylabel("Current_measured")
+    axes[0, 1].grid(True, alpha=0.3)
+
+    # 4-3. 원본 데이터 시계열 샘플 플롯 (왼쪽 하단)
+    tdata_original = total_df.sample(len(total_df))
+    axes[1, 0].scatter(
+        range(len(tdata_original)),
+        tdata_original["Current_load"],
+        alpha=0.6,
+        s=1,
+        color="red",
+    )
+    axes[1, 0].set_title("Original Data - Time Series Sample Plot")
+    axes[1, 0].set_xlabel("Index")
+    axes[1, 0].set_ylabel("Current_load")
+    axes[1, 0].grid(True, alpha=0.3)
+
+    # 4-4. 처리된 데이터 시계열 샘플 플롯 (오른쪽 하단)
+    tdata_cleaned = cleaned_df.sample(len(cleaned_df))
+    axes[1, 1].scatter(
+        range(len(tdata_cleaned)),
+        tdata_cleaned["Current_load"],
+        alpha=0.6,
+        s=1,
+        color="blue",
+    )
+    axes[1, 1].set_title("Cleaned Data - Time Series Sample Plot")
+    axes[1, 1].set_xlabel("Index")
+    axes[1, 1].set_ylabel("Current_load")
+    axes[1, 1].grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(
+        os.path.join(output_dir, "timeseries_sample_analysis.png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+    print(f"모든 시각화 파일이 {output_dir} 디렉토리에 저장되었습니다.")
+    print("생성된 파일들:")
+    print("- distribution_comparison.png: 분포 비교")
+    print("- timeseries_comparison.png: 시계열 비교")
+    print("- scatter_comparison.png: 산점도 비교")
+    print("- timeseries_sample_analysis.png: 시계열 샘플 분석 및 파일별 분포")
 
 
 # P2.1

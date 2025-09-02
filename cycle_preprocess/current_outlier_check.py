@@ -4,16 +4,21 @@ import matplotlib.pyplot as plt
 import os
 import shutil
 from pathlib import Path
+import pdb
 
 # Set matplotlib parameters
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["axes.unicode_minus"] = False
 
 # Data paths
-original_data_path = "/Users/yujinkang/time_series_DeepSC_adv/original_dataset/data"
-metadata_path = "/Users/yujinkang/time_series_DeepSC_adv/original_dataset/metadata.csv"
-new_data_path = "/Users/yujinkang/time_series_DeepSC_adv/current_measured_outlier/data_no_minus2.5_4"
-# new_data_path = "/Users/yujinkang/time_series_DeepSC_adv/current_measured_outlier/data_no_minus2.5_4.5"
+# original_data_path = "/Users/yujinkang/time_series_DeepSC_adv/original_dataset/data"
+# metadata_path = "/Users/yujinkang/time_series_DeepSC_adv/original_dataset/metadata.csv"
+# new_data_path = "/Users/yujinkang/time_series_DeepSC_adv/current_measured_outlier/data_no_minus2.5_4"
+
+original_data_path = "../original_dataset/data"
+metadata_path = "../original_dataset/metadata.csv"
+new_data_path = "./csv/outlier_cut/current/0901"
+os.makedirs(new_data_path, exist_ok=True)
 
 
 def remove_minus3_minus4_and_battery00049_00052():
@@ -60,7 +65,7 @@ def remove_minus3_minus4_and_battery00049_00052():
                 total_removed_minus3_rows += removed_minus3_rows
 
                 # Remove rows where Current_measured is in -4 group (-4.5 to -3.5)
-                minus4_mask = (data["Current_measured"] > -4) & (
+                minus4_mask = (data["Current_measured"] > -3.95) & (
                     data["Current_measured"] < -3.5
                 )  # 2.5_4
                 # minus4_mask = (data['Current_measured'] >= -4.5) & (data['Current_measured'] < -3.5)  # 2.5_4.5
@@ -76,10 +81,6 @@ def remove_minus3_minus4_and_battery00049_00052():
                 filtered_data.to_csv(new_file_path, index=False)
                 files_processed += 1
 
-                if removed_minus3_rows > 0 or removed_minus4_rows > 0:
-                    print(
-                        f"  {filename}: {original_rows} �� {new_rows} (removed -3: {removed_minus3_rows}, -4: {removed_minus4_rows})"
-                    )
             else:
                 # If no Current_measured column, copy as is
                 data.to_csv(new_file_path, index=False)
@@ -164,9 +165,9 @@ def analyze_filtered_data(data_path):
     lower_bound = Q1 - 1.5 * IQR
     upper_bound = Q3 + 1.5 * IQR
 
-    outliers = df[
-        (df["Current_measured"] < lower_bound) | (df["Current_measured"] > upper_bound)
-    ]
+    # outliers = df[
+    #     (df["Current_measured"] < lower_bound) | (df["Current_measured"] > upper_bound)
+    # ]
 
     print(f"\n=== Outlier Statistics (IQR method) ===")
     print(f"Q1: {Q1:.6f}")
@@ -174,7 +175,7 @@ def analyze_filtered_data(data_path):
     print(f"IQR: {IQR:.6f}")
     print(f"Lower bound: {lower_bound:.6f}")
     print(f"Upper bound: {upper_bound:.6f}")
-    print(f"Outlier count: {len(outliers)} ({len(outliers)/len(df)*100:.2f}%)")
+    # print(f"Outlier count: {len(outliers)} ({len(outliers)/len(df)*100:.2f}%)")
 
     # Z-score method
     z_scores = np.abs(
@@ -189,113 +190,49 @@ def analyze_filtered_data(data_path):
     )
 
     # Create visualizations
-    create_filtered_visualizations(df, outliers, lower_bound, upper_bound)
+    # create_filtered_visualizations(df, outliers, lower_bound, upper_bound)
+    create_filtered_visualizations(df, lower_bound, upper_bound)
 
-    return df, outliers
+    return df
 
 
-def create_filtered_visualizations(df, outliers, lower_bound, upper_bound):
+def create_filtered_visualizations(df, lower_bound, upper_bound):
     """Create visualizations for the filtered data analysis."""
 
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    fig, axes = plt.subplots(2, 1, figsize=(16, 9))
     fig.suptitle(
         "Current_measured Analysis(After Removing -2.5 Group, -4 Group)", fontsize=16
     )
-    # fig.suptitle('Current_measured Analysis(After Removing -2.5 Group, -4.5 Group)', fontsize=16)
-
-    # 1. Histogram (all data)
-    axes[0, 0].hist(
-        df["Current_measured"], bins=100, alpha=0.7, color="blue", edgecolor="black"
-    )
-    axes[0, 0].axvline(
-        lower_bound, color="red", linestyle="--", label=f"Lower: {lower_bound:.6f}"
-    )
-    axes[0, 0].axvline(
-        upper_bound, color="red", linestyle="--", label=f"Upper: {upper_bound:.6f}"
-    )
-    axes[0, 0].set_title("All Data Histogram)")
-    axes[0, 0].set_xlabel("Current_measured")
-    axes[0, 0].set_ylabel("Frequency")
-    axes[0, 0].legend()
-    axes[0, 0].grid(True, alpha=0.3)
-
-    # 2. Boxplot
-    axes[0, 1].boxplot(df["Current_measured"])
-    axes[0, 1].set_title("Boxplot")
-    axes[0, 1].set_ylabel("Current_measured")
-    axes[0, 1].grid(True, alpha=0.3)
-
-    # 3. Outlier histogram or data distribution
-    if len(outliers) > 0:
-        axes[0, 2].hist(
-            outliers["Current_measured"],
-            bins=50,
-            alpha=0.7,
-            color="red",
-            edgecolor="black",
-        )
-        axes[0, 2].set_title("Outlier Histogram")
-        axes[0, 2].set_xlabel("Current_measured")
-        axes[0, 2].set_ylabel("Frequency")
-    else:
-        # If no outliers, show data distribution in different ranges
-        axes[0, 2].hist(
-            df["Current_measured"], bins=50, alpha=0.7, color="green", edgecolor="black"
-        )
-        axes[0, 2].set_title("Data Distribution(No Outliers Found)")
-        axes[0, 2].set_xlabel("Current_measured")
-        axes[0, 2].set_ylabel("Frequency")
-    axes[0, 2].grid(True, alpha=0.3)
 
     # 4. Time series plot
     tdata = df.sample(len(df))
-    axes[1, 0].scatter(range(len(tdata)), tdata["Current_measured"], alpha=0.6, s=1)
-    axes[1, 0].axhline(lower_bound, color="red", linestyle="--", alpha=0.7)
-    axes[1, 0].axhline(upper_bound, color="red", linestyle="--", alpha=0.7)
-    axes[1, 0].set_title("Time Series Sample Plot")
-    axes[1, 0].set_xlabel("Index")
-    axes[1, 0].set_ylabel("Current_measured")
-    axes[1, 0].grid(True, alpha=0.3)
+    axes[0].scatter(range(len(tdata)), tdata["Current_measured"], alpha=0.6, s=1)
+    axes[0].axhline(lower_bound, color="red", linestyle="--", alpha=0.7)
+    axes[0].axhline(upper_bound, color="red", linestyle="--", alpha=0.7)
+    axes[0].set_title("Time Series Sample Plot")
+    axes[0].set_xlabel("Index")
+    axes[0].set_ylabel("Current_measured")
+    axes[0].grid(True, alpha=0.3)
 
     # 5. Data distribution by file (top files with most data)
     file_counts = df["filename"].value_counts().head(20)
-    axes[1, 1].bar(
+    axes[1].bar(
         range(len(file_counts)),
         file_counts.values,
         alpha=0.7,
         color="blue",
         edgecolor="black",
     )
-    axes[1, 1].set_title("Data Count by File")
-    axes[1, 1].set_xlabel("File Index")
-    axes[1, 1].set_ylabel("Data Count")
-    axes[1, 1].grid(True, alpha=0.3)
-
-    # 6. Data range comparison (before vs after filtering)
-    # Create a comparison showing the data range
-    data_ranges = df["Current_measured"].describe()
-    axes[1, 2].bar(
-        ["Min", "25%", "50%", "75%", "Max"],
-        [
-            data_ranges["min"],
-            data_ranges["25%"],
-            data_ranges["50%"],
-            data_ranges["75%"],
-            data_ranges["max"],
-        ],
-        alpha=0.7,
-        color="purple",
-        edgecolor="black",
-    )
-    axes[1, 2].set_title("Data Range Statistics\n(No -3 Group, No -4 Group)")
-    axes[1, 2].set_ylabel("Current_measured Value")
-    axes[1, 2].grid(True, alpha=0.3)
+    axes[1].set_title("Data Count by File")
+    axes[1].set_xlabel("File Index")
+    axes[1].set_ylabel("Data Count")
+    axes[1].grid(True, alpha=0.3)
 
     plt.tight_layout()
     # output_file = 'current_measured_outlier/plot/current_measured_no_minus2.5_4.png'
     # output_file = 'current_measured_outlier/plot/current_measured_no_minus2.5_4.5.png'
     # plt.savefig(output_file, dpi=300, bbox_inches='tight')
-    # plt.show()
+    plt.show()
 
     # print(f"\nVisualization saved as '{output_file}'")
 
@@ -307,7 +244,7 @@ def main():
     print("=" * 70)
 
     # Step 1: Remove -3 group, -4 group and battery_id B00049-B00052 files
-    new_data_path = remove_minus3_minus4_and_battery00049_00052()
+    remove_minus3_minus4_and_battery00049_00052()
 
     # Step 2: Analyze filtered data and create visualizations
     df, outliers = analyze_filtered_data(new_data_path)

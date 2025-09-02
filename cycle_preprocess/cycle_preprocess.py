@@ -5,7 +5,9 @@ import torch
 from torch.utils.data import TensorDataset
 import pickle
 from .methods import *
-from .outlier_eliminate import process_and_save_outlier_data
+
+# from .outlier_eliminate import process_and_save_outlier_data
+from .outlier_eliminate import process_and_save_hybrid_outlier_data
 from .cycle_reshape import (
     resample_to_fixed_length,
 )
@@ -35,13 +37,21 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     # 전처리 다 된 .pt 경로
     preprocessed_data_path = preprocess_params.preprocessed_data_path
     outlier_threshold = preprocess_params.outlier_threshold
+    # Current 피쳐에서 제거할 그룹 설정 (첫 번째 코드의 정확한 로직)
+    current_remove_groups = preprocess_params.current_remove_groups
 
     # P1
-    df_cleaned, total_df = process_and_save_outlier_data(
+    # Current 관련 컬럼명
+    current_columns = ["Current_measured", "Current_load"]
+
+    df_cleaned, total_df, _ = process_and_save_hybrid_outlier_data(
         exclude_batteries,
         input_folder,
         outlier_output_folder,
         outlier_threshold=outlier_threshold,
+        current_remove_groups=current_remove_groups,
+        current_columns=current_columns,
+        scale_scope="battery_id",
     )
 
     # P2 variables

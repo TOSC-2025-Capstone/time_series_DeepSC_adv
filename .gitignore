@@ -9,3 +9,8 @@ original_dataset
 
 cycle_preprocess/analysis/reshaped/
 cycle_preprocess/csv/
+analysis/outlier_comparison/case0.4
+analysis/outlier_comparison/case0.4_rows
+analysis/outlier_comparison/case0.4_0829
+analysis/outlier_comparison/case0.6
+.vscode/settings.json
