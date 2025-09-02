@@ -23,6 +23,14 @@ is_preprocessed = False
 # is_trained = True
 is_trained = False
 
+# 이상치 제거를 진행하지 않게 만듦
+# is_skip_outlier_eliminate = True
+is_skip_outlier_eliminate = False
+
+# voltage 0값 제거 진행
+is_skip_0_in_voltage = True
+# is_skip_0_in_voltage = False
+
 """  =========================== 모델 파라미터 설정 =========================== """
 """
     자신이 사용하는 모델에 따라 아래처럼 작성
@@ -34,7 +42,7 @@ is_trained = False
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = 0.6
+case_index = 0.7
 
 
 # 모델 종류
@@ -98,6 +106,10 @@ outlier_threshold = 7  # 3, 5, 7, 10
 target_length = 512  # 256, 512
 # exclude batteries
 exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
+current_remove_groups = {
+    "-3_group": (-3.5, -2.05),  # -3.5 <= Current_measured < -2.5
+    "-4_group": (-3.95, -3.5),  # -4.0 < Current_measured < -3.5
+}
 
 """ =========================== 경로 설정 =========================== """
 
@@ -161,10 +173,7 @@ class PreprocessParams:
     preprocessed_csv_path = preprocessed_csv_path  # 전처리 다 된 csv 경로
     preprocessed_data_path = preprocessed_data_path  # 전처리 다 된 .pt 경로
     outlier_threshold = outlier_threshold
-    current_remove_groups = {
-        "-3_group": (-3.5, -2.05),  # -3.5 <= Current_measured < -2.5
-        "-4_group": (-3.95, -3.5),  # -4.0 < Current_measured < -3.5
-    }
+    current_remove_groups = current_remove_groups
 
 
 # train

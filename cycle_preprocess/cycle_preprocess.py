@@ -1,23 +1,22 @@
 import os
-import pandas as pd
-import numpy as np
-import torch
-from torch.utils.data import TensorDataset
+import pdb
 import pickle
+
+import joblib
+import numpy as np
+import pandas as pd
+import torch
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from torch.utils.data import TensorDataset
+from tqdm import tqdm
+
+from parameters.parameters import PreprocessParams
+
+from .cycle_reshape import resample_to_fixed_length
 from .methods import *
 
 # from .outlier_eliminate import process_and_save_outlier_data
 from .outlier_eliminate import process_and_save_hybrid_outlier_data
-from .cycle_reshape import (
-    resample_to_fixed_length,
-)
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import joblib
-
-from tqdm import tqdm
-import pdb
-
-from parameters.parameters import PreprocessParams
 
 
 def cycle_preprocess(preprocess_params: PreprocessParams = None):

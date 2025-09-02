@@ -41,10 +41,10 @@ def load_all_performance_data(base_path: str) -> pd.DataFrame:
     all_data = []
 
     for case_folder in case_folders:
-        # if (str(case_folder).split(".")[0] != "case0") and (
-        #     str(case_folder).split(".")[1] != "1"
-        # ):
-        if str(case_folder).split(".")[0] != "case0":
+        # if (
+        #     str(case_folder).split(".")[0] != "case0"
+        # ) and (str(case_folder).split(".")[1] != "1"):
+        if str(case_folder) != "case9.0" and str(case_folder).split(".")[0] != "case0":
             continue
         csv_path = case_folder / "no_channel_deepsc_MSE/performance_statistics.csv"
 
@@ -115,15 +115,15 @@ def create_comparison_plots(df: pd.DataFrame, save_path: str = None):
                     case_data = metric_data[metric_data["Case"] == case]
                     if not case_data.empty:
                         means.append(case_data["Mean"].iloc[0])
-                        stds.append(case_data["Std"].iloc[0])
+                        # stds.append(case_data["Std"].iloc[0])
                     else:
                         means.append(0)
-                        stds.append(0)
+                        # stds.append(0)
 
                 bars = ax.bar(
                     x_pos,
                     means,
-                    yerr=stds,
+                    # yerr=stds,
                     capsize=5,
                     color=colors[: len(cases)],
                     alpha=0.7,
@@ -137,7 +137,8 @@ def create_comparison_plots(df: pd.DataFrame, save_path: str = None):
                     if height > 0:  # 0이 아닌 값만 표시
                         ax.text(
                             bar.get_x() + bar.get_width() / 2.0,
-                            height + stds[k],
+                            # height + stds[k],
+                            height,
                             f"{mean:.4f}",
                             ha="center",
                             va="bottom",
@@ -256,6 +257,9 @@ def main():
         # 모든 성능 데이터 로드
         print("Loading performance data from all cases...")
         df = load_all_performance_data(base_path)
+
+        # df에서 time 제거
+        # df = df[df.Feature != "Time"]
 
         # 요약 통계 출력
         print_summary_statistics(df)

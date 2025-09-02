@@ -9,6 +9,8 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import TensorDataset
 from tqdm import tqdm
 
+from parameters.parameters import is_skip_0_in_voltage, is_skip_outlier_eliminate
+
 from .methods import *
 
 """
@@ -233,6 +235,13 @@ def detect_and_eliminate_outliers_excluding_current(
             mean_val = df[col].mean()
             std_val = df[col].std()
 
+        # voltage 관련 피쳐인 경우 각 파일의 첫 0값 제거
+        if is_skip_0_in_voltage == True and col in ["Voltage_load"]:
+            # voltage_mask = df[col] == 0
+            voltage_mask = (df[col] == 0) & (df[col].shift(-1) > 4)
+            rows_to_keep[voltage_mask] = False
+            pdb.set_trace()
+
         # 표준편차 0 방지
         if scale_scope in ["file", "battery_id"]:
             std_val = std_val.replace(0, np.nan)
@@ -335,11 +344,13 @@ def process_and_save_hybrid_outlier_data(
     original_total_rows = len(total_df)
     print(f"Initial data loaded: {original_total_rows:,} rows")
 
+    if is_skip_outlier_eliminate == True:
+        return total_df, total_df, None
+
     # 2. Current 관련 피쳐 이상치 제거 (1단계)
     df_after_current, current_removal_stats = detect_current_outliers(
         total_df, current_columns=current_columns, remove_groups=current_remove_groups
     )
-    pdb.set_trace()
 
     # 3. 나머지 피쳐 Z-score 기반 이상치 제거 (2단계)
     df_cleaned, outlier_files, outlier_report = (
@@ -409,40 +420,3 @@ def process_and_save_hybrid_outlier_data(
             "outlier_report": outlier_report,
         },
     )
-
-
-# 사용 예시
-if __name__ == "__main__":
-    exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
-    input_folder = "original_dataset/data/"
-    output_folder = "cycle_preprocess/csv/hybrid_outlier_cut/"
-
-    # Current 피쳐에서 제거할 그룹 설정 (첫 번째 코드의 정확한 로직)
-    current_remove_groups = {
-        "-3_group": (-3.5, -2.5),  # -3.5 <= Current_measured < -2.5
-        "-4_group": (-4.0, -3.5),  # -4.0 < Current_measured < -3.5
-        # 더 넓은 -4 group을 원할 경우:
-        # '-4_group': (-4.5, -3.5),  # -4.5 <= Current_measured < -3.5
-    }
-
-    # Current 관련 컬럼명
-    current_columns = ["Current_measured", "Current_load"]
-
-    df_cleaned, total_df, stats = process_and_save_hybrid_outlier_data(
-        exclude_batteries=exclude_batteries,
-        input_folder=input_folder,
-        output_folder=output_folder,
-        outlier_threshold=7,  # Z-score 임계값
-        current_remove_groups=current_remove_groups,
-        current_columns=current_columns,
-        scale_scope="battery_id",
-        metadata_path="./original_dataset/metadata.csv",
-    )
-
-    print("\n처리 완료!")
-    print(f"Current 제거 통계:")
-    for col, stats_col in stats["current_removal_stats"].items():
-        print(
-            f"  {col}: {stats_col['total_removed']} rows ({stats_col['total_percentage']:.2f}%)"
-        )
-    print(f"Z-score 이상치 파일 수: {len(stats['outlier_files'])}")
