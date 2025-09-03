@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from glob import glob
 from typing import List
 
 import torch
@@ -16,16 +17,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
 # 처음 실행 여부 -> True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
-# is_preprocessed = True
-is_preprocessed = False
+is_preprocessed = True
+# is_preprocessed = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
-# is_trained = True
-is_trained = False
+is_trained = True
+# is_trained = False
 
 # 이상치 제거를 진행하지 않게 만듦
-# is_skip_outlier_eliminate = True
-is_skip_outlier_eliminate = False
+is_skip_outlier_eliminate = True
+# is_skip_outlier_eliminate = False
 
 # voltage 0값 제거 진행
 is_skip_0_in_voltage = True
@@ -42,7 +43,7 @@ is_skip_0_in_voltage = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = 0.7
+case_index = 11.2
 
 
 # 모델 종류
@@ -85,7 +86,7 @@ CHANNEL_TYPES = [
 SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
 # 현재 사용할 변수 설정들
-model_type = ModelType.DEEPSC.value  # default
+model_type = ModelType.GRU.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
 channel_type = ChannelType.NO_CHANNEL.value  # no_channel 선택
 scaler_type = ScalerType.MINMAX.value  # minmax 선택
@@ -111,6 +112,12 @@ current_remove_groups = {
     "-4_group": (-3.95, -3.5),  # -4.0 < Current_measured < -3.5
 }
 
+""" =========================== EDA용 변수 설정 =========================== """
+eda_readme_files = glob("./original_dataset/extra_infos/README_*.txt")
+eda_merged_path = f"./data/merged_recons/case_{case_index}/"
+eda_output_prefix_path = f"./data/EDA_images_recons/case_{case_index}/"
+eda_full_recon_path = f"./data/full_recons/case_{case_index}/"
+
 """ =========================== 경로 설정 =========================== """
 
 # 전처리 입력으로 사용할 데이터 경로 (merged)
@@ -129,7 +136,7 @@ resampled_csv_folder = f"cycle_preprocess/csv/reshaped/resampled_{target_length}
 preprocessed_csv_path = f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}_{target_length}_threshold_{outlier_threshold}/"
 
 # merged의 파일에서 이상치가 제거되며 전처리 된 데이터 경로 (train_data.pt, test_data.pt)
-preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_{scaler_type}_{target_length}/case_{case_index}/"
+preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_{scaler_type}_{target_length}/case_{(str(case_index)).split('.')[0]}/"
 
 # 모델 저장 경로
 model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
@@ -201,6 +208,21 @@ class TestParams:
     save_reconstruct_dir = save_reconstruct_dir
     feature_cols: List[str] = field(default_factory=lambda: feature_cols.copy())
     train_pt = preprocessed_data_path + "/train_data.pt"
+    test_pt = preprocessed_data_path + "/test_data.pt"
+    scaler_path = preprocessed_data_path + "/scaler.pkl"
+    target_length = target_length  # P2.4에 사용
+
+
+# full reconstruct
+@dataclass
+class ReconstructParams:
+    preprocessed_path: str = preprocessed_data_path
+    save_performance_dir = save_performance_dir
+    save_reconstruct_dir = eda_full_recon_path
+    csv_origin_path: str = outlier_cut_csv_path  # 원본 길이를 찾기 위한 목적도 존재
+    feature_cols: List[str] = field(default_factory=lambda: feature_cols.copy())
+    train_pt = preprocessed_data_path + "/train_data.pt"
+    val_pt = preprocessed_data_path + "/val_data.pt"
     test_pt = preprocessed_data_path + "/test_data.pt"
     scaler_path = preprocessed_data_path + "/scaler.pkl"
     target_length = target_length  # P2.4에 사용

@@ -26,20 +26,22 @@
 """
 
 import os
+import pdb
+from typing import Union
+
+import joblib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 import torch
-import joblib
-import pdb
+from tqdm import tqdm
+
+from cycle_preprocess.reverse_cycle_reshape import *
 from models.transceiver import DeepSC
 
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.model_parameters import *
-from cycle_preprocess.reverse_cycle_reshape import *
-
-from parameters.parameters import TestParams
+from parameters.parameters import ReconstructParams, TestParams
 
 
 def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
@@ -316,7 +318,7 @@ def save_performance_report(metrics, cycle_idx, save_dir):
                 f.write(f"{metric_name}: {value:.4f}\n")
 
 
-def post_process(tensor_data, scaler, preprocessed_folder, target_length):
+def post_process(tensor_data, scaler, preprocessed_folder, target_length, tensor_type):
     """
     모델 출력 텐서를 원본 데이터 형식으로 복원하는 메인 함수
 
@@ -330,11 +332,12 @@ def post_process(tensor_data, scaler, preprocessed_folder, target_length):
     """
     # 파일 인덱스 정보 로드
     indices_path = os.path.join(preprocessed_folder, "file_indices.pkl")
-    test_indices = None
+    file_indices = None
     if os.path.exists(indices_path):
         with open(indices_path, "rb") as f:
             indices_info = pickle.load(f)
-            test_indices = indices_info["test_indices"]
+            file_indices = indices_info[f"{tensor_type}_indices"]
+            # file_indices = indices_info["test_indices"]
     print("후처리 시작...")
 
     # 1. 텐서 데이터 역변환
@@ -343,7 +346,7 @@ def post_process(tensor_data, scaler, preprocessed_folder, target_length):
 
     # 2. 사이클 단위로 분할
     cycle_dfs = split_to_cycles(
-        df_original, target_length=target_length, file_indices=test_indices
+        df_original, target_length=target_length, file_indices=file_indices
     )
     print(f"총 {len(cycle_dfs)}개의 사이클로 분할 완료")
     print(f"파일 인덱스: {sorted(cycle_dfs.keys())}")
@@ -410,22 +413,37 @@ def total_performance_plot(feature_cols, all_metrics, save_dir):
     stats_df.to_csv(os.path.join(save_dir, "performance_statistics.csv"), index=False)
 
 
-def performance_cycle(params: TestParams, model=None, device=None):
+def performance_cycle(
+    params: Union[TestParams, ReconstructParams],
+    model=None,
+    device=None,
+    is_full_reconstruct=False,
+):
 
-    train_pt = params.train_pt
+    # 1. 데이터 및 메타 정보 로드
+    train_tensor = None
+    val_tensor = None
+    test_tensor = None
+
     test_pt = params.test_pt
+    test_data = torch.load(test_pt)
+    test_tensor = test_data.tensors[0]
+
+    # 전체 데이터 복원인 경우
+    if is_full_reconstruct == True:
+        train_pt = params.train_pt
+        train_data = torch.load(train_pt)
+        train_tensor = train_data.tensors[0]
+        val_pt = params.val_pt
+        val_data = torch.load(val_pt)
+        val_tensor = val_data.tensors[0]
+
+    tensor_list = [train_tensor, val_tensor, test_tensor]
+    tensor_type_list = ["train", "val", "test"]
+
     scaler_path = params.scaler_path
     preprocessed_folder = params.preprocessed_path
     target_length = params.target_length
-    # train_pt = "cycle_preprocess/total_preprocessed/processed_minmax/train_data.pt"
-    # test_pt = "cycle_preprocess/total_preprocessed/processed_minmax/test_data.pt"
-    # scaler_path = "cycle_preprocess/total_preprocessed/processed_minmax/scaler.pkl"
-    # model_checkpoint_path = "checkpoints/case_7.1/MSE/DeepSC_battery_epoch"
-
-    # 1. 데이터 및 메타 정보 로드
-    train_data = torch.load(train_pt)
-    test_data = torch.load(test_pt)
-    test_tensor = test_data.tensors[0]
     scaler = joblib.load(scaler_path)
 
     feature_cols = params.feature_cols.copy()
@@ -441,88 +459,94 @@ def performance_cycle(params: TestParams, model=None, device=None):
     input_dim = test_tensor.shape[2]
 
     # 3. 전체 배터리 시계열 복원 및 성능 평가
-    if model is None:
-        print("모델을 전달해주세요!")
-        return
-    else:
-        with torch.no_grad():
-            output_tensor = model(test_tensor.to(device))
+    post_processed_cycles = None
 
-    # 복원된 사이클 얻기
-    post_processed_cycles = post_process(
-        tensor_data=output_tensor.cpu(),
-        scaler=scaler,
-        preprocessed_folder=preprocessed_folder,
-        target_length=target_length,
-    )
+    for idx, tensor_data in enumerate(tensor_list):
+        if model is None:
+            print("모델을 전달해주세요!")
+            return
+        else:
+            with torch.no_grad():
+                # 압축된 사이클 얻기
+                output_tensor = model(tensor_data.to(device))
 
-    print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
-
-    # 모든 사이클의 성능 지표를 저장할 딕셔너리
-    all_metrics = {
-        feature: {"MSE": [], "MAE": [], "RMSE": []} for feature in feature_cols
-    }
-
-    reconstruct_count = 0
-
-    # 원본 데이터 로드 및 성능 평가
-    for cycle_idx, reconstructed_df in post_processed_cycles.items():
-        reconstruct_count += 1
-        # 원본 데이터 로드 (길이 제각각)
-        original_path = os.path.join(
-            params.csv_origin_path, f"{int(cycle_idx):05d}.csv"
+        # 복원된 사이클 얻기
+        post_processed_cycles = post_process(
+            tensor_data=output_tensor.cpu(),
+            scaler=scaler,
+            preprocessed_folder=preprocessed_folder,
+            target_length=target_length,
+            tensor_type=tensor_type_list[idx],
         )
-        if os.path.exists(original_path):
-            original_df = pd.read_csv(original_path)
 
-            if reconstruct_count % 100 == 0:
-                print(
-                    f"사이클 {cycle_idx} 원본 데이터 로드 완료 (shape: {original_df.shape})"
-                )
+        print(f"사이클 복원 완료, 총 {len(post_processed_cycles)}개의 사이클")
 
-            # 특성 이름은 reconstructed_df의 컬럼 순서 사용
-            feature_cols = reconstructed_df.columns.tolist()
+        # 모든 사이클의 성능 지표를 저장할 딕셔너리
+        all_metrics = {
+            feature: {"MSE": [], "MAE": [], "RMSE": []} for feature in feature_cols
+        }
 
-            # reverse sampling (256 -> 각 사이클 원래 길이)
-            reversed_df = reverse_resample(reconstructed_df, len(original_df))
+        reconstruct_count = 0
 
-            # 사이클 데이터프레임을 CSV로 저장
-            reversed_df.to_csv(
-                os.path.join(
-                    save_reconstruction_dir, f"{int(cycle_idx):05d}_reconstructed.csv"
-                ),
-                index=False,
+        # 원본 데이터 로드 및 성능 평가
+        for cycle_idx, reconstructed_df in post_processed_cycles.items():
+            reconstruct_count += 1
+            # 원본 데이터 로드 (길이 제각각)
+            original_path = os.path.join(
+                params.csv_origin_path, f"{int(cycle_idx):05d}.csv"
             )
-            # print(f"사이클 {cycle_idx} 복원 완료 및 저장")
+            if os.path.exists(original_path):
+                original_df = pd.read_csv(original_path)
 
-            # 시각화 (100개당 하나)
-            if reconstruct_count % 100 == 0:
-                visualize_cycle_performance(
-                    original_df,
-                    reversed_df,
-                    feature_cols,
-                    save_performance_dir,
-                    cycle_idx,
-                )
-
-            # 성능 지표 계산 및 저장
-            metrics = calculate_performance_metrics(
-                original_df, reversed_df, feature_cols
-            )
-
-            # 각 feature의 metrics를 저장
-            for feature in feature_cols:
-                for metric_name in ["MSE", "MAE", "RMSE"]:
-                    all_metrics[feature][metric_name].append(
-                        metrics[feature][metric_name]
+                if reconstruct_count % 100 == 0:
+                    print(
+                        f"사이클 {cycle_idx} 원본 데이터 로드 완료 (shape: {original_df.shape})"
                     )
 
-        else:
-            print(
-                f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}"
-            )
+                # 특성 이름은 reconstructed_df의 컬럼 순서 사용
+                feature_cols = reconstructed_df.columns.tolist()
 
-    total_performance_plot(feature_cols, all_metrics, save_performance_dir)
+                # reverse sampling (256 -> 각 사이클 원래 길이)
+                reversed_df = reverse_resample(reconstructed_df, len(original_df))
+
+                # 사이클 데이터프레임을 CSV로 저장
+                reversed_df.to_csv(
+                    os.path.join(
+                        save_reconstruction_dir,
+                        f"{int(cycle_idx):05d}_reconstructed.csv",
+                    ),
+                    index=False,
+                )
+                # print(f"사이클 {cycle_idx} 복원 완료 및 저장")
+
+                # 시각화 (100개당 하나)
+                if is_full_reconstruct == False and reconstruct_count % 100 == 0:
+                    visualize_cycle_performance(
+                        original_df,
+                        reversed_df,
+                        feature_cols,
+                        save_performance_dir,
+                        cycle_idx,
+                    )
+
+                # 성능 지표 계산 및 저장
+                metrics = calculate_performance_metrics(
+                    original_df, reversed_df, feature_cols
+                )
+
+                # 각 feature의 metrics를 저장
+                for feature in feature_cols:
+                    for metric_name in ["MSE", "MAE", "RMSE"]:
+                        all_metrics[feature][metric_name].append(
+                            metrics[feature][metric_name]
+                        )
+
+            else:
+                print(
+                    f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}"
+                )
+
+    # total_performance_plot(feature_cols, all_metrics, save_performance_dir)
 
 
 # if __name__ == "__main__":

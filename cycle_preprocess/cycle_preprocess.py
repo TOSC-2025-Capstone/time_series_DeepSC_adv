@@ -103,7 +103,7 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     # resmapled_dfs를 모두 합쳐서 하나의 데이터프레임으로 변경
     resampled_total_df = pd.concat(resampled_dfs.values(), ignore_index=True)
 
-    # 4. 데이터를 train/val/test로 분할 (6:2:2)
+    # 4.2 데이터를 train/val/test로 분할 (6:2:2)
     train_data, val_data, test_data, train_indices, val_indices, test_indices = (
         split_and_transform_data(
             resampled_total_df,

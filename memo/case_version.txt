@@ -32,7 +32,7 @@ case 0.3 : case 9.1 기반으로 이상치 제거 기준을 기존 모든 사이
     이 때 z=7, 사이클 길이 = 512
 
 # 25.08.28
-case 0.4 : 이상치 제거 기준 0.3 + current 쪽 이상치 탐지는 카테고리컬하게 삭제하는 로직을 반영
+case 0.4 : 이상치 제거 기준 0.3 + current 관련 피쳐에 카테고리컬한 이상치 삭제 로직을 반영
 case 0.5 : case 0.4에서 threshold 0.05로 변경
 
 # 25.09.02
@@ -49,5 +49,57 @@ case 0.7 : case 0.6에서 Voltage_measured / Voltage_load 의 0값 제거
     Total removal rate: 0.42%
     Affected files: 320
     Hybrid outlier report saved
+case 11.1 : case 0.7에서 layer_num = 1로만 변경 - deepsc train_time[00:03<00:00, 15.60it/s]
+case 11.2 : case 11.1과 동일 - lstm train_time[00:06<00:00,  7.93it/s]
+case 11.3 : case 11.1과 동일 - gru train_time[]
+
+case 12는 case 9와 이상치 제거 로직 변경에 대한 비교군으로 설정함
+case 12.1 : case 0.7에서 변경한 것 없음
+case 12.2 : case 12.1과 동일 - lstm train_time[00:12<00:00,  3.99it/s]
+case 12.3 : acse 12.1과 동일 - gru train_time[00:11<00:00,  4.57it/s]
+
+case 13.1 : case 12.1에서 이상치 제거를 미진행함 - deepsc train_time[00:06<00:00,  7.93it/s]\
+case 13.2 : case 12.2에서 이상치 제거를 미진행함 - lstm train_time[00:12<00:00,  4.13it/s]
+case 13.3 : case 12.3에서 이상치 제거를 미진행함
 
 # case 별 파라미터 저장
+case 11.1
+model_params = {
+    # 공통
+    "input_dim": 6,  # 모든 모델의 입력 피쳐 수
+    "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
+    "num_layers": 1,  # 모든 모델의 레이어 수
+    "dropout": 0.1,
+    # lstm, gru, at_lstm
+    "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    "compressed_features": 6,  # lstm, gru 압축 피쳐 수
+    "reconstruct_len": 512,  # lstm, gru, at_lstm 모델 출력 sequence length
+    "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
+    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
+    # deepsc
+    "dff": 512,  # deepsc 모델 최대 노드 수
+    "num_heads": 4,  # deepsc 모델 헤드 수
+    "d_model": 512,  # deepsc 모델 입력 sequence length
+    "max_len": 512,  # deepsc 모델 출력 sequence length
+    "d_comp": 6,  # deepsc 압축 피쳐 수
+}
+case 12.1
+model_params = {
+    # 공통
+    "input_dim": 6,  # 모든 모델의 입력 피쳐 수
+    "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
+    "num_layers": 2,  # 모든 모델의 레이어 수
+    "dropout": 0.1,
+    # lstm, gru, at_lstm
+    "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    "compressed_features": 6,  # lstm, gru 압축 피쳐 수
+    "reconstruct_len": 512,  # lstm, gru, at_lstm 모델 출력 sequence length
+    "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
+    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
+    # deepsc
+    "dff": 512,  # deepsc 모델 최대 노드 수
+    "num_heads": 4,  # deepsc 모델 헤드 수
+    "d_model": 512,  # deepsc 모델 입력 sequence length
+    "max_len": 512,  # deepsc 모델 출력 sequence length
+    "d_comp": 6,  # deepsc 압축 피쳐 수
+}

@@ -1,39 +1,37 @@
 # -*- coding: utf-8 -*-
-import os
 import argparse
-import time
 import json
+import os
+import pdb
+import random
+import time
+
+import numpy as np
 
 # from pandas.compat.pyarrow import pa
 import torch
-import random
 import torch.nn as nn
-import torch
-import numpy as np
-from models.transceiver import DeepSC
-from models.mutual_info import Mine
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import pdb
-
-from models.lstm import LSTMDeepSC
-from models.gru import GRUDeepSC
-from models.attention_lstm import LSTMAttentionDeepSC
-from models.transceiver import DeepSC
 
 from cycle_preprocess.cycle_preprocess import cycle_preprocess
-from train import train_model
-
-from performance_cycle import performance_cycle
+from models.attention_lstm import LSTMAttentionDeepSC
+from models.gru import GRUDeepSC
+from models.lstm import LSTMDeepSC
+from models.mutual_info import Mine
+from models.transceiver import DeepSC
+from parameters.model_parameters import *
 
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.parameters import *
-from parameters.model_parameters import *
+from performance_cycle import performance_cycle
+from train import train_model
 
 # 파라미터 클래스 가져오기
 preprocess_params = PreprocessParams()
 train_params = TrainParams()
 test_params = TestParams()
+recons_params = ReconstructParams()
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--data-dir', default='data/train_data.pkl', type=str)
@@ -100,11 +98,16 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"모델 로드 실패: {e}")
 
-    # test + result figuring
-    print("========================== test ==========================\n")
+    # performance + result figuring
+    print("========================== performance ==========================\n")
     model.eval()
     if model.training:
         print("현재 모델은 training 모드입니다.")
     else:
         print("현재 모델은 evaluation (eval) 모드입니다.")
-    performance_cycle(params=test_params, model=model, device=device)
+    # performance_cycle(params=test_params, model=model, device=device)
+
+    print("========================== full reconstruction ==========================\n")
+    performance_cycle(
+        params=recons_params, model=model, device=device, is_full_reconstruct=True
+    )
