@@ -377,9 +377,9 @@ class DeepSC(nn.Module):
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        channel_syms = channel_encoded
+        # channel_syms = channel_encoded
         # channel_syms = self.channels.AWGN(channel_encoded, 0.1)
-        # channel_syms = self.channels.Rayleigh(channel_encoded, 0.1)
+        channel_syms = self.channels.Rayleigh(channel_encoded, 0.1)
         # channel_syms = self.channels.Rician(channel_encoded, 0.1)
 
         # 5단계: 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)

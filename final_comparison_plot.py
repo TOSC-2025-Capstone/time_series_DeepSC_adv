@@ -106,9 +106,9 @@ if __name__ == "__main__":
     # 예시 사용법
     prefix = "./results/performance_test"
     csv_paths = [
-        prefix + "/case13.1/no_channel_deepsc_MSE/performance_statistics.csv",
-        prefix + "/case13.2/no_channel_lstm_MSE/performance_statistics.csv",
-        prefix + "/case13.3/no_channel_gru_MSE/performance_statistics.csv",
+        prefix + "/case15.1/rayleigh_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case15.2/rayleigh_lstm_MSE/performance_statistics.csv",
+        prefix + "/case15.3/rayleigh_gru_MSE/performance_statistics.csv",
     ]
     # csv_paths = [
     #     prefix + "/case7.1/no_channel_deepsc_MSE/performance_statistics.csv",
@@ -116,21 +116,21 @@ if __name__ == "__main__":
     #     prefix + "/case9.1/no_channel_deepsc_MSE/performance_statistics.csv",
     # ]
 
-    filename = "01091.csv"
+    filename = "01081.csv"
     save_path = (
         f"./final_comparison_plots/case{str(case_index).split('.')[0]}/{filename}/"
     )
     # case_labels = ["DeepSC", "GRU", "LSTM"]
-    case_labels = ["13.1", "13.2", "13.3"]
+    case_labels = ["15.1", "15.2", "15.3"]
     final_statistic_comparison_plot(
-        csv_paths, case_labels, save_path=save_path + "comparison_plots"
+        csv_paths, case_labels, save_path=save_path + f"{filename}_comparison_plots"
     )
 
     plot_feature_comparison(
         original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-        deepsc_path="./reconstruction/case13.1/reconstructed_no_channel_deepsc_MSE",
-        lstm_path="./reconstruction/case13.2/reconstructed_no_channel_lstm_MSE",
-        gru_path="./reconstruction/case13.3/reconstructed_no_channel_gru_MSE",
+        deepsc_path="./reconstruction/case15.1/reconstructed_rayleigh_deepsc_MSE",
+        lstm_path="./reconstruction/case15.2/reconstructed_rayleigh_lstm_MSE",
+        gru_path="./reconstruction/case15.3/reconstructed_rayleigh_gru_MSE",
         # deepsc_path="./reconstruction/case7.1/reconstructed_no_channel_deepsc_MSE",
         # lstm_path="./reconstruction/case8.1/reconstructed_no_channel_deepsc_MSE",
         # gru_path="./reconstruction/case9.1/reconstructed_no_channel_deepsc_MSE",

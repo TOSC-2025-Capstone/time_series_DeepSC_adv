@@ -16,14 +16,15 @@ import pandas as pd
 import pickle
 
 from parameters.parameters import TrainParams, save_fig_dir, LossType
+import csv
+import time
+from utils import log_epoch_stats_csv, plot_training_logs
 
 """
-# train_model 
+# train_model
 
 모델과 파라미터를 입력받아 학습을 진행하는 함수
 """
-# params = TrainDeepSCParams()
-
 
 # 기본값으로 train parameter 셋을 그대로 입력함 , model, device만 전달
 def train_model(
@@ -92,7 +93,22 @@ def train_model(
     best_val_loss = float("inf")
     os.makedirs(model_save_path, exist_ok=True)
 
+    # === epoch time 기록 리스트 ===
+    epoch_times = []
+
+    # === 로그 CSV 파일 경로 설정 ===
+    os.makedirs(save_fig_dir, exist_ok=True)
+    csv_file = os.path.join(save_fig_dir, "epoch_stats.csv")
+
+    # CSV 헤더 초기화
+    with open(csv_file, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Epoch", "Time(sec)", "AvgTime(sec)",
+                            "TrainLoss", "ValLoss", "BestValLoss", "LR"])
+
     for epoch in range(num_epochs):
+        start_time = time.time()  # 시작 시각 기록
+
         # 학습 모드
         model.train()
         total_loss = 0
@@ -122,6 +138,7 @@ def train_model(
         model.eval()
         val_loss = 0
         with torch.no_grad():
+            # batch [train_batch_size, target_length(reshaped cycle len), d_comp]
             for batch in val_loader:
                 batch = batch.to(device)
                 output = model(batch)
@@ -142,6 +159,14 @@ def train_model(
             print(
                 f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
             )
+
+        # === epoch 시간 측정 및 로깅 (CSV 저장) ===
+        end_time = time.time()
+        lr_now = optimizer.param_groups[0]["lr"]
+        epoch_times = log_epoch_stats_csv(
+            start_time, end_time, epoch + 1, epoch_times, csv_file,
+            avg_train_loss, avg_val_loss, best_val_loss, lr_now
+        )
 
         # === 정규화된 입력과 output 비교 plot (3개 배치만) ===
         # 0, 40, 80
@@ -188,6 +213,9 @@ def train_model(
         print(f"  Best Val Loss: {best_val_loss:.6f}")
         print(f'  Learning Rate: {optimizer.param_groups[0]["lr"]:.6f}')
     print("학습 완료!")
+
+    # === 학습 로그 시각화 ===
+    plot_training_logs(csv_file, save_fig_dir)
 
 
 # if __name__ == "__main__":

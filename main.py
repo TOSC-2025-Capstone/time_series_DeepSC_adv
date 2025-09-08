@@ -100,12 +100,13 @@ if __name__ == "__main__":
 
     # performance + result figuring
     print("========================== performance ==========================\n")
-    model.eval()
-    if model.training:
-        print("현재 모델은 training 모드입니다.")
-    else:
-        print("현재 모델은 evaluation (eval) 모드입니다.")
-    # performance_cycle(params=test_params, model=model, device=device)
+    if is_skip_performance == False:
+        model.eval()
+        if model.training:
+            print("현재 모델은 training 모드입니다.")
+        else:
+            print("현재 모델은 evaluation (eval) 모드입니다.")
+        performance_cycle(params=test_params, model=model, device=device, is_full_reconstruct=False)
 
     print("========================== full reconstruction ==========================\n")
     performance_cycle(

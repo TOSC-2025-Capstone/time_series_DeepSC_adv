@@ -5,7 +5,7 @@ Created on Mon Jun  1 09:47:54 2020
 @author: HQ Xie
 utils.py
 """
-import os 
+import os
 import math
 import torch
 import time
@@ -14,6 +14,9 @@ from models.mutual_info import sample_batch, mutual_information
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+import csv
+import time
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -27,14 +30,14 @@ class LabelSmoothing(nn.Module):
         self.smoothing = smoothing
         self.size = size
         self.true_dist = None
-        
+
     def forward(self, x, target):
         assert x.size(1) == self.size
         true_dist = x.data.clone()
         # 将数组全部填充为某一个值
-        true_dist.fill_(self.smoothing / (self.size - 2)) 
-        # 按照index将input重新排列 
-        true_dist.scatter_(1, target.data.unsqueeze(1), self.confidence) 
+        true_dist.fill_(self.smoothing / (self.size - 2))
+        # 按照index将input重新排列
+        true_dist.scatter_(1, target.data.unsqueeze(1), self.confidence)
         # 第一行加入了<strat> 符号，不需要加入计算
         true_dist[:, self.padding_idx] = 0 #
         mask = torch.nonzero(target.data == self.padding_idx)
@@ -54,7 +57,7 @@ class NoamOpt:
         self.model_size = model_size
         self._rate = 0
         self._weight_decay = 0
-        
+
     def step(self):
         "Update parameters and rate"
         self._step += 1
@@ -67,41 +70,41 @@ class NoamOpt:
         self._weight_decay = weight_decay
         # update weights
         self.optimizer.step()
-        
+
     def rate(self, step = None):
         "Implement `lrate` above"
         if step is None:
             step = self._step
-            
+
         # if step <= 3000 :
         #     lr = 1e-3
-            
+
         # if step > 3000 and step <=9000:
         #     lr = 1e-4
-             
+
         # if step>9000:
         #     lr = 1e-5
-         
+
         lr = self.factor * \
             (self.model_size ** (-0.5) *
             min(step ** (-0.5), step * self.warmup ** (-1.5)))
-  
+
         return lr
-    
+
 
         # return lr
-    
+
     def weight_decay(self, step = None):
         "Implement `lrate` above"
         if step is None:
             step = self._step
-            
+
         if step <= 3000 :
             weight_decay = 1e-3
-            
+
         if step > 3000 and step <=9000:
             weight_decay = 0.0005
-             
+
         if step>9000:
             weight_decay = 1e-4
 
@@ -141,12 +144,12 @@ class Channels():
         return Rx_sig
 
 def PowerNormalize(x):
-    
+
     x_square = torch.mul(x, x)
     power = torch.mean(x_square).sqrt()
     if power > 1:
         x = torch.div(x, power)
-    
+
     return x
 
 def SNR_to_noise(snr):
@@ -155,102 +158,68 @@ def SNR_to_noise(snr):
 
     return noise_std
 
-# 수정 필요 07-17
-def compare_original_reconstructed(model_type="deepsc"):
+
+# ==================== train utils ======================
+# train P1 : epoch 시간 + 로스 로그 CSV 파일 저장 함수
+def log_epoch_stats_csv(start_time, end_time, epoch, all_times, csv_file,
+                        train_loss, val_loss, best_val_loss, lr):
+    epoch_time = end_time - start_time
+    all_times.append(epoch_time)
+    avg_time = sum(all_times) / len(all_times)
+
+    row = [epoch, f"{epoch_time:.2f}", f"{avg_time:.2f}",
+            f"{train_loss:.6f}", f"{val_loss:.6f}", f"{best_val_loss:.6f}", f"{lr:.6f}"]
+
+    # CSV 파일에 append
+    with open(csv_file, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(row)
+
+    # 콘솔에도 출력
+    print(f"[Epoch {epoch}] Time: {epoch_time:.2f} sec | Avg: {avg_time:.2f} sec | "
+            f"Train: {train_loss:.6f} | Val: {val_loss:.6f} | Best: {best_val_loss:.6f} | LR: {lr:.6f}")
+
+    return all_times
+
+# train P2 : train/val loss의 time 변화별 plot
+def plot_training_logs(csv_file, save_dir):
     """
-    원본 데이터와 복원 데이터를 비교하는 함수
+    epoch_stats.csv 파일을 읽어 학습 곡선을 플롯하고 저장하는 함수
+    Best Val Loss 발생 시점을 세로선으로 표시
     """
-    print(f"=== {model_type.upper()} 원본 vs 복원 데이터 비교 ===")
-    
-    # 1. 원본 데이터 로드
-    df_orig = pd.read_csv('data_handling/merged/B0005.csv')
-    feature_cols = ['Voltage_measured', 'Current_measured', 'Temperature_measured', 'Current_load', 'Voltage_load', 'Time']
+    df = pd.read_csv(csv_file)
 
-    # 2. 복원 데이터 로드 (예: 첫 window)
-    save_dir = f'reconstructed_{model_type}'
-    df_recon = pd.read_csv(f'{save_dir}/B0005_window0.csv')
+    # Best Val Loss 발생 Epoch 찾기
+    best_idx = df["ValLoss"].idxmin()
+    best_epoch = int(df.loc[best_idx, "Epoch"])
+    best_val_loss = df.loc[best_idx, "ValLoss"]
 
-    # 3. window의 시작 인덱스(예: 0)와 window_size(예: 128) 지정
-    window_start = 0
-    window_size = df_recon.shape[0]
-    df_orig_window = df_orig[feature_cols].iloc[window_start:window_start+window_size].reset_index(drop=True)
-
-    # 4. 비교 시각화
-    plt.figure(figsize=(15, 10))
-    for i, col in enumerate(feature_cols):
-        plt.subplot(2, 3, i+1)
-        plt.plot(df_orig_window[col], label='Original')
-        plt.plot(df_recon[col], label=f'{model_type.upper()} Reconstructed')
-        plt.title(col)
-        plt.legend()
-        plt.grid(True)
-    plt.suptitle(f'{model_type.upper()} vs Original Comparison')
+    # 1. Train/Val Loss Plot
+    plt.figure(figsize=(8, 6))
+    plt.plot(df["Epoch"], df["TrainLoss"], label="Train Loss", marker="o")
+    plt.plot(df["Epoch"], df["ValLoss"], label="Val Loss", marker="o")
+    plt.axvline(x=best_epoch, color="red", linestyle="--", label=f"Best Val (Epoch {best_epoch})")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Train vs Val Loss")
+    plt.legend()
+    plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(save_dir, "loss_curve.png"), dpi=200)
+    plt.close()
 
+    # 2. Epoch Time Plot
+    plt.figure(figsize=(8, 6))
+    plt.plot(df["Epoch"], df["Time(sec)"], label="Epoch Time", color="orange", marker="o")
+    plt.plot(df["Epoch"], df["AvgTime(sec)"], label="Avg Time", color="green", linestyle="--")
+    plt.axvline(x=best_epoch, color="red", linestyle="--", label=f"Best Val (Epoch {best_epoch})")
+    plt.xlabel("Epoch")
+    plt.ylabel("Time (sec)")
+    plt.title("Epoch Processing Time")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "time_curve.png"), dpi=200)
+    plt.close()
 
-# 수정 필요 07-17
-def compare_all_models():
-    """
-    모든 모델의 성능을 비교하는 함수
-    """
-    print("=== 모든 모델 성능 비교 ===")
-    
-    models = ["deepsc", "lstm", "gru"]
-    results = {}
-    
-    for model_type in models:
-        print(f"\n{model_type.upper()} 모델 테스트 중...")
-        try:
-            # 간단한 테스트를 위해 1개 샘플만 사용
-            test_data = torch.load('model/preprocessed_data/test_data.pt')
-            test_tensor = test_data.tensors[0]
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            
-            input_dim = test_tensor.shape[2]
-            window_size = test_tensor.shape[1]
-            
-            model, checkpoint_path = create_model(model_type, input_dim, window_size, device)
-            if os.path.exists(checkpoint_path):
-                model.load_state_dict(torch.load(checkpoint_path, map_location=device))
-            model.eval()
-            
-            # 테스트
-            with torch.no_grad():
-                input_data = test_tensor[0].unsqueeze(0).to(device)
-                output = model(input_data)
-                mse = nn.MSELoss()(output, input_data).item()
-                
-                if model_type == "deepsc":
-                    encoded = model.encoder(input_data, src_mask=None)
-                    channel_encoded = model.channel_encoder(encoded)
-                    compressed_size = channel_encoded.numel()
-                else:
-                    compression_ratio = model.get_compression_ratio()
-                    compressed_size = int(input_data.numel() * compression_ratio)
-                
-                original_size = input_data.numel()
-                compression_ratio = compressed_size / original_size
-                
-                results[model_type] = {
-                    'mse': mse,
-                    'compression_ratio': compression_ratio,
-                    'compression_efficiency': (1 - compression_ratio) * 100
-                }
-                
-                print(f"{model_type.upper()}: MSE={mse:.6f}, 압축률={compression_ratio:.3f}, 효율성={(1-compression_ratio)*100:.1f}%")
-                
-        except Exception as e:
-            print(f"{model_type.upper()} 모델 테스트 실패: {e}")
-            results[model_type] = {'error': str(e)}
-    
-    # 결과 요약
-    print(f"\n=== 모델 비교 결과 요약 ===")
-    for model_type, result in results.items():
-        if 'error' not in result:
-            print(f"{model_type.upper()}:")
-            print(f"  MSE: {result['mse']:.6f}")
-            print(f"  압축률: {result['compression_ratio']:.3f}")
-            print(f"  압축 효율성: {result['compression_efficiency']:.1f}%")
-        else:
-            print(f"{model_type.upper()}: 오류 - {result['error']}")
+    print(f"학습 로그 플롯 저장 완료: {save_dir}")

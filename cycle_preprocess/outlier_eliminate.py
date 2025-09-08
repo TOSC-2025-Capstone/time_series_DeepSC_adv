@@ -9,7 +9,11 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import TensorDataset
 from tqdm import tqdm
 
-from parameters.parameters import is_skip_0_in_voltage, is_skip_outlier_eliminate
+from parameters.parameters import (
+    case_index,
+    is_skip_0_in_voltage,
+    is_skip_outlier_eliminate,
+)
 
 from .methods import *
 
@@ -379,7 +383,7 @@ def process_and_save_hybrid_outlier_data(
     if outlier_report is not None:
         os.makedirs("./analysis/outlier_reports", exist_ok=True)
         outlier_report.to_csv(
-            f"./analysis/outlier_reports/hybrid_outlier_report_z={outlier_threshold}.csv",
+            f"./analysis/outlier_reports/hybrid_outlier_report_z={outlier_threshold}_case_{case_index}.csv",
             index=False,
         )
         print(f"Hybrid outlier report saved")

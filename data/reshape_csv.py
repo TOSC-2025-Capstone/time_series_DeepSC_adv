@@ -3,20 +3,26 @@ import pdb
 
 import pandas as pd
 
-from parameters.parameters import case_index, eda_merged_path, save_reconstruct_dir
-
-# eda_readme_files = glob("./original_dataset/extra_infos/README_*.txt")
-# eda_merged_path = f"./data/merged_recons/case_{case_index}/"
-# eda_output_prefix_path = f"./data/EDA_images_recons/case_{case_index}/"
+from parameters.parameters import case_index, eda_merged_path, save_reconstruct_dir, eda_target_type
 
 # 메타데이터 로딩
 meta_df = pd.read_csv("./data/discharge_metadata_with_cycle_idx.csv")
 
 # 데이터 폴더 경로
-data_dir = "./data/full_recons/case_11.2/"
+## 복원본으로 만들때
+data_dir = f"./data/full_recons/case_{case_index}/"
+# outlier cut version
+if eda_target_type == "outlier_cut":
+    data_dir = f"./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512/"
+
 
 # 결과 저장 폴더 (없으면 생성)
+## 복원본으로 만들때
 output_dir = eda_merged_path
+## 이상치 제거본으로 만들 때
+if eda_target_type == "outlier_cut":
+    output_dir = f"./data/merged_outlier_cut/case_{case_index}/"
+
 os.makedirs(output_dir, exist_ok=True)
 
 
@@ -29,6 +35,7 @@ for battery_id, group in meta_df.groupby("battery_id"):
         cycle_idx = row["cycle_idx"]
         file_path = os.path.join(
             data_dir, filename.split(".")[0] + "_reconstructed.csv"
+                if eda_target_type != "outlier_cut" else filename.split(".")[0] + ".csv"
         )
 
         if os.path.exists(file_path):

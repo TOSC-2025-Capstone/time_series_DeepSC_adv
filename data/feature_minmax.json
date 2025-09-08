@@ -1,0 +1,22 @@
+{
+    "Voltage_measured": {
+        "min": 1.7370300333706354,
+        "max": 4.4683580435456935
+    },
+    "Current_measured": {
+        "min": -4.038795954400871,
+        "max": 0.0304612723211415
+    },
+    "Temperature_measured": {
+        "min": 2.90475616543561,
+        "max": 69.86974573152932
+    },
+    "Current_load": {
+        "min": -2.0,
+        "max": 4.001
+    },
+    "Voltage_load": {
+        "min": 0.0,
+        "max": 4.485
+    }
+}

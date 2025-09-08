@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utils import Channels
 
 # 시퀀스, 피쳐 압축
 class GRUCompressor_Both(nn.Module):
@@ -9,7 +10,7 @@ class GRUCompressor_Both(nn.Module):
         self.gru = nn.GRU(input_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
         self.pool = nn.AdaptiveAvgPool1d(compressed_len)
         self.feature_compress = nn.Linear(hidden_dim, compressed_features)
-        
+
     def forward(self, x):
         # x: [batch, 128, 6]
         gru_out, _ = self.gru(x)  # [batch, 128, hidden_dim]
@@ -29,7 +30,7 @@ class GRUDecompressor_Both(nn.Module):
         self.upsample = nn.Upsample(size=reconstruct_len, mode='linear', align_corners=False)
         self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
         self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
-        
+
     def forward(self, x):
         # x: [batch, 64, 3]
         feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
@@ -57,24 +58,26 @@ class GRUDeepSC(nn.Module):
         self.compressed_features = p.get("compressed_features", compressed_features)
         self.num_layers = p.get("num_layers", num_layers)
         self.dropout = p.get("dropout", dropout)
-        
+        self.channels = Channels()
+
         # 올바른 파라미터 전달
         self.encoder = GRUCompressor_Both(
-            self.input_dim, self.hidden_dim, 
-            self.compressed_len, self.compressed_features, 
+            self.input_dim, self.hidden_dim,
+            self.compressed_len, self.compressed_features,
             self.num_layers, self.dropout
         )
         self.decoder = GRUDecompressor_Both(
-            self.compressed_features, self.hidden_dim, 
-            self.seq_len, self.input_dim, 
+            self.compressed_features, self.hidden_dim,
+            self.seq_len, self.input_dim,
             self.num_layers, self.dropout
         )
-        
+
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        reconstructed = self.decoder(compressed)  # [batch, seq_len, input_dim]
+        compressed_on_channel = self.channels.Rayleigh(compressed, 0.1)
+        reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
         return reconstructed
-    
+
     def get_compression_ratio(self):
         """압축률 계산"""
         original_size = self.input_dim * self.seq_len

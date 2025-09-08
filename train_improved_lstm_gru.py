@@ -17,6 +17,10 @@ from models.lstm_gru_models import (
     LSTMAttentionDeepSC,
 )
 import pdb
+import csv
+import time
+
+from utils import log_epoch_stats_csv, plot_training_logs
 
 
 def train_improved_model(model_type, num_epochs=80, batch_size=32, learning_rate=1e-4):
@@ -123,6 +127,7 @@ def train_improved_model(model_type, num_epochs=80, batch_size=32, learning_rate
     # 6. 학습 기록
     train_losses = []
     val_losses = []
+    epoch_times = [] # 0906 추가
     best_val_loss = float("inf")
     stop_count = 0
 
@@ -133,6 +138,8 @@ def train_improved_model(model_type, num_epochs=80, batch_size=32, learning_rate
     print(f"압축률: {model.get_compression_ratio():.3f}")
 
     for epoch in range(num_epochs):
+        start_time = time.perf_counter()
+
         # 학습 모드
         model.train()
         train_loss = 0.0
@@ -218,6 +225,10 @@ def train_improved_model(model_type, num_epochs=80, batch_size=32, learning_rate
         avg_val_loss = val_loss / len(val_loader)
         val_losses.append(avg_val_loss)
 
+        # === 에포크 시간 기록 0906 추가 ===
+        epoch_time = time.perf_counter() - start_time
+        epoch_times.append(epoch_time)
+
         # 학습률 스케줄러 업데이트
         scheduler.step(avg_val_loss)
 
@@ -251,6 +262,18 @@ def train_improved_model(model_type, num_epochs=80, batch_size=32, learning_rate
             )
             torch.save(model.state_dict(), checkpoint_path)
             print(f"중간 체크포인트 저장: {checkpoint_path}")
+
+    # === 학습 로그 저장 ===
+    csv_file = os.path.join(checkpoint_dir, "epoch_stats.csv")
+    log_epoch_stats_csv(
+        csv_file=csv_file,
+        train_losses=train_losses,
+        val_losses=val_losses,
+        times=epoch_times,
+    )
+
+    # === 학습 로그 시각화 ===
+    plot_training_logs(csv_file, checkpoint_dir)
 
     return model, train_losses, val_losses
 

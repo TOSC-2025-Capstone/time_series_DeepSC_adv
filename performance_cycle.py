@@ -103,6 +103,7 @@ def split_to_cycles(df_original, target_length=None, file_indices=None):
     n_cycles = len(df_original) // target_length
     cycle_dfs = {}
 
+
     if file_indices is None or len(file_indices) != n_cycles:
         print(
             "경고: 유효한 file_indices가 제공되지 않았습니다. 순차적 인덱스를 사용합니다."
@@ -286,8 +287,8 @@ def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
     epsilon = 1e-9  # 0으로 나누기 방지
 
     for col in feature_cols:
-        true = original_df[col].values
-        pred = reconstructed_df[col].values
+        true = original_df[col].values # 원본 df
+        pred = reconstructed_df[col].values # 복원본 df
 
         mse = np.mean((true - pred) ** 2)
         mae = np.mean(np.abs(true - pred))
@@ -438,8 +439,14 @@ def performance_cycle(
         val_data = torch.load(val_pt)
         val_tensor = val_data.tensors[0]
 
-    tensor_list = [train_tensor, val_tensor, test_tensor]
-    tensor_type_list = ["train", "val", "test"]
+    tensor_list = None
+    tensor_type_list = None
+    if is_full_reconstruct:
+        tensor_list = [train_tensor, val_tensor, test_tensor]
+        tensor_type_list = ["train", "val", "test"]
+    else:
+        tensor_list = [test_tensor]
+        tensor_type_list = ["test"]
 
     scaler_path = params.scaler_path
     preprocessed_folder = params.preprocessed_path
@@ -546,7 +553,8 @@ def performance_cycle(
                     f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}"
                 )
 
-    # total_performance_plot(feature_cols, all_metrics, save_performance_dir)
+    if is_full_reconstruct == False:
+        total_performance_plot(feature_cols, all_metrics, save_performance_dir)
 
 
 # if __name__ == "__main__":

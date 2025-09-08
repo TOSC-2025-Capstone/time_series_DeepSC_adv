@@ -62,7 +62,9 @@ def load_and_filter_metadata(exclude_batteries=None):
         condition = discharge_data["battery_id"].str.contains(
             "|".join(exclude_batteries)
         )
+        # 여기 (exclude batteries 반전)
         discharge_data = discharge_data[~condition]
+        # discharge_data = discharge_data[condition]
 
     print(f"\n제거 후 discharge 데이터 개수: {len(discharge_data)}")
     print(
@@ -403,7 +405,9 @@ def split_and_transform_data(
     # 검증 세트 선택
     n_val = int(n_files * val_ratio)
     val_file_idx = np.random.choice(remaining_idx, size=n_val, replace=False)
+    # 여기 (학습 비율 train 100%)
     train_file_idx = np.array([i for i in remaining_idx if i not in val_file_idx])
+    # train_file_idx = all_indices
 
     # 각 세트의 파일 인덱스 추출
     test_file_indices = [file_indices[i] for i in test_file_idx]

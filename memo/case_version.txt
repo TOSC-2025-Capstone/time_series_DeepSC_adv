@@ -62,6 +62,20 @@ case 13.1 : case 12.1에서 이상치 제거를 미진행함 - deepsc train_time
 case 13.2 : case 12.2에서 이상치 제거를 미진행함 - lstm train_time[00:12<00:00,  4.13it/s]
 case 13.3 : case 12.3에서 이상치 제거를 미진행함
 
+# 25.09.04
+case 14.1 : case 12.1과 동일한 상태에서, train_data 100%, val/test 각각 20%로 변경, 압축률 0%로 변경(원본 그대로), 이상치 제거 미진행 적용 후 학습 진행
+case 14.2 : case 14.1에서 이상치 제거만 적용
+case 14.3 : case 14.2에서 25 26 27 28 4개의 배터리 ID 파일들만 모아서 학습 진행
+
+# 25.09.07
+case 15.1 : case 10(z-score scaling, num_layers 2, dropout 0.1, d_comp 3, ...) 에서 이상치 제거 0.7 + rayleigh fading 채널 적용 (var 0.1) deepsc
+case 15.2 : 15.1에서 LSTM
+case 15.3 : 15.1에서 GRU
+=> 생각보다 DeepSC 성능 방어가 잘 안됨... parameter 최적화 필요해보임
+
+
+
+
 # case 별 파라미터 저장
 case 11.1
 model_params = {
@@ -103,3 +117,28 @@ model_params = {
     "max_len": 512,  # deepsc 모델 출력 sequence length
     "d_comp": 6,  # deepsc 압축 피쳐 수
 }
+
+case 15
+model_params = {
+    # 공통
+    "input_dim": 6,  # 모든 모델의 입력 피쳐 수
+    "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
+    "num_layers": 2,  # 모든 모델의 레이어 수
+    "dropout": 0.1,
+    # lstm, gru, at_lstm
+    "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    "compressed_features": 3,  # lstm, gru 압축 피쳐 수
+    "reconstruct_len": 512,  # lstm, gru, at_lstm 모델 출력 sequence length
+    "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
+    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
+    # deepsc
+    "dff": 512,  # deepsc 모델 최대 노드 수
+    "num_heads": 4,  # deepsc 모델 헤드 수
+    "d_model": 512,  # deepsc 모델 입력 sequence length
+    "max_len": 512,  # deepsc 모델 출력 sequence length
+    "d_comp": 3,  # deepsc 압축 피쳐 수
+}
+model_type = ModelType.DEEPSC.value  # default
+loss_type = LossType.MSE.value  # MSE로 설정
+channel_type = ChannelType.RAYLEIGH.value  # no_channel 선택
+scaler_type = ScalerType.ZSCORE.value  # minmax 선택
