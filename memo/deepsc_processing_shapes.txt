@@ -1,0 +1,25 @@
+
+# 입력
+(Pdb) x.shape
+torch.Size([32, 512, 6])
+# 1단계
+(Pdb) encoded.shape
+torch.Size([32, 512, 128])
+# 2단계
+(Pdb) compressed.shape
+torch.Size([32, 128, 128])
+# 3단계
+(Pdb) channel_encoded.shape
+torch.Size([32, 128, 3])
+# 4단계
+(Pdb) channel_syms.shape
+torch.Size([32, 128, 3])
+# 5단계
+(Pdb) channel_decoded.shape
+torch.Size([32, 128, 128])
+# 6단계
+(Pdb) output.shape
+torch.Size([32, 128, 6])
+# 7단계
+(Pdb) output.shape
+torch.Size([32, 512, 6])

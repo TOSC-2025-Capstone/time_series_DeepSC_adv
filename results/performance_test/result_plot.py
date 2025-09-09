@@ -15,7 +15,7 @@ def find_case_folders(base_path: str) -> List[Path]:
     casex.y 패턴의 폴더들을 찾아서 정렬된 리스트로 반환
     """
     base_path = Path(base_path)
-    case_pattern = re.compile(r"^case\d+\.\d+$")
+    case_pattern = re.compile(r"^case\d+(\.\d+)+$")
 
     case_folders = []
     for item in base_path.iterdir():
@@ -41,12 +41,20 @@ def load_all_performance_data(base_path: str) -> pd.DataFrame:
     all_data = []
 
     for case_folder in case_folders:
-        # if (
-        #     str(case_folder).split(".")[0] != "case0"
-        # ) and (str(case_folder).split(".")[1] != "1"):
-        if str(case_folder) != "case9.0" and str(case_folder).split(".")[0] != "case0":
+        if str(case_folder).split(".")[0] != "case15":
             continue
-        csv_path = case_folder / "no_channel_deepsc_MSE/performance_statistics.csv"
+        csv_midname = None
+
+        model_case_num = str(case_folder).split(".")[1]
+
+        if "1" in model_case_num :
+            csv_midname = "deepsc"
+        elif model_case_num == "2" :
+            csv_midname = "lstm"
+        elif model_case_num == "3" :
+            csv_midname = "gru"
+
+        csv_path = case_folder / f"rayleigh_{csv_midname}_MSE/performance_statistics.csv"
 
         if csv_path.exists():
             try:
@@ -267,7 +275,7 @@ def main():
         # 비교 그래프 생성
         print("\nGenerating comparison plots...")
         create_comparison_plots(
-            df, save_path="./analysis_results/performance_comparison_numbering_0.png"
+            df, save_path="./analysis_results/performance_comparison.png"
         )
 
         # 히트맵 생성

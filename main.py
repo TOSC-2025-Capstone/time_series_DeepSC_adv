@@ -51,6 +51,7 @@ def setup_seed(seed):
 
 
 if __name__ == "__main__":
+    print(f"========================== case_{case_index} start ==========================\n")
     setup_seed(42)
 
     print("========================== preprocess ==========================\n")
@@ -109,6 +110,8 @@ if __name__ == "__main__":
         performance_cycle(params=test_params, model=model, device=device, is_full_reconstruct=False)
 
     print("========================== full reconstruction ==========================\n")
-    performance_cycle(
-        params=recons_params, model=model, device=device, is_full_reconstruct=True
-    )
+
+    if is_skip_full_reconstruct == False :
+        performance_cycle(
+            params=recons_params, model=model, device=device, is_full_reconstruct=True
+        )

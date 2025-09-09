@@ -17,8 +17,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
 # True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
-# is_preprocessed = True
-is_preprocessed = False
+is_preprocessed = True
+# is_preprocessed = False
 
 # 이상치 제거를 진행하지 않게 만듦
 # is_skip_outlier_eliminate = True
@@ -31,6 +31,10 @@ is_trained = False
 # 성능평가를 진행하지 않게 만듦
 # is_skip_performance = True
 is_skip_performance = False
+
+# 최종 전체 복원을 진행하지 않게 만듦
+is_skip_full_reconstruct = True
+# is_skip_full_reconstruct = False
 
 # voltage 0값 제거 진행하지 않게 만듦
 # is_skip_0_in_voltage = True
@@ -56,7 +60,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = 15.3
+case_index = "15.1.11"
 
 
 # 모델 종류
@@ -99,7 +103,7 @@ CHANNEL_TYPES = [
 SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
 # 현재 사용할 변수 설정들
-model_type = ModelType.GRU.value  # default
+model_type = ModelType.DEEPSC.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
 channel_type = ChannelType.RAYLEIGH.value  # no_channel 선택
 scaler_type = ScalerType.ZSCORE.value  # minmax 선택

@@ -134,18 +134,18 @@ class PositionwiseFeedForward(nn.Module):
 
 
 # class LayerNorm(nn.Module):
-#    "Construct a layernorm module (See citation for details)."
-#    # features = d_model
-#    def __init__(self, features, eps=1e-6):
-#        super(LayerNorm, self).__init__()
-#        self.a_2 = nn.Parameter(torch.ones(features))
-#        self.b_2 = nn.Parameter(torch.zeros(features))
-#        self.eps = eps
-#
-#    def forward(self, x):
-#        mean = x.mean(-1, keepdim=True)
-#        std = x.std(-1, keepdim=True)
-#        return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
+#     "Construct a layernorm module (See citation for details)."
+#     # features = d_model
+#     def __init__(self, features, eps=1e-6):
+#         super(LayerNorm, self).__init__()
+#         self.a_2 = nn.Parameter(torch.ones(features))
+#         self.b_2 = nn.Parameter(torch.zeros(features))
+#         self.eps = eps
+
+#     def forward(self, x):
+#         mean = x.mean(-1, keepdim=True)
+#         std = x.std(-1, keepdim=True)
+#         return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
 
 
 class EncoderLayer(nn.Module):
@@ -383,7 +383,7 @@ class DeepSC(nn.Module):
         # channel_syms = self.channels.Rician(channel_encoded, 0.1)
 
         # 5단계: 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
-        # (batch_size, compressed_len, max_len)
+        # (batch_size, compressed_len, d_model)
         channel_decoded = self.channel_decoder(channel_syms)
 
         # 6단계: 출력 투영
