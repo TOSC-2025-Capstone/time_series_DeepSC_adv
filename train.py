@@ -87,7 +87,7 @@ def train_model(
         print("학습 로스로 HuberLoss가 설정되었습니다.")
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=10, verbose=True
+        optimizer, mode="min", factor=0.5, patience=5, verbose=True
     )
 
     best_val_loss = float("inf")

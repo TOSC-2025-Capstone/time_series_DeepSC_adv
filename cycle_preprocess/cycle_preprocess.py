@@ -10,14 +10,13 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import TensorDataset
 from tqdm import tqdm
 
-from parameters.parameters import PreprocessParams
+from parameters.parameters import PreprocessParams,case_index
 
 from .cycle_reshape import resample_to_fixed_length
 from .methods import *
 
 # from .outlier_eliminate import process_and_save_outlier_data
 from .outlier_eliminate import process_and_save_hybrid_outlier_data
-
 
 def cycle_preprocess(preprocess_params: PreprocessParams = None):
 
@@ -74,6 +73,16 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
 
     scaled_df = scaler.fit_transform(df_cleaned)
     scaled_df = pd.DataFrame(scaled_df, columns=df_cleaned.columns)
+
+    # 0909 정규화 전후 분포 비교
+    feature_names = [col for col in df_cleaned.columns if col != "file_index"]
+
+    os.makedirs(f"cycle_preprocess/analysis/normalize_comparison/case_{case_index}", exist_ok=True)
+    visualize_data_comparison(scaled_df,
+                                scaled_df,
+                                feature_names=feature_names,
+                                output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{case_index}",
+                            )
 
     # 다시 scaled_df에 저장했던 file_index 컬럼 복원
     scaled_df["file_index"] = file_index_col

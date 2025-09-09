@@ -152,3 +152,81 @@ After z-score removal: 745,603
 Total removed: 731
 Total removal rate: 0.10%
 Affected files: 39
+
+
+# 0909 case 15.1.11
+HYBRID OUTLIER ELIMINATION PROCESS
+======================================================================
+Step 1: Current-based categorical removal
+Step 2: Z-score based removal for remaining features
+======================================================================
+
+제거 전 discharge 데이터 개수: 2794
+제거 전 포함된 배터리: ['B0005', 'B0006', 'B0007', 'B0018', 'B0025', 'B0026', 'B0027', 'B0028', 'B0029', 'B0030', 'B0031', 'B0032', 'B0033', 'B0034', 'B0036', 'B0038', 'B0039', 'B0040', 'B0041', 'B0042', 'B0043', 'B0044', 'B0045', 'B0046', 'B0047', 'B0048', 'B0049', 'B0050', 'B0051', 'B0052', 'B0053', 'B0054', 'B0055', 'B0056']
+
+제거 후 discharge 데이터 개수: 2694
+제거 후 포함된 배터리: ['B0005', 'B0006', 'B0007', 'B0018', 'B0025', 'B0026', 'B0027', 'B0028', 'B0029', 'B0030', 'B0031', 'B0032', 'B0033', 'B0034', 'B0036', 'B0038', 'B0039', 'B0040', 'B0041', 'B0042', 'B0043', 'B0044', 'B0045', 'B0046', 'B0047', 'B0048', 'B0053', 'B0054', 'B0055', 'B0056']
+
+데이터 파일 확인 중...
+파일 로딩: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2694/2694 [00:05<00:00, 450.55it/s]
+통합 데이터 크기: (746334, 7) (파일 2694개 성공적으로 로드)
+Initial data loaded: 746,334 rows
+======================================================================
+CURRENT OUTLIER REMOVAL (Categorical Group-based)
+======================================================================
+Target current columns: ['Current_measured', 'Current_load']
+Remove groups: {'-3_group': (-3.5, -2.05), '-4_group': (-3.95, -3.5), '-4_out_group': (-4.05, -4.95)}
+  Current_measured -3_group: Removed 17 rows in range (-3.5, -2.05)
+  Current_measured -4_group: Removed 281 rows in range (-3.95, -3.5)
+  Current_load -3_group: Removed 41 rows in range (-3.5, -2.05)
+  Current_load -4_group: Removed 90 rows in range (-3.95, -3.5)
+  Current_load -4_out_group: Removed 4 rows in range (-4.05, -4.95)
+
+Current Outlier Removal Summary:
+Original rows: 746,334
+Removed rows: 340
+Remaining rows: 745,994
+Total removal percentage: 0.05%
+
+  Current_measured detailed stats:
+    -3_group: 17 rows (0.00%)
+    -4_group: 281 rows (0.04%)
+    -4_out_group: 0 rows (0.00%)
+    Total for Current_measured: 298 rows (0.04%)
+
+  Current_load detailed stats:
+    -3_group: 41 rows (0.01%)
+    -4_group: 90 rows (0.01%)
+    -4_out_group: 4 rows (0.00%)
+    Total for Current_load: 135 rows (0.02%)
+======================================================================
+Z-SCORE OUTLIER REMOVAL (threshold=7, scope=battery_id)
+======================================================================
+Excluding current-related column: Current_measured
+Excluding current-related column: Current_load
+Processing columns: ['Voltage_measured', 'Temperature_measured', 'Voltage_load', 'Time']
+  Voltage_load: Found 391 outliers (0.05%)
+
+Z-score Outlier Removal Summary:
+Original rows: 745,994
+Removed rows: 391
+Remaining rows: 745,603
+Removal percentage: 0.05%
+Outlier files: 390 files affected
+
+======================================================================
+HYBRID OUTLIER REMOVAL FINAL SUMMARY
+======================================================================
+Original rows: 746,334
+After current removal: 745,994
+After z-score removal: 745,603
+Total removed: 731
+Total removal rate: 0.10%
+Affected files: 390
+Hybrid outlier report saved
+
+데이터프레임 그룹화 및 저장 시작
+총 2694개의 파일 인덱스 발견
+
+분리된 파일 수: 2694
+파일당 행 수 - 최소: 3, 최대: 653, 평균: 276.76

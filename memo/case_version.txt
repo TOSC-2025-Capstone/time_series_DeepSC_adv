@@ -82,8 +82,21 @@ case 15.1.6 : case 15.1에서 파라미터 최적화 6단계 파라미터 고도
 case 15.1.7 : case 15.1.6에서 deepsc layerNorm class 상속 주석 해제
 case 15.1.8 : case 15.1에서 파라미터 최적화 7단계 파라미터 단순화 - d_model: 64 dff: 256 num_heads: 4 num_layers: 4
 case 15.1.9 : case 15.1에서 파라미터 최적화 8단계 파라미터 고도화 - d_model: 512 dff: 1024 num_heads: 4 num_layers: 4
+    250909 기준 1위
 case 15.1.10 : case 15.1에서 파라미터 최적화 9단계 파라미터 고도화 - d_model: 512 dff: 1024 num_heads: 8 num_layers: 4
-case 15.1.11 : case 15.1에서 파라미터 최적화 9단계 파라미터 고도화 - d_model: 512 dff: 1024 num_heads: 8 num_layers: 6
+case 15.1.11 : case 15.1에서 파라미터 최적화 10단계 파라미터 고도화 - d_model: 512 dff: 1024 num_heads: 8 num_layers: 6
+
+(Pdb) compressed.shape
+torch.Size([32, 128, 3])
+
+(Pdb) channel_syms.shape
+torch.Size([32, 128, 3])
+
+# 25.09.09
+case 16.1 : case 15.1.9에서 n_var를 0.1 -> snr 9 (db scale), noise_std sqrt(1/2 * non_db_scale_SNR)로 제공, deepsc
+case 16.2 : case 16.1에서 LSTM
+case 16.3 : case 16.1에서 GRU
+
 
 # case 별 파라미터 저장
 case 11.1

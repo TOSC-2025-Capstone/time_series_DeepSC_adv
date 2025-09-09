@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils import Channels
+# from parameters.parameters import noise_std
 
 # 모델 파라미터에서 파라미터 딕셔너리 불러오기 -> 그대로 아래에서 클래스 인스턴스 생성
 
@@ -72,7 +73,8 @@ class LSTMDeepSC(nn.Module):
 
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        compressed_on_channel = self.channels.Rayleigh(compressed, 0.1)
+        # compressed_on_channel = self.channels.Rayleigh(compressed, noise_std)
+        compressed_on_channel = self.channels.Rayleigh(compressed, 0.35)
         reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
         return reconstructed
 

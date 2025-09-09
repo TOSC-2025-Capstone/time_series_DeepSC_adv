@@ -14,6 +14,7 @@ from models.mutual_info import sample_batch, mutual_information
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pdb
 
 import csv
 import time
@@ -114,7 +115,42 @@ class NoamOpt:
 class Channels():
 
     def AWGN(self, Tx_sig, n_var=0.1):
-        Rx_sig = Tx_sig + torch.normal(0, n_var, size=Tx_sig.shape).to(device)
+        Rx_sig = Tx_sig + torch.normal(0, 0.2, size=Tx_sig.shape).to(device)
+
+        # 0909 노이즈 추가 비교
+        # Rx_sig_copy = Rx_sig
+        # Tx_sig_copy = Tx_sig
+
+        # flatten = nn.Flatten()
+        # Rx_sig_flatten = flatten(Rx_sig_copy)
+        # Tx_sig_flatten = flatten(Tx_sig_copy)
+        # Rx_sig_flatten = Rx_sig_flatten.view(1, -1)
+        # Tx_sig_flatten = Tx_sig_flatten.view(1, -1)
+
+        # Rx_sig_df = pd.DataFrame(Rx_sig_flatten.cpu().detach().numpy())
+        # Tx_sig_df = pd.DataFrame(Tx_sig_flatten.cpu().detach().numpy())
+
+        # transposed_Rx_sig_df = Rx_sig_df.transpose()
+        # transposed_Tx_sig_df = Tx_sig_df.transpose()
+
+        # plt.figure(figsize=(15, 10))
+        # plt.hist(
+        #     transposed_Rx_sig_df,
+        #     bins=50,
+        #     alpha=0.5,
+        #     label="Rx",
+        #     density=True,
+        #     color="#3498db",
+        # )
+        # plt.hist(
+        #     transposed_Tx_sig_df,
+        #     bins=50,
+        #     alpha=0.8,
+        #     label="Tx",
+        #     density=True,
+        #     color="#e74c3c"
+        # )
+        # plt.show()
         return Rx_sig
 
     def Rayleigh(self, Tx_sig, n_var=0.1):

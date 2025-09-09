@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils import Channels
+import pdb
+# from parameters.parameters import noise_std
 
 # 시퀀스, 피쳐 압축
 class GRUCompressor_Both(nn.Module):
@@ -74,8 +76,10 @@ class GRUDeepSC(nn.Module):
 
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        compressed_on_channel = self.channels.Rayleigh(compressed, 0.1)
+        # compressed_on_channel = self.channels.Rayleigh(compressed, noise_std)
+        compressed_on_channel = self.channels.Rayleigh(compressed, 0.35)
         reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
+        pdb.set_trace()
         return reconstructed
 
     def get_compression_ratio(self):

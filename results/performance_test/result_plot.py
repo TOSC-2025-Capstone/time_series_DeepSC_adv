@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from parameters.parameters import case_index
+
 
 def find_case_folders(base_path: str) -> List[Path]:
     """
@@ -41,7 +43,7 @@ def load_all_performance_data(base_path: str) -> pd.DataFrame:
     all_data = []
 
     for case_folder in case_folders:
-        if str(case_folder).split(".")[0] != "case15":
+        if str(case_folder).split(".")[0].split("\\")[-1] != "case15":
             continue
         csv_midname = None
 
@@ -259,7 +261,7 @@ def main():
     메인 실행 함수
     """
     # 경로 설정 (현재 디렉토리에서 case 폴더들을 찾음)
-    base_path = "."  # 또는 특정 경로 지정: "/path/to/your/cases"
+    base_path = "./results/performance_test/"  # 또는 특정 경로 지정: "/path/to/your/cases"
 
     try:
         # 모든 성능 데이터 로드
@@ -275,13 +277,13 @@ def main():
         # 비교 그래프 생성
         print("\nGenerating comparison plots...")
         create_comparison_plots(
-            df, save_path="./analysis_results/performance_comparison.png"
+            df, save_path=f"./analysis/case_{case_index}/performance_comparison.png"
         )
 
         # 히트맵 생성
         print("Generating heatmap...")
         create_heatmap_comparison(
-            df, save_path="./analysis_results/performance_comparison.png"
+            df, save_path=f"./analysis/case_{case_index}/performance_comparison.png"
         )
 
         print("\nAnalysis completed successfully!")

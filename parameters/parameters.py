@@ -10,6 +10,8 @@ from models.gru import GRUDeepSC
 from models.lstm import LSTMDeepSC
 from models.transceiver import DeepSC
 
+from utils import SNR_to_noise
+
 # model을 실행할 때 사용하는 디바이스 설정
 # CUDA가 사용 가능하면 GPU를, 그렇지 않으면 CPU를 사용
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -60,7 +62,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "15.1.11"
+case_index = "16.1"
 
 
 # 모델 종류
@@ -107,7 +109,10 @@ model_type = ModelType.DEEPSC.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
 channel_type = ChannelType.RAYLEIGH.value  # no_channel 선택
 scaler_type = ScalerType.ZSCORE.value  # minmax 선택
-noise_var_list = [0.05, 0.1, 0.15, 0.2] # 추후 사용
+
+# channel 노이즈 설정
+snr_list = [3, 6, 9, 12, 15, 18]
+noise_std = SNR_to_noise(snr_list[2])
 
 # feature cols (inputs)
 feature_cols = [
@@ -182,7 +187,7 @@ train_epochs = 80
 # batch size
 train_batch_size = 32
 # learning rate
-tratin_lr = 1e-5
+train_lr = 1e-5
 # input dimension
 input_dim = 6
 
@@ -214,7 +219,7 @@ class TrainParams:
     model_save_path: str = model_checkpoint_path
     num_epochs: int = train_epochs
     batch_size: int = train_batch_size
-    lr: float = tratin_lr
+    lr: float = train_lr
     loss_type: str = loss_type
 
 

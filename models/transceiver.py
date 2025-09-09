@@ -24,6 +24,8 @@ from torch.autograd import Function
 import math
 import pdb
 
+# from parameters.parameters import noise_std
+
 # from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
 from utils import Channels
 
@@ -379,7 +381,8 @@ class DeepSC(nn.Module):
         # (batch_size, compressed_len, d_comp)
         # channel_syms = channel_encoded
         # channel_syms = self.channels.AWGN(channel_encoded, 0.1)
-        channel_syms = self.channels.Rayleigh(channel_encoded, 0.1)
+        # channel_syms = self.channels.Rayleigh(channel_encoded, noise_std)
+        channel_syms = self.channels.Rayleigh(channel_encoded, 0.35)
         # channel_syms = self.channels.Rician(channel_encoded, 0.1)
 
         # 5단계: 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
@@ -389,7 +392,7 @@ class DeepSC(nn.Module):
         # 6단계: 출력 투영
         # (batch_size, compressed_len, input_dim => 원래 피쳐 차원으로 복원)
         output = self.output_projection(channel_decoded)
-
+        pdb.set_trace()
         # 7단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
         output = output.permute(
             0, 2, 1
