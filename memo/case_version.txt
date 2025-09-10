@@ -93,10 +93,19 @@ torch.Size([32, 128, 3])
 torch.Size([32, 128, 3])
 
 # 25.09.09
-case 16.1 : case 15.1.9에서 n_var를 0.1 -> snr 9 (db scale), noise_std sqrt(1/2 * non_db_scale_SNR)로 제공, deepsc
+case 16.1 : case 15.1.9에서 n_var를 0.1 -> snr 9 (db scale), noise_std sqrt(1/2 * non_db_scale_SNR) 약 0.35로 제공, deepsc
 case 16.2 : case 16.1에서 LSTM
 case 16.3 : case 16.1에서 GRU
 
+# 25.09.10
+case 17.1 : case 16.1에서 exclude_batteries 빈 배열로 변경, deepsc
+case 17.2 : case 16.2에서 exclude_batteries 빈 배열로 변경, LSTM
+case 17.3 : case 16.3에서 exclude_batteries 빈 배열로 변경, GRU
+
+case 18.1 : case 17.1에서 Mutual Inforamation model까지 같이 학습
+
+case 19.1 : 하단 19.1 case model_params(18.1에서 num_layers 2) 대로 진행, exclude_batteries SW crash Batterys 추가, sinusoidal + learnable PE 적용, deepsc
+case 20.1 : 19.1에서  deepsc
 
 # case 별 파라미터 저장
 case 11.1
@@ -183,6 +192,29 @@ model_params = {
     # deepsc
     "dff": 2048,  # deepsc 모델 최대 노드 수
     "num_heads": 8,  # deepsc 모델 헤드 수
+    "d_model": 512,  # deepsc 모델 입력 sequence length
+    "max_len": 512,  # deepsc 모델 출력 sequence length
+    "d_comp": 3,  # deepsc 압축 피쳐 수
+}
+
+case 18.1
+model_params = {
+    # 공통
+    "input_dim": 6,  # 모든 모델의 입력 피쳐 수
+    # 여기
+    # "compressed_len": 512,  # 모든 모델의 압축된 시퀀스 길이
+    "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
+    "num_layers": 2, # 모든 모델의 레이어 수
+    "dropout": 0.1,
+    # lstm, gru, at_lstm
+    "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    "compressed_features": 3,  # lstm, gru 압축 피쳐 수
+    "reconstruct_len": 512,  # lstm, gru, at_lstm 모델 출력 sequence length
+    "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
+    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
+    # deepsc
+    "dff": 1024,  # deepsc 모델 최대 노드 수
+    "num_heads": 4,  # deepsc 모델 헤드 수
     "d_model": 512,  # deepsc 모델 입력 sequence length
     "max_len": 512,  # deepsc 모델 출력 sequence length
     "d_comp": 3,  # deepsc 압축 피쳐 수

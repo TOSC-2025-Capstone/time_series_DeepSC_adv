@@ -15,10 +15,11 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from parameters.parameters import TrainParams, save_fig_dir, LossType
+from parameters.parameters import TrainParams, save_fig_dir, LossType, channel_type
 import csv
 import time
-from utils import log_epoch_stats_csv, plot_training_logs
+from utils import log_epoch_stats_csv, plot_training_logs, train_mi, Channels, PowerNormalize
+from models.mutual_info import sample_batch, mutual_information
 
 """
 # train_model
@@ -31,6 +32,7 @@ def train_model(
     model=None,
     params: TrainParams = None,
     device=None,
+    mi_net=None,
 ):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -89,6 +91,8 @@ def train_model(
     scheduler = ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5, verbose=True
     )
+    if mi_net != None :
+        mi_opt = torch.optim.Adam(mi_net.parameters(), lr=1e-3)
 
     best_val_loss = float("inf")
     os.makedirs(model_save_path, exist_ok=True)
@@ -109,6 +113,9 @@ def train_model(
     for epoch in range(num_epochs):
         start_time = time.time()  # 시작 시각 기록
 
+        noise_std = 0.35
+        channels = Channels()
+
         # 학습 모드
         model.train()
         total_loss = 0
@@ -118,9 +125,37 @@ def train_model(
         for batch in train_pbar:
             batch = batch.to(device)
 
+            # mi_net이 있다면 먼저 학습시키고
+            # mi = train_mi(net, mi_net, sents, 0.1, pad_idx, mi_opt, channel_type)
+            mi = train_mi(model, mi_net, batch, noise_std, None, mi_opt, channel_type)
+
+            # 그 다음 메인 모델 학습
             optimizer.zero_grad()
             output = model(batch)
             loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
+
+            # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함
+            if mi_net is not None:
+                enc_output = model.encoder(batch, src_mask=None)
+                compressed = model.time_compressor(enc_output)
+                channel_enc_output = model.channel_encoder(compressed)
+                Tx_sig = PowerNormalize(channel_enc_output)
+
+                if channel_type == 'AWGN':
+                    Rx_sig = channels.AWGN(Tx_sig, noise_std)
+                elif channel_type == 'rayleigh':
+                    Rx_sig = channels.Rayleigh(Tx_sig, noise_std)
+                elif channel_type == 'rician':
+                    Rx_sig = channels.Rician(Tx_sig, noise_std)
+                else:
+                    raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
+
+                mi_net.eval()
+                joint, marginal = sample_batch(Tx_sig, Rx_sig)
+                mi_lb, _, _ = mutual_information(joint, marginal, mi_net)
+                loss_mine = -mi_lb
+                loss = loss + 0.0009 * loss_mine
+
             loss.backward()
 
             # 그래디언트 클리핑 추가

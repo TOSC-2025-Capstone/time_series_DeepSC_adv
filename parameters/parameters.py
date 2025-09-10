@@ -10,7 +10,14 @@ from models.gru import GRUDeepSC
 from models.lstm import LSTMDeepSC
 from models.transceiver import DeepSC
 
-from utils import SNR_to_noise
+import numpy as np
+# from utils import SNR_to_noise
+
+def SNR_to_noise(snr):
+    snr = 10 ** (snr / 10)
+    noise_std = 1 / np.sqrt(2 * snr)
+
+    return noise_std
 
 # model을 실행할 때 사용하는 디바이스 설정
 # CUDA가 사용 가능하면 GPU를, 그렇지 않으면 CPU를 사용
@@ -18,9 +25,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
+# True면 mutual information model 도 같이 학습함
+is_learning_minet = True
+# is_learning_minet = False
+
 # True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
-is_preprocessed = True
-# is_preprocessed = False
+# is_preprocessed = True
+is_preprocessed = False
 
 # 이상치 제거를 진행하지 않게 만듦
 # is_skip_outlier_eliminate = True
@@ -62,7 +73,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "16.1"
+case_index = "19.1"
 
 
 # 모델 종류
@@ -131,6 +142,7 @@ target_length = 512  # 256, 512
 # exclude batteries
 # 여기
 exclude_batteries = ["B0049", "B0050", "B0051", "B0052"]
+# exclude_batteries = []
 # exclude_batteries = ["B0029", "B0030", "B0031", "B0032"]
 current_remove_groups = {
     "-3_group": (-3.5, -2.05),  # -3.5 <= Current_measured < -2.5

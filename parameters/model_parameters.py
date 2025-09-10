@@ -29,7 +29,7 @@ model_params = {
     # 여기
     # "compressed_len": 512,  # 모든 모델의 압축된 시퀀스 길이
     "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
-    "num_layers": 4, # 모든 모델의 레이어 수
+    "num_layers": 2, # 모든 모델의 레이어 수
     "dropout": 0.1,
     # lstm, gru, at_lstm
     "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim

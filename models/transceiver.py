@@ -29,6 +29,39 @@ import pdb
 # from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
 from utils import Channels
 
+class TimeSeriesPositionalEncoding(nn.Module):
+    """시계열 특화 위치 인코딩"""
+    def __init__(self, d_model, dropout, max_len=5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        # 1. 기본 sinusoidal PE
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer("pe", pe)
+
+        # 2. 학습 가능한 시계열 위치 임베딩 추가
+        self.learnable_pe = nn.Parameter(torch.randn(1, max_len, d_model) * 0.1)
+
+        # 3. 시간적 스케일 임베딩
+        self.scale_embedding = nn.Linear(1, d_model)
+
+    def forward(self, x):
+        seq_len = x.size(1)
+
+        # 기본 PE + 학습 가능한 PE
+        pos_enc = self.pe[:, :seq_len] + self.learnable_pe[:, :seq_len]
+
+        # 시간적 스케일 정보 추가 (0~1로 정규화된 시간 인덱스)
+        time_scale = torch.linspace(0, 1, seq_len, device=x.device).unsqueeze(0).unsqueeze(-1)
+        scale_enc = self.scale_embedding(time_scale)
+
+        x = x + pos_enc + scale_enc
+        return self.dropout(x)
 
 class PositionalEncoding(nn.Module):
     "Implement the PE function."
@@ -47,6 +80,8 @@ class PositionalEncoding(nn.Module):
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)  # [1, max_len, d_model]
         self.register_buffer("pe", pe)
+
+        # self.pe = nn.Embedding(max_len, d_model)
 
     def forward(self, x):
         x = x + self.pe[:, : x.size(1)]
@@ -214,7 +249,8 @@ class Encoder(nn.Module):
         self.d_model = d_model
         # nn.Embedding 대신 nn.Linear 사용 (시계열 데이터용)
         self.input_projection = nn.Linear(input_dim, d_model)
-        self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
+        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
+        self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
         # input_proj + pos_encoding + cycle_diff
         # self.pos_encoding = LinearProjectionWithLocalTimeAndGlobalDiffEmbedding(d_model)
         self.enc_layers = nn.ModuleList(
@@ -242,7 +278,8 @@ class Decoder(nn.Module):
 
         self.d_model = d_model
         self.embedding = nn.Embedding(trg_vocab_size, d_model)
-        self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
+        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
+        self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
         self.dec_layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, dff, dropout) for _ in range(num_layers)]
         )
@@ -392,7 +429,7 @@ class DeepSC(nn.Module):
         # 6단계: 출력 투영
         # (batch_size, compressed_len, input_dim => 원래 피쳐 차원으로 복원)
         output = self.output_projection(channel_decoded)
-        pdb.set_trace()
+
         # 7단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
         output = output.permute(
             0, 2, 1

@@ -6,6 +6,9 @@ import pdb
 import random
 import time
 
+import gc
+import torch
+
 import numpy as np
 
 # from pandas.compat.pyarrow import pa
@@ -26,6 +29,10 @@ from parameters.model_parameters import *
 from parameters.parameters import *
 from performance_cycle import performance_cycle
 from train import train_model
+
+from models.mutual_info import Mine
+
+from utils import train_mi
 
 # 파라미터 클래스 가져오기
 preprocess_params = PreprocessParams()
@@ -64,9 +71,12 @@ if __name__ == "__main__":
     # model create
     print("========================== model_select ==========================\n")
     model = None
+    mi_net = None
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
         print("DeepSC 모델이 선택되었습니다.")
+        if is_learning_minet == True and channel_type != "no_channel":
+            mi_net = Mine().to(device)
     elif model_type == "lstm":
         model = LSTMDeepSC(params=model_params).to(device)
         print("LSTMDeepSC 모델이 선택되었습니다.")
@@ -83,9 +93,10 @@ if __name__ == "__main__":
         model.train()
         if model.training:
             print("현재 모델은 training 모드입니다.")
+            train_model(params=train_params, model=model, device=device, mi_net=mi_net)
         else:
-            print("현재 모델은 evaluation (eval) 모드입니다.")
-        train_model(params=train_params, model=model, device=device)
+            print("현재 모델은 evaluation (eval) 모드입니다. 다시 실행하여 주세요")
+            exit(1)
 
     print(
         "========================== best checkpoint load ==========================\n"
@@ -99,6 +110,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"모델 로드 실패: {e}")
 
+
     # performance + result figuring
     print("========================== performance ==========================\n")
     if is_skip_performance == False:
@@ -111,6 +123,8 @@ if __name__ == "__main__":
 
     print("========================== full reconstruction ==========================\n")
 
+    gc.collect()
+    torch.cuda.empty_cache()
     if is_skip_full_reconstruct == False :
         performance_cycle(
             params=recons_params, model=model, device=device, is_full_reconstruct=True

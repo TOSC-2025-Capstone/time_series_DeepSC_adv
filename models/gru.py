@@ -79,7 +79,6 @@ class GRUDeepSC(nn.Module):
         # compressed_on_channel = self.channels.Rayleigh(compressed, noise_std)
         compressed_on_channel = self.channels.Rayleigh(compressed, 0.35)
         reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
-        pdb.set_trace()
         return reconstructed
 
     def get_compression_ratio(self):

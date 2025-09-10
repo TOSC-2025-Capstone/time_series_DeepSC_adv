@@ -194,6 +194,36 @@ def SNR_to_noise(snr):
 
     return noise_std
 
+# 채널 상태만 학습함
+def train_mi(model, mi_net, src, n_var, padding_idx, opt, channel):
+    mi_net.train()
+    opt.zero_grad()
+    channels = Channels()
+    # src_mask = (src == padding_idx).unsqueeze(-2).type(torch.FloatTensor).to(device)  # [batch, 1, seq_len]
+    enc_output = model.encoder(src, None)
+    compressed = model.time_compressor(enc_output)
+    channel_enc_output = model.channel_encoder(compressed)
+    Tx_sig = PowerNormalize(channel_enc_output)
+
+    if channel == 'AWGN':
+        Rx_sig = channels.AWGN(Tx_sig, n_var)
+    elif channel == 'rayleigh':
+        Rx_sig = channels.Rayleigh(Tx_sig, n_var)
+    elif channel == 'rician':
+        Rx_sig = channels.Rician(Tx_sig, n_var)
+    else:
+        raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
+
+    joint, marginal = sample_batch(Tx_sig, Rx_sig)
+    mi_lb, _, _ = mutual_information(joint, marginal, mi_net)
+    loss_mine = -mi_lb
+
+    loss_mine.backward()
+    torch.nn.utils.clip_grad_norm_(mi_net.parameters(), 10.0)
+    opt.step()
+
+    return loss_mine.item()
+
 
 # ==================== train utils ======================
 # train P1 : epoch 시간 + 로스 로그 CSV 파일 저장 함수

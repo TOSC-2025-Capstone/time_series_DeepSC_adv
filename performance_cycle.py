@@ -442,8 +442,10 @@ def performance_cycle(
     tensor_list = None
     tensor_type_list = None
     if is_full_reconstruct:
-        tensor_list = [train_tensor, val_tensor, test_tensor]
-        tensor_type_list = ["train", "val", "test"]
+        # tensor_list = [train_tensor, val_tensor, test_tensor]
+        # tensor_type_list = ["train", "val", "test"]
+        tensor_list = [test_tensor]
+        tensor_type_list = ["test"]
     else:
         tensor_list = [test_tensor]
         tensor_type_list = ["test"]
