@@ -23,3 +23,24 @@ torch.Size([32, 128, 6])
 # 7단계
 (Pdb) output.shape
 torch.Size([32, 512, 6])
+
+
+# decoder 추가 후
+(Pdb) x.shape
+torch.Size([32, 512, 6])
+(Pdb) encoded.shape
+torch.Size([32, 512, 512])
+(Pdb) compressed.shape
+torch.Size([32, 128, 512])
+(Pdb) channel_encoded.shape
+torch.Size([32, 128, 3])
+(Pdb) channel_syms.shape
+torch.Size([32, 128, 3])
+(Pdb) channel_decoded.shape
+torch.Size([32, 128, 512])
+(Pdb) decompressed.shape (skip)
+torch.Size([32, 512, 512])
+(Pdb) decoded.shape
+torch.Size([32, 512, 512])
+(Pdb) output.shape
+torch.Size([32, 512, 6])

@@ -105,7 +105,10 @@ case 17.3 : case 16.3에서 exclude_batteries 빈 배열로 변경, GRU
 case 18.1 : case 17.1에서 Mutual Inforamation model까지 같이 학습
 
 case 19.1 : 하단 19.1 case model_params(18.1에서 num_layers 2) 대로 진행, exclude_batteries SW crash Batterys 추가, sinusoidal + learnable PE 적용, deepsc
-case 20.1 : 19.1에서  deepsc
+
+case 20부터 deepsc model (transceiver) 코드만 집중 변경
+case 20.1 : 19.1에서 time_compress 방식 학습 가능하도록 변경, decoder 다시 사용 및 decompressor off deepsc
+case 20.1.1 : 20.1에서 decoder의 자가회귀 mask on -> off로 변경
 
 # case 별 파라미터 저장
 case 11.1

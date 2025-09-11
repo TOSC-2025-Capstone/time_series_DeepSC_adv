@@ -109,11 +109,15 @@ class MultiHeadedAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, query, key, value, mask=None):
-        "Implements Figure 2"
-        if mask is not None:
-            # Same mask applied to all h heads.
-            mask = mask.unsqueeze(1)
         nbatches = query.size(0)
+
+        # 마스크 차원 올바르게 조정
+        if mask is not None:
+            # mask가 [seq_len, seq_len]이면 [1, 1, seq_len, seq_len]로 변환
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0).unsqueeze(0)  # [seq_len, seq_len] -> [1, 1, seq_len, seq_len]
+            elif mask.dim() == 3:
+                mask = mask.unsqueeze(1)  # [batch, seq_len, seq_len] -> [batch, 1, seq_len, seq_len]
 
         # 1) Do all the linear projections in batch from d_model => h x d_k
         query = self.wq(query).view(nbatches, -1, self.num_heads, self.d_k)
@@ -124,10 +128,6 @@ class MultiHeadedAttention(nn.Module):
 
         value = self.wv(value).view(nbatches, -1, self.num_heads, self.d_k)
         value = value.transpose(1, 2)
-
-        #        query, key, value = \
-        #            [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
-        #             for l, x in zip(self.linears, (query, key, value))]
 
         # 2) Apply attention on all the projected vectors in batch.
         x, self.attn = self.attention(query, key, value, mask=mask)
@@ -208,35 +208,33 @@ class EncoderLayer(nn.Module):
         return x
 
 
-class DecoderLayer(nn.Module):
-    "Decoder is made of self-attn, src-attn, and feed forward (defined below)"
+class TimeSeriesDecoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, dff, dropout=0.1):
+        super().__init__()
 
-    def __init__(self, d_model, num_heads, dff, dropout):
-        super(DecoderLayer, self).__init__()
-        self.self_mha = MultiHeadedAttention(num_heads, d_model, dropout=0.1)
-        self.src_mha = MultiHeadedAttention(num_heads, d_model, dropout=0.1)
-        self.ffn = PositionwiseFeedForward(d_model, dff, dropout=0.1)
+        # 기존 MultiHeadedAttention 사용
+        self.self_attn = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.cross_attn = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
 
-        self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
-        self.layernorm2 = nn.LayerNorm(d_model, eps=1e-6)
-        self.layernorm3 = nn.LayerNorm(d_model, eps=1e-6)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
 
-        # self.sublayer = clones(SublayerConnection(size, dropout), 3)
+    def forward(self, x, memory, self_mask=None, cross_mask=None):
+        # 1. Self-attention (복원 위치 간 관계)
+        attn_out = self.self_attn(x, x, x, self_mask)
+        x = self.norm1(x + attn_out)
 
-    def forward(self, x, memory, look_ahead_mask, trg_padding_mask):
-        "Follow Figure 1 (right) for connections."
-        # m = memory
+        # 2. Cross-attention (압축된 정보 활용)
+        cross_out = self.cross_attn(x, memory, memory, cross_mask)
+        x = self.norm2(x + cross_out)
 
-        attn_output = self.self_mha(x, x, x, look_ahead_mask)
-        x = self.layernorm1(x + attn_output)
+        # 3. Feed-forward
+        ffn_out = self.ffn(x)
+        x = self.norm3(x + ffn_out)
 
-        src_output = self.src_mha(x, memory, memory, trg_padding_mask)  # q, k, v
-        x = self.layernorm2(x + src_output)
-
-        fnn_output = self.ffn(x)
-        x = self.layernorm3(x + fnn_output)
         return x
-
 
 class Encoder(nn.Module):
     "Core encoder is a stack of N layers"
@@ -249,10 +247,8 @@ class Encoder(nn.Module):
         self.d_model = d_model
         # nn.Embedding 대신 nn.Linear 사용 (시계열 데이터용)
         self.input_projection = nn.Linear(input_dim, d_model)
-        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
         self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
-        # input_proj + pos_encoding + cycle_diff
-        # self.pos_encoding = LinearProjectionWithLocalTimeAndGlobalDiffEmbedding(d_model)
+        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
         self.enc_layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, dff, dropout) for _ in range(num_layers)]
         )
@@ -270,27 +266,47 @@ class Encoder(nn.Module):
         return x
 
 
-class Decoder(nn.Module):
-    def __init__(
-        self, num_layers, trg_vocab_size, max_len, d_model, num_heads, dff, dropout=0.1
-    ):
-        super(Decoder, self).__init__()
-
+class TimeSeriesDecoder(nn.Module):
+    def __init__(self, num_layers, d_model, num_heads, dff, max_len, dropout=0.1):
+        super().__init__()
         self.d_model = d_model
-        self.embedding = nn.Embedding(trg_vocab_size, d_model)
-        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
+        self.max_len = max_len
+
+        # 학습 가능한 위치별 쿼리 임베딩
+        self.pos_queries = nn.Parameter(torch.randn(max_len, d_model) * 0.1)
+
+        # 위치 인코딩 (기존 것 재사용 가능)
         self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
-        self.dec_layers = nn.ModuleList(
-            [DecoderLayer(d_model, num_heads, dff, dropout) for _ in range(num_layers)]
-        )
 
-    def forward(self, x, memory, look_ahead_mask, trg_padding_mask):
+        # 디코더 레이어들
+        self.decoder_layers = nn.ModuleList([
+            TimeSeriesDecoderLayer(d_model, num_heads, dff, dropout)
+            for _ in range(num_layers)
+        ])
 
-        x = self.embedding(x) * math.sqrt(self.d_model)
-        x = self.pos_encoding(x)
+    def forward(self, memory, target_len=None, use_mask=False):
+        # memory: channel_decoder 출력 [batch, compressed_len, d_model]
+        if target_len is None:
+            target_len = self.max_len
 
-        for dec_layer in self.dec_layers:
-            x = dec_layer(x, memory, look_ahead_mask, trg_padding_mask)
+        batch_size = memory.size(0)
+
+        # 학습 가능한 쿼리 임베딩 생성
+        query_embed = self.pos_queries[:target_len].unsqueeze(0).repeat(batch_size, 1, 1)
+
+        # 위치 인코딩 추가
+        x = self.pos_encoding(query_embed)
+
+        # 마스크 생성 (필요한 경우)
+        self_mask = None
+        if use_mask:
+            # Look-ahead mask (자기회귀적 복원을 위한 경우)
+            self_mask = torch.triu(torch.ones(target_len, target_len), diagonal=1).bool()
+            self_mask = self_mask.to(x.device)
+
+        # 각 디코더 레이어 통과
+        for layer in self.decoder_layers:
+            x = layer(x, memory, self_mask, None)
 
         return x
 
@@ -335,6 +351,67 @@ class TimeSeriesCompressor(nn.Module):
         x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
         return x
 
+class LearnableTimeCompressor(nn.Module):
+    """학습 가능한 시계열 압축기"""
+    def __init__(self, d_model, target_len):
+        super().__init__()
+        self.target_len = target_len
+
+        # 1D Conv로 학습 가능한 압축
+        self.conv_compress = nn.Sequential(
+            nn.Conv1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+        )
+
+        # 정확한 길이 맞추기
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
+
+        # Skip connection을 위한 projection
+        self.skip_proj = nn.Linear(d_model, d_model)
+
+    def forward(self, x):
+        # x: (batch, seq_len, d_model)
+        skip = x  # Skip connection 저장
+
+        x = x.permute(0, 2, 1)  # (batch, d_model, seq_len)
+        x = self.conv_compress(x)
+        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
+        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
+
+        # Skip connection (원본을 target_len으로 압축)
+        skip = skip.permute(0, 2, 1)
+        skip = F.adaptive_avg_pool1d(skip, self.target_len)
+        skip = skip.permute(0, 2, 1)
+        skip = self.skip_proj(skip)
+
+        return x + skip
+
+class LearnableTimeDecompressor(nn.Module):
+    """학습 가능한 시계열 복원기"""
+    def __init__(self, d_model, target_len):
+        super().__init__()
+        self.target_len = target_len
+
+        # 전치 합성곱으로 학습 가능한 복원
+        self.deconv_decompress = nn.Sequential(
+            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+        )
+
+        # 정확한 길이 맞추기
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
+
+    def forward(self, x):
+        # x: (batch, compressed_len, d_model)
+        x = x.permute(0, 2, 1)  # (batch, d_model, compressed_len)
+        x = self.deconv_decompress(x)
+        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
+        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
+        return x
 
 class DeepSC(nn.Module):
     def __init__(
@@ -374,7 +451,8 @@ class DeepSC(nn.Module):
 
         # 시계열 길이 압축 모듈 (선택)
         if self.compressed_len is not None:
-            self.time_compressor = TimeSeriesCompressor(self.compressed_len)
+            # self.time_compressor = TimeSeriesCompressor(self.compressed_len)
+            self.time_compressor = LearnableTimeCompressor(self.d_model, self.compressed_len)
         else:
             self.time_compressor = None
 
@@ -386,12 +464,24 @@ class DeepSC(nn.Module):
 
         self.channels = Channels()
 
+        self.decoder = TimeSeriesDecoder(
+            num_layers=self.num_layers,
+            d_model=self.d_model,
+            num_heads=self.num_heads,
+            dff=self.dff,
+            max_len=self.max_len,
+            dropout=self.dropout
+        )
+
         self.channel_decoder = ChannelDecoder(
             self.d_comp, self.d_model, 512
         )  # feature, output_dim, max_dim
 
         # 자연어 디코더 대신 시계열 출력 레이어 사용
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
+
+        # 시계열 길이 복원
+        self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
 
         # 업샘플링 레이어 추가 (compressed_len → max_len)
         self.upsample = nn.Upsample(
@@ -400,41 +490,43 @@ class DeepSC(nn.Module):
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
-        # pdb.set_trace()
 
-        # 1단계: 인코더
-        # (batch, max_len, d_model)
+        # 1단계: 의미 인코더
+        # (batch, max_len, input_dim->d_model)
         encoded = self.encoder(x, src_mask)
 
-        # 2단계: sequence compress (downsampling)
-        # (batch, compressed_len, d_model)
+        # 2단계: sequence compress (downsampling) (시계열 압축)
+        # (batch, max_len->compressed_len, d_model)
         compressed = self.time_compressor(encoded)
 
-        # 3단계: 채널 인코더 (압축)
-        # (batch_size, compressed_len, d_comp)
+        # 3단계: 채널 인코더 (피쳐 압축)
+        # (batch_size, compressed_len, d_model->d_comp)
         channel_encoded = self.channel_encoder(compressed)
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        # channel_syms = channel_encoded
-        # channel_syms = self.channels.AWGN(channel_encoded, 0.1)
-        # channel_syms = self.channels.Rayleigh(channel_encoded, noise_std)
         channel_syms = self.channels.Rayleigh(channel_encoded, 0.35)
-        # channel_syms = self.channels.Rician(channel_encoded, 0.1)
 
-        # 5단계: 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
-        # (batch_size, compressed_len, d_model)
+        # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
+        # (batch_size, compressed_len, d_comp -> d_model)
         channel_decoded = self.channel_decoder(channel_syms)
 
-        # 6단계: 출력 투영
-        # (batch_size, compressed_len, input_dim => 원래 피쳐 차원으로 복원)
-        output = self.output_projection(channel_decoded)
+        # 6단계 : sequence decompress (upsampling) (시계열 복원)
+        # decompressed = self.time_decompressor(channel_decoded)
 
-        # 7단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
-        output = output.permute(
-            0, 2, 1
-        )  # (batch, input_dim, compressed_len), (PyTorch의 Upsample은 (batch, channels, length) 형태를 기대하므로 형태 수정
-        output = self.upsample(output)  # (batch, input_dim, max_len)
-        output = output.permute(0, 2, 1)  # (batch, max_len, input_dim)
+        # 6단계 : 의미 디코더
+        # (batch_size, compressed_len->max_len, d_model)
+        decoded = self.decoder(channel_decoded, use_mask=False)
+
+        # 7단계: 출력 투영
+        # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
+        output = self.output_projection(decoded)
+
+        # # 8단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
+        # output = output.permute(
+        #     0, 2, 1
+        # )  # (batch, input_dim, compressed_len), (PyTorch의 Upsample은 (batch, channels, length) 형태를 기대하므로 형태 수정
+        # output = self.upsample(output)  # (batch, input_dim, max_len)
+        # output = output.permute(0, 2, 1)  # (batch, max_len, input_dim)
 
         return output
