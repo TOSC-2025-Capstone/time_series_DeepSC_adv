@@ -505,22 +505,22 @@ class DeepSC(nn.Module):
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        channel_syms = self.channels.Rayleigh(channel_encoded, 0.35)
+        channel_syms = self.channels.Rayleigh(channel_encoded, 0.1)
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)
         channel_decoded = self.channel_decoder(channel_syms)
 
         # 6단계 : sequence decompress (upsampling) (시계열 복원)
-        # decompressed = self.time_decompressor(channel_decoded)
+        decompressed = self.time_decompressor(channel_decoded)
 
         # 6단계 : 의미 디코더
         # (batch_size, compressed_len->max_len, d_model)
-        decoded = self.decoder(channel_decoded, use_mask=False)
+        # decoded = self.decoder(channel_decoded, use_mask=True)
 
         # 7단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
-        output = self.output_projection(decoded)
+        output = self.output_projection(decompressed)
 
         # # 8단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
         # output = output.permute(

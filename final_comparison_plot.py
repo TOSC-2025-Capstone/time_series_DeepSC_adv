@@ -42,6 +42,7 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
         plt.xticks(x, features, rotation=45)
         plt.ylabel(f"{metric} (log scale)")
         plt.yscale("log")  # 값의 차이가 크므로 로그스케일 추천
+        plt.ylim(1e-4, 1e6)
         plt.title(f"Feature-wise {metric} Comparison")
         plt.legend()
         plt.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
