@@ -36,7 +36,7 @@ model_params = {
     "compressed_features": 6,  # lstm, gru 압축 피쳐 수
     "reconstruct_len": 512,  # lstm, gru, at_lstm 모델 출력 sequence length
     "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
-    "reconstruct_features": 6,  # lstm, gru, at_lstm 복원 피쳐 수
+    "reconstruct_features": 3,  # lstm, gru, at_lstm 복원 피쳐 수
     # deepsc
     "dff": 512,  # deepsc 모델 최대 노드 수
     "num_heads": 4,  # deepsc 모델 헤드 수
