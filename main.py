@@ -75,7 +75,6 @@ if __name__ == "__main__":
     mi_net = None
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
-        # model = ImprovedDeepSC(params=model_params).to(device)
         print("DeepSC 모델이 선택되었습니다.")
         # if is_learning_minet == True and channel_type != "no_channel":
             # mi_net = Mine().to(device)

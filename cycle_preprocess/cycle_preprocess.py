@@ -19,7 +19,6 @@ from .methods import *
 from .outlier_eliminate import process_and_save_hybrid_outlier_data
 
 def cycle_preprocess(preprocess_params: PreprocessParams = None):
-
     # params load
     scaler_type = preprocess_params.scaler_type
     target_length = preprocess_params.target_length
@@ -56,7 +55,7 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     val_ratio = 0.2
     test_ratio = 0.2
 
-    # P2 : prepare_dataset.py
+    # P2 : prepare_dataset.py (스케일 정규화)
     # 1. P1의 통합된 데이터프레임을 사용하여 피쳐 별 스케일 정규화를 진행
     # 이 때 file_index 컬럼은 스케일링에서 제외 후 다시 추가
     file_index_col = df_cleaned["file_index"].values
@@ -91,7 +90,7 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     grouped_dfs = grouping_df(scaled_df)
     resampled_dfs = {}
 
-    # 3. 각 파일을 256개 샘플로 리샘플링하고 resampled_dfs에 저장
+    # 3. 각 파일을 target_length개 샘플로 리샘플링하고 resampled_dfs에 저장
     for file_index, discharge_df in tqdm(grouped_dfs.items()):
         resampled_df = resample_to_fixed_length(
             discharge_df,

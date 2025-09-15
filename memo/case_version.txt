@@ -115,11 +115,17 @@ case 20.1.4 : 20.1.3에서 decoder 대신 time_decompressor 사용해보기
 case 20.1.5 : 20.1.4에서 d_comp 만 3으로 피쳐 압축 추가
 case 20.1.6 : 20.1.5에서 channel_en/decoder에서 layer normalization + linear 선형적으로 압축 복원하도록 수정
 case 20.1.7 : 20.1.6에서 channel en/cdecoder의 layer norm만 제거
-case 20.1.8 : 20.1.7에서 압축단에서 3단계 (d_model -> d_model/2 -> d_model/4 -> d_comp로 압축하는 방식) 에서 d_model/2 제거
+case 20.1.8 : 20.1.7에서 압축단에서 3단계 (d_model -> d_model/2 -> d_model/4 -> d_comp로 압축하는 방식) 에서 d_model/2 제거 (좋음, BestValLoss 0.016421)
 case 20.1.9 : model params 그대로, iTransformer 구조를 차용한 claude 코드 실행결과
-case 20.1.10 : model params 그대로, iTransformer 구조를 기존 deepsc 코드에서 encoder로만 바꿔적용함
+case 20.1.10 : model params 그대로, iTransformer 구조를 기존 deepsc 코드에서 encoder로만 바꿔적용함 (좋음, BestValLoss 0.014392)
 case 20.1.11 : 20.1.10에서 channel en/decoder 마지막단 직전에 dropout 0.1 추가 (별로 안좋은듯)
+case 20.1.12 : 20.1.11에서 claude의 patchTST 모델 그대로 적용 (실패)
+case 20.1.13 : 20.1.11에서 encoder 구조만 iTransformer + patchEmbedding 적용, patch size 16, stride 8 (실패, BestValLoss 0.071218)
+case 20.1.14 : 20.1.11에서 encoder 구조만 iTransformer + patchEmbedding 적용, patch size 32, stride 16 (실패, BestValLoss 0.040303)
+case 20.1.15 : 20.1.11에서 encoder 구조만 iTransformer + patchEmbedding 적용, patch size 128, stride 64 (실패, BestValLoss 0.040260)
 
+case 20.3 : 0.014357
+case 20.3.1 : 20.3 추가검증 (변화 x)
 
 # case 별 파라미터 저장
 case 11.1

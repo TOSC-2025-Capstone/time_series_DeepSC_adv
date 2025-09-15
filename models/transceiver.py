@@ -346,7 +346,7 @@ class ResidualChannelDecoder(nn.Module):
         self.expand2 = nn.Sequential(
             nn.Linear(d_model // 4, d_model),
             # nn.LayerNorm(d_model // 2),
-            nn.Dropout(0.1),
+            # nn.Dropout(0.1),
             nn.ReLU()
         )
 
@@ -442,11 +442,6 @@ class LearnableTimeDecompressor(nn.Module):
         return x
 
 # 250914 claude iTransformer
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
-from utils import Channels
 
 class InvertedMultiHeadAttention(nn.Module):
     """iTransformer의 핵심: 변수 축에서 어텐션 수행"""
@@ -466,7 +461,7 @@ class InvertedMultiHeadAttention(nn.Module):
 
     def forward(self, x):
         # x: [batch, seq_len, features] -> [batch, features, seq_len]
-        x = x.transpose(1, 2)
+        x = x.transpose(1, 2) # sequence 간 연관성이 아닌 피쳐간 연관성 학습
         batch_size, num_features, seq_len = x.shape
 
         # Q, K, V 계산 (변수 축에서)
@@ -571,6 +566,103 @@ class iTransformerEncoder(nn.Module):
 
         return x
 
+class PatchEmbedding(nn.Module):
+    """시계열을 패치로 분할하여 임베딩"""
+    def __init__(self, patch_len, stride, input_dim):
+        super().__init__()
+        self.patch_len = patch_len
+        self.stride = stride
+        self.input_dim = input_dim
+
+    def forward(self, x):
+        # x: [batch, seq_len, input_dim]
+        batch_size, seq_len, input_dim = x.shape
+
+        # 패치 생성
+        patches = []
+        for i in range(0, seq_len - self.patch_len + 1, self.stride):
+            patch = x[:, i:i+self.patch_len, :]  # [batch, patch_len, input_dim]
+            patches.append(patch)
+
+        if len(patches) == 0:
+            # 시퀀스가 너무 짧은 경우 전체를 하나의 패치로 처리
+            patches = [x]
+
+        # 패치들을 연결: [batch, num_patches, patch_len, input_dim]
+        patches = torch.stack(patches, dim=1)
+
+        # 패치를 하나의 시퀀스로 펼치기: [batch, num_patches * patch_len, input_dim]
+        num_patches = patches.size(1)
+        patches = patches.view(batch_size, num_patches * self.patch_len, input_dim)
+
+        return patches, num_patches
+
+class PatchediTransformerEncoder(nn.Module):
+    """패치 임베딩 + iTransformer 결합 인코더"""
+    def __init__(self, num_layers, input_dim, max_len, d_model, num_heads, dff, dropout=0.1, patch_len=16, stride=8):
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.max_len = max_len
+        self.patch_len = patch_len
+        self.stride = stride
+        self.d_model = d_model
+
+        # 패치 임베딩
+        self.patch_embedding = PatchEmbedding(patch_len, stride, input_dim)
+
+        # 패치된 시퀀스의 예상 길이 계산
+        self.expected_patch_seq_len = ((max_len - patch_len) // stride + 1) * patch_len
+
+        # iTransformer 레이어들 (패치된 시퀀스에 대해 작동)
+        self.enc_layers = nn.ModuleList([
+            iTransformerEncoderLayer(self.expected_patch_seq_len, input_dim, num_heads, dff, dropout)
+            for _ in range(num_layers)
+        ])
+
+        # 패치된 시퀀스를 원래 길이로 복원
+        self.sequence_restorer = nn.Sequential(
+            nn.Linear(input_dim, input_dim * 2),
+            nn.ReLU(),
+            nn.Linear(input_dim * 2, input_dim)
+        )
+
+        # 최종적으로 d_model 차원으로 투영 (기존 DeepSC와 호환성을 위해)
+        self.output_projection = nn.Linear(input_dim, d_model)
+
+    def forward(self, x, src_mask):
+        # x: (batch_size, seq_len, input_dim)
+        batch_size = x.size(0)
+
+        # 1. 패치 임베딩
+        patches, num_patches = self.patch_embedding(x)  # [batch, patch_seq_len, input_dim]
+
+        # 2. 패치 시퀀스 길이 조정 (iTransformer 레이어와 호환되도록)
+        current_patch_seq_len = patches.size(1)
+        if current_patch_seq_len != self.expected_patch_seq_len:
+            # 길이 조정
+            patches = patches.transpose(1, 2)  # [batch, input_dim, patch_seq_len]
+            patches = F.interpolate(patches, size=self.expected_patch_seq_len, mode='linear', align_corners=False)
+            patches = patches.transpose(1, 2)  # [batch, expected_patch_seq_len, input_dim]
+
+        # 3. iTransformer 레이어들 통과 (변수 간 관계 학습)
+        for enc_layer in self.enc_layers:
+            patches = enc_layer(patches, src_mask)
+
+        # 4. 시퀀스 복원 처리
+        patches = self.sequence_restorer(patches)
+
+        # 5. 원래 시퀀스 길이로 복원
+        if patches.size(1) != self.max_len:
+            patches = patches.transpose(1, 2)  # [batch, input_dim, seq_len]
+            patches = F.interpolate(patches, size=self.max_len, mode='linear', align_corners=False)
+            patches = patches.transpose(1, 2)  # [batch, max_len, input_dim]
+
+        # 6. 기존 DeepSC와 호환성을 위해 d_model 차원으로 투영
+        output = self.output_projection(patches)  # (batch_size, seq_len, d_model)
+
+        return output
+
 class DeepSC(nn.Module):
     def __init__(
         self,
@@ -596,9 +688,12 @@ class DeepSC(nn.Module):
         self.dropout = p.get("dropout", dropout)
         self.compressed_len = p.get("compressed_len", compressed_len)
         self.d_comp = p.get("d_comp", 3)
+        self.patch_len = p.get("patch_len", 128)
+        self.stride = p.get("stride", 64)
 
         # self.encoder = Encoder(
-        self.encoder = iTransformerEncoder(
+        # self.encoder = iTransformerEncoder(
+        self.encoder = PatchediTransformerEncoder(
             self.num_layers,
             self.input_dim,
             self.max_len,
@@ -606,6 +701,8 @@ class DeepSC(nn.Module):
             self.num_heads,
             self.dff,
             self.dropout,
+            self.patch_len,
+            self.stride
         )
 
         # 시계열 길이 압축 모듈 (선택)
@@ -619,7 +716,7 @@ class DeepSC(nn.Module):
         self.channel_encoder = nn.Sequential(
             nn.Linear(self.d_model, self.d_model // 4),  # 128 → 64
             nn.ReLU(),
-            nn.Dropout(0.1),
+            # nn.Dropout(0.1),
             nn.Linear(self.d_model // 4, self.d_comp),  # 32 → 3
         )
 
@@ -675,19 +772,8 @@ class DeepSC(nn.Module):
         # 6단계 : sequence decompress (upsampling) (시계열 복원)
         decompressed = self.time_decompressor(channel_decoded)
 
-        # 6단계 : 의미 디코더
-        # (batch_size, compressed_len->max_len, d_model)
-        # decoded = self.decoder(channel_decoded, use_mask=True)
-
         # 7단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
         output = self.output_projection(decompressed)
-
-        # # 8단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
-        # output = output.permute(
-        #     0, 2, 1
-        # )  # (batch, input_dim, compressed_len), (PyTorch의 Upsample은 (batch, channels, length) 형태를 기대하므로 형태 수정
-        # output = self.upsample(output)  # (batch, input_dim, max_len)
-        # output = output.permute(0, 2, 1)  # (batch, max_len, input_dim)
 
         return output
