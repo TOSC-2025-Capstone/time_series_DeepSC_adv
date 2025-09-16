@@ -345,6 +345,9 @@ def process_and_save_hybrid_outlier_data(
     discharge_data, discharge_files = load_and_filter_metadata(exclude_batteries)
     total_df = load_csv_data(discharge_files, input_folder)
 
+    # time 피쳐 제거
+    total_df = total_df.drop(columns=["Time"])
+
     original_total_rows = len(total_df)
     print(f"Initial data loaded: {original_total_rows:,} rows")
 

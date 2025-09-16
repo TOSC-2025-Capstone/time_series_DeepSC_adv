@@ -123,9 +123,16 @@ case 20.1.12 : 20.1.11에서 claude의 patchTST 모델 그대로 적용 (실패)
 case 20.1.13 : 20.1.11에서 encoder 구조만 iTransformer + patchEmbedding 적용, patch size 16, stride 8 (실패, BestValLoss 0.071218)
 case 20.1.14 : 20.1.11에서 encoder 구조만 iTransformer + patchEmbedding 적용, patch size 32, stride 16 (실패, BestValLoss 0.040303)
 case 20.1.15 : 20.1.11에서 encoder 구조만 iTransformer + patchEmbedding 적용, patch size 128, stride 64 (실패, BestValLoss 0.040260)
+case 20.1.16 : 20.1.11에서 학습 총 시간을 GRU와 동일하게 맞추기 위해 epoch 추가 진행
 
+case 20.2 :
 case 20.3 : 0.014357
 case 20.3.1 : 20.3 추가검증 (변화 x)
+
+case 21.1 : input_dim 5로 변경, time 제거 - InvertedTransformer
+case 21.2 : input_dim 5로 변경, time 제거 - LSTM
+case 21.3 : input_dim 5로 변경, time 제거 - GRU
+case 21.4 : input_dim 5로 변경, time 제거 - Transformer
 
 # case 별 파라미터 저장
 case 11.1

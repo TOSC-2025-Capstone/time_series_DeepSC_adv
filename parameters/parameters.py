@@ -26,8 +26,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
 # True면 mutual information model 도 같이 학습함
-is_learning_minet = True
-# is_learning_minet = False
+# is_learning_minet = True
+is_learning_minet = False
 
 # True면 이미 전처리된 데이터로 학습 및 평가 진행, False면 preprocess 실행
 is_preprocessed = True
@@ -73,7 +73,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "20.1.16"
+case_index = "21.4"
 
 # 모델 종류
 class ModelType(Enum):
@@ -119,6 +119,8 @@ model_type = ModelType.DEEPSC.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
 channel_type = ChannelType.RAYLEIGH.value  # no_channel 선택
 scaler_type = ScalerType.ZSCORE.value  # minmax 선택
+# is_inverted = True
+is_inverted = False
 
 # channel 노이즈 설정
 snr_list = [3, 6, 9, 12, 15, 18]
@@ -194,13 +196,13 @@ save_performance_dir = (
 """ ========================= 모델 파라미터 설정 ======================== """
 
 # epochs
-train_epochs = 200
+train_epochs = 80
 # batch size
 train_batch_size = 32
 # learning rate
 train_lr = 1e-5
 # input dimension
-input_dim = 6
+input_dim = 5
 
 
 """ ========================= 각 기능 모듈별 파라미터 정리 ========================= """

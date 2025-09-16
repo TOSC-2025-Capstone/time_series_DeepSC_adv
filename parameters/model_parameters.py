@@ -25,7 +25,7 @@ import pickle
 
 model_params = {
     # 공통
-    "input_dim": 6,  # 모든 모델의 입력 피쳐 수
+    "input_dim": 5,  # 모든 모델의 입력 피쳐 수
     # 여기
     # "compressed_len": 512,  # 모든 모델의 압축된 시퀀스 길이
     "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이

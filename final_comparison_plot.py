@@ -59,23 +59,27 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
 # 특정 케이스의 세 모델에 대한 각 피쳐별 복원, 원본 사이클 비교
 def plot_feature_comparison(
     original_path: str,
-    deepsc_path: str,
-    lstm_path: str,
-    gru_path: str,
+    model_1_path: str,
+    model_2_path: str,
+    model_3_path: str,
+    model_4_path: str,
     feature_names: list,
     save_path: str,
     filename: str,
 ):
     # 1. 데이터 로드
     df_original = pd.read_csv(os.path.join(original_path, filename))
-    df_deepsc = pd.read_csv(
-        os.path.join(deepsc_path, filename.replace(".csv", "_reconstructed.csv"))
+    df_model_1 = pd.read_csv(
+        os.path.join(model_1_path, filename.replace(".csv", "_reconstructed.csv"))
     )
-    df_lstm = pd.read_csv(
-        os.path.join(lstm_path, filename.replace(".csv", "_reconstructed.csv"))
+    df_model_2 = pd.read_csv(
+        os.path.join(model_2_path, filename.replace(".csv", "_reconstructed.csv"))
     )
-    df_gru = pd.read_csv(
-        os.path.join(gru_path, filename.replace(".csv", "_reconstructed.csv"))
+    df_model_3 = pd.read_csv(
+        os.path.join(model_3_path, filename.replace(".csv", "_reconstructed.csv"))
+    )
+    df_model_4 = pd.read_csv(
+        os.path.join(model_4_path, filename.replace(".csv", "_reconstructed.csv"))
     )
 
     # 2. 시각화
@@ -83,9 +87,10 @@ def plot_feature_comparison(
     for i, feature in enumerate(feature_names):
         plt.subplot(2, 3, i + 1)
         plt.plot(df_original[feature], label="Original", linewidth=2)
-        plt.plot(df_deepsc[feature], label="DeepSC", linestyle="--")
-        plt.plot(df_lstm[feature], label="LSTM", linestyle="-.")
-        plt.plot(df_gru[feature], label="GRU", linestyle=":")
+        plt.plot(df_model_1[feature], label="InvertedTransformer", linestyle="--")
+        plt.plot(df_model_2[feature], label="LSTM", linestyle="-.")
+        plt.plot(df_model_3[feature], label="GRU", linestyle=":")
+        plt.plot(df_model_4[feature], label="Transformer", linestyle=":")
         plt.title(feature)
         plt.xlabel("Timestep")
         plt.ylabel(feature)
@@ -107,41 +112,35 @@ if __name__ == "__main__":
     # 예시 사용법
     prefix = "./results/performance_test"
     csv_paths = [
-        prefix + "/case20.1.10/rayleigh_deepsc_MSE/performance_statistics.csv",
-        prefix + "/case20.3/rayleigh_gru_MSE/performance_statistics.csv",
-        prefix + "/case20.3.1/rayleigh_gru_MSE/performance_statistics.csv",
+        prefix + "/case21.1/rayleigh_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case21.2/rayleigh_lstm_MSE/performance_statistics.csv",
+        prefix + "/case21.3/rayleigh_gru_MSE/performance_statistics.csv",
+        prefix + "/case21.4/rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
-    # csv_paths = [
-    #     prefix + "/case7.1/no_channel_deepsc_MSE/performance_statistics.csv",
-    #     prefix + "/case8.1/no_channel_deepsc_MSE/performance_statistics.csv",
-    #     prefix + "/case9.1/no_channel_deepsc_MSE/performance_statistics.csv",
-    # ]
 
     filename = "01291.csv"
     save_path = (
         f"./final_comparison_plots/case{str(case_index).split('.')[0]}/{filename}/"
     )
     # case_labels = ["DeepSC", "GRU", "LSTM"]
-    case_labels = ["20.1.10", "20.3", "20.3.1"]
+    case_labels = ["21.1", "21.2", "21.3", "21.4"]
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path=save_path
     )
 
     plot_feature_comparison(
         original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-        deepsc_path="./reconstruction/case20.1.10/reconstructed_rayleigh_deepsc_MSE",
-        lstm_path="./reconstruction/case20.3/reconstructed_rayleigh_gru_MSE",
-        gru_path="./reconstruction/case20.3.1/reconstructed_rayleigh_gru_MSE",
-        # deepsc_path="./reconstruction/case7.1/reconstructed_no_channel_deepsc_MSE",
-        # lstm_path="./reconstruction/case8.1/reconstructed_no_channel_deepsc_MSE",
-        # gru_path="./reconstruction/case9.1/reconstructed_no_channel_deepsc_MSE",
+        model_1_path="./reconstruction/case21.1/reconstructed_rayleigh_deepsc_MSE",
+        model_2_path="./reconstruction/case21.2/reconstructed_rayleigh_lstm_MSE",
+        model_3_path="./reconstruction/case21.3/reconstructed_rayleigh_gru_MSE",
+        model_4_path="./reconstruction/case21.4/reconstructed_rayleigh_deepsc_MSE",
         feature_names=[
             "Voltage_measured",
             "Current_measured",
             "Temperature_measured",
             "Current_load",
             "Voltage_load",
-            "Time",
+            # "Time",
         ],
         save_path=save_path,
         filename=filename,
