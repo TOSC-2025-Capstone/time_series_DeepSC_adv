@@ -52,21 +52,24 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
     features = [f for f in dfs[0]["Feature"].unique() if f != "Time"]
     features_label = [f.replace("_", " ") for f in dfs[0]["Feature"].unique() if f != "Time"]
 
+    features.append("Average")
+    features_label.append("Average")
+
     # 색상 팔레트 (LSTM=밝은회색, GRU=중간회색, Transformer=진한회색, Inverted-Transformer=어두운회색, MI Net=검정)
     palette = ["#D9D9D9", "#BDBDBD", "#8C8C8C", "#696969", "#000000"]
-
-
 
     for metric in metrics:
         plt.figure(figsize=(32, 10))
         bar_width = 0.15
         # 피쳐별 간격을 위해 x 위치를 조정
+        # x = np.arange(len(features)) * 0.85  # 피쳐간 간격 더 축소
         x = np.arange(len(features)) * 0.85  # 피쳐간 간격 더 축소
 
         for i, df in enumerate(dfs):
+            avg_val = 0
             # 각 feature에 대해 metric 값 추출
             values = []
-            for feature in features:
+            for feature in features[:-1]:
                 row = df[(df["Feature"] == feature) & (df["Metric"] == metric)]
                 val = row["Mean"].values[0] if not row.empty else np.nan
                 values.append(val)
@@ -77,6 +80,9 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
                 normalized_values = [1.0 for _ in values]  # LSTM 자체는 1
             else:
                 normalized_values = [v / lv if not np.isnan(v) else np.nan for v, lv in zip(values, lstm_values)]
+
+            avg_relative = np.nanmean(normalized_values)
+            normalized_values.append(avg_relative)
 
             # 같은 피쳐 내에서는 막대들이 붙어있도록 offset 조정
             offset = (i - (len(dfs) - 1) / 2) * bar_width
@@ -92,15 +98,34 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
             )
 
             # 각 바 위에 비율 표시
-            for bar, val in zip(bars, normalized_values):
+            # for bar, val in zip(bars, normalized_values):
+            #     plt.text(
+            #         bar.get_x() + bar.get_width()/2,  # x 위치: 바 중앙
+            #         bar.get_height() + 0.02,          # y 위치: 바 위쪽 약간 띄움
+            #         f'{val:.2f}',                     # 소수점 2자리
+            #         ha="center",
+            #         va="bottom",
+            #         fontsize=22,
+            #         rotation=0,
+            #     )
+            # bars 그리기
+            for j, val in enumerate(normalized_values):
+                bar = plt.bar(
+                    x[j] + offset,
+                    val,
+                    width=bar_width,
+                    # label=case_labels[i] if j == 0 else "",  # 범례 중복 방지
+                    color=color,
+                    edgecolor="#333333",
+                    linewidth=0.6,
+                    hatch="////" if j == len(normalized_values) - 1 else None,
+                )
+                # 값 표시
                 plt.text(
-                    bar.get_x() + bar.get_width()/2,  # x 위치: 바 중앙
-                    bar.get_height() + 0.02,          # y 위치: 바 위쪽 약간 띄움
-                    f'{val:.2f}',                     # 소수점 2자리
-                    ha="center",
-                    va="bottom",
-                    fontsize=22,
-                    rotation=0,
+                    bar[0].get_x() + bar[0].get_width()/2,
+                    bar[0].get_height() + 0.02,
+                    f"{val:.2f}",
+                    ha="center", va="bottom", fontsize=22
                 )
 
         # 4. 그래프 꾸미기
@@ -194,19 +219,27 @@ def print_avg_mse_excluding_time(csv_paths, labels):
 if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
-        "results/performance_test/case21.2/rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case21.3/rayleigh_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case21.4/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case21.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case22.1/rayleigh_deepsc_MSE/performance_statistics.csv"
+        # "results/performance_test/case21.2/rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case21.3/rayleigh_gru_MSE/performance_statistics.csv",
+        # "results/performance_test/case21.4/rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case21.1/rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case22.1/rayleigh_deepsc_MSE/performance_statistics.csv"
+        "results/performance_test/case23.1.1/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case23.1.2/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case23.1.4/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case23.1.3/rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case23.1.5/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case22.1/rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_250923/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_250924/{filename}/"
     )
     # case_labels = ["DeepSC", "GRU", "LSTM"]
-    case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer", "MI Net+Inverted-Transformer"]
+    # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer", "MI Net+Inverted-Transformer"]
+    # case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "feature 20%", "both 15%"]
+    case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "both 15%"]
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path=save_path
     )

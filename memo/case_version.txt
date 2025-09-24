@@ -134,14 +134,18 @@ case 21.2 : input_dim 5로 변경, time 제거 - LSTM
 case 21.3 : input_dim 5로 변경, time 제거 - GRU
 case 21.4 : input_dim 5로 변경, time 제거 - Transformer
 
+case 22.1 : 21.1 + MI net
+
 # 25.09.23
 case 21.2 : compressed_features 6 으로 돌렸던 기존 21.2를 3으로 변경 후 재검증
 case 21.3 : compressed_features 6 으로 돌렸던 기존 21.2를 3으로 변경 후 재검증
 
 # 25.09.24
 case 23.1.1 : 21.1 최고 성능 모델에서 압축률 100%
-case 23.1.2 : 21.1 최고 성능 모델에서 압축률 40% (시퀀스만)
-case 23.1.3 : 21.1 최고 성능 모델에서 압축률 40% (피쳐만)
+case 23.1.2 : 21.1 최고 성능 모델에서 압축률 60% (시퀀스만, compressed_len = 306 (306/512))
+case 23.1.3 : 21.1 최고 성능 모델에서 압축률 60% (피쳐만, d_comp = 3 (3/5))
+case 23.1.4 : 21.1 최고 성능 모델에서 압축률 20% (시퀀스만 compressed_len = 102 )
+case 23.1.5 : 21.1 최고 성능 모델에서 압축률 20% (피쳐만, d_comp = 1 (1/5))
 
 # case 별 파라미터 저장
 case 11.1
