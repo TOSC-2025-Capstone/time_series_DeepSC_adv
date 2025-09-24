@@ -30,6 +30,8 @@ measure_cols = [
     "Voltage_load",
 ]
 
+feature_ranges = {}
+
 merged_path = eda_merged_path
 output_prefix_path = eda_output_prefix_path
 # outlier cut version
@@ -83,7 +85,6 @@ if eda_target_type == "outlier_cut":
     if all_data_for_scale:
         df_scale = pd.concat(all_data_for_scale, ignore_index=True)
 
-        feature_ranges = {}
         for col in measure_cols:
             if col in df_scale.columns:
                 feature_ranges[col] = {
@@ -98,10 +99,10 @@ if eda_target_type == "outlier_cut":
         print(f"피쳐별 min/max 저장 완료 → {scale_file}")
 
     # Time 축의 최대/최소값도 계산
-    time_range = {
-        'min': df_scale["Time"].min(),
-        'max': df_scale["Time"].max()
-    }
+    # time_range = {
+    #     'min': df_scale["Time"].min(),
+    #     'max': df_scale["Time"].max()
+    # }
 
 # =============================
 # 복원본 경우 → 파일 불러오기
@@ -118,6 +119,7 @@ else:
         )
 
 print("계산된 스케일 범위:")
+
 for col in measure_cols:
     if col in feature_ranges:
         print(f"{col}: {feature_ranges[col]['min']:.2f} ~ {feature_ranges[col]['max']:.2f}")
@@ -154,7 +156,7 @@ for readme_path in eda_readme_files:
     df_all = pd.concat(dfs, ignore_index=True)
 
     # LSTM, GRU 시퀀스 패딩 결과로 나오는 음수 time index 삭제
-    df_all = df_all[df_all['Time'] >= 0 ]
+    # df_all = df_all[df_all['Time'] >= 0 ]
 
     # 루프 안에서 group_name 기반으로 디렉토리 생성
     output_dir = f"{output_prefix_path}{group_name}"
@@ -209,7 +211,7 @@ for readme_path in eda_readme_files:
 
         # x축과 y축 스케일을 전체 데이터의 최대/최소값으로 고정
         # ax.set_xlim(time_range['min'], time_range['max'])
-        ax.set_ylim(feature_ranges[col]['min'], feature_ranges[col]['max'])
+        ax.set_ylim(feature_ranges[col]['min']-0.5, feature_ranges[col]['max']+0.5)
 
         ax.set_title(f"Battery Group: {id_part} {col} vs Time")
         ax.set_xlabel("Row Index" if is_row_x_label_on_EDA == True else "Time (s)")

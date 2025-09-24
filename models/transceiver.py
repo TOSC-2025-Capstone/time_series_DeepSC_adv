@@ -440,11 +440,7 @@ class LearnableTimeDecompressor(nn.Module):
         return x
 
 # 250914 claude iTransformer
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
-from utils import Channels
+
 
 class InvertedMultiHeadAttention(nn.Module):
     """iTransformer의 핵심: 변수 축에서 어텐션 수행"""
@@ -595,8 +591,8 @@ class DeepSC(nn.Module):
         self.compressed_len = p.get("compressed_len", compressed_len)
         self.d_comp = p.get("d_comp", 3)
 
-        self.encoder = Encoder(
-        # self.encoder = iTransformerEncoder(
+        # self.encoder = Encoder(
+        self.encoder = iTransformerEncoder(
             self.num_layers,
             self.input_dim,
             self.max_len,
@@ -680,12 +676,5 @@ class DeepSC(nn.Module):
         # 7단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
         output = self.output_projection(decompressed)
-
-        # # 8단계: upsampling (batch, compressed_len, input_dim) → (batch, max_len, input_dim) => 원래 시퀀스 차원으로 복원
-        # output = output.permute(
-        #     0, 2, 1
-        # )  # (batch, input_dim, compressed_len), (PyTorch의 Upsample은 (batch, channels, length) 형태를 기대하므로 형태 수정
-        # output = self.upsample(output)  # (batch, input_dim, max_len)
-        # output = output.permute(0, 2, 1)  # (batch, max_len, input_dim)
 
         return output

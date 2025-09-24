@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from parameters.parameters import case_index
-
+from sklearn.metrics import mean_squared_error
 
 # 특정 케이스의 세 모델 복원 지표(MSE,MAE,RMSE)정보를 저장한 csv들을 받아서 plot하는 함수
 def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None):
@@ -108,6 +108,86 @@ def plot_feature_comparison(
     print(f"[✓] 저장 완료: {output_file}")
 
 
+def plot_feature_comparison_with_residual(
+    original_path: str,
+    model_1_path: str,
+    model_2_path: str,
+    model_3_path: str,
+    model_4_path: str,
+    feature_names: list,
+    save_path: str,
+    filename: str,
+):
+    # 1. 데이터 로드
+    df_original = pd.read_csv(os.path.join(original_path, filename))
+    df_model_1 = pd.read_csv(os.path.join(model_1_path, filename.replace(".csv", "_reconstructed.csv")))
+    df_model_2 = pd.read_csv(os.path.join(model_2_path, filename.replace(".csv", "_reconstructed.csv")))
+    df_model_3 = pd.read_csv(os.path.join(model_3_path, filename.replace(".csv", "_reconstructed.csv")))
+    df_model_4 = pd.read_csv(os.path.join(model_4_path, filename.replace(".csv", "_reconstructed.csv")))
+
+    models = {
+        "InvertedTransformer": (df_model_1, "orange", "--"),
+        "LSTM": (df_model_2, "green", "-."),
+        "GRU": (df_model_3, "red", ":"),
+        "Transformer": (df_model_4, "purple", (0, (3, 1, 1, 1))),
+    }
+
+    # -----------------------
+    # 2. 원본 vs 복원 비교
+    # -----------------------
+    plt.figure(figsize=(18, 12))
+    for i, feature in enumerate(feature_names):
+        ax = plt.subplot(2, 3, i + 1)
+
+        # 원본
+        ax.plot(df_original[feature], label="Original", color="black", linewidth=2)
+
+        # 모델별 복원
+        for model_name, (df_model, color, style) in models.items():
+            mse = mean_squared_error(df_original[feature], df_model[feature])
+            ax.plot(
+                df_model[feature],
+                label=f"{model_name} (MSE={mse:.3f})",
+                color=color,
+                linestyle=style,
+                linewidth=1.5,
+                alpha=0.9
+            )
+
+        ax.set_title(feature, fontsize=12)
+        ax.set_xlabel("Timestep")
+        ax.set_ylabel(feature)
+        ax.legend(fontsize=8)
+
+    plt.tight_layout()
+    os.makedirs(save_path, exist_ok=True)
+    output_file_comp = os.path.join(save_path, f"comparison_{filename.replace('.csv', '')}.png")
+    plt.savefig(output_file_comp, dpi=300)
+    plt.show()
+    print(f"[✓] 저장 완료 (원본-복원): {output_file_comp}")
+
+    # -----------------------
+    # 3. Residual² 플롯
+    # -----------------------
+    plt.figure(figsize=(18, 12))
+    for i, feature in enumerate(feature_names):
+        ax = plt.subplot(2, 3, i + 1)
+
+        for model_name, (df_model, color, style) in models.items():
+            residual_sq = (df_original[feature] - df_model[feature]) ** 2
+            ax.plot(residual_sq, label=model_name, color=color, linestyle=style, linewidth=1)
+
+        ax.set_title(f"{feature} Residual²", fontsize=12)
+        ax.set_xlabel("Timestep")
+        ax.set_ylabel("Squared Error")
+        ax.legend(fontsize=8)
+
+    plt.tight_layout()
+    output_file_resid = os.path.join(save_path, f"residual_{filename.replace('.csv', '')}.png")
+    plt.savefig(output_file_resid, dpi=300)
+    plt.show()
+    print(f"[✓] 저장 완료 (Residual²): {output_file_resid}")
+
 if __name__ == "__main__":
     # 예시 사용법
     prefix = "./results/performance_test"
@@ -124,11 +204,12 @@ if __name__ == "__main__":
     )
     # case_labels = ["DeepSC", "GRU", "LSTM"]
     case_labels = ["21.1", "21.2", "21.3", "21.4"]
-    final_statistic_comparison_plot(
-        csv_paths, case_labels, save_path=save_path
-    )
+    # final_statistic_comparison_plot(
+    #     csv_paths, case_labels, save_path=save_path
+    # )
 
-    plot_feature_comparison(
+    # plot_feature_comparison(
+    plot_feature_comparison_with_residual(
         original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
         model_1_path="./reconstruction/case21.1/reconstructed_rayleigh_deepsc_MSE",
         model_2_path="./reconstruction/case21.2/reconstructed_rayleigh_lstm_MSE",

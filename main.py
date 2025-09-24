@@ -24,6 +24,7 @@ from models.gru import GRUDeepSC
 from models.lstm import LSTMDeepSC
 from models.mutual_info import Mine
 from models.transceiver import DeepSC
+from models.only_channel import OnlyChannel
 from parameters.model_parameters import *
 
 # 기타 매개변수, 모델 파라미터 모두 가져오기
@@ -76,8 +77,8 @@ if __name__ == "__main__":
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
         print("DeepSC 모델이 선택되었습니다.")
-        # if is_learning_minet == True and channel_type != "no_channel":
-            # mi_net = Mine().to(device)
+        if is_learning_minet == True and channel_type != "no_channel":
+            mi_net = Mine().to(device)
     elif model_type == "lstm":
         model = LSTMDeepSC(params=model_params).to(device)
         print("LSTMDeepSC 모델이 선택되었습니다.")
@@ -87,9 +88,14 @@ if __name__ == "__main__":
     elif model_type == "at_lstm":
         model = LSTMAttentionDeepSC(params=model_params).to(device)
         print("LSTMAttentionDeepSC 모델이 선택되었습니다.")
+    elif model_type == "only_channel" :
+        model = OnlyChannel()
+        print("OnlyChannel 모델이 선택되었습니다.")
+
+    pdb.set_trace()
 
     # train
-    if is_trained == False:
+    if is_trained == False or model_type != "only_channel":
         print("========================== train ==========================\n")
         model.train()
         if model.training:
@@ -102,14 +108,15 @@ if __name__ == "__main__":
     print(
         "========================== best checkpoint load ==========================\n"
     )
-    try:
-        if os.path.exists(model_checkpoint_path):
-            model.load_state_dict(
-                torch.load(f"{model_checkpoint_path}best.pth", map_location=device)
-            )
-            print("모델이 성공적으로 로드되었습니다.")
-    except Exception as e:
-        print(f"모델 로드 실패: {e}")
+    if model_type != "only_channel":
+        try:
+            if os.path.exists(model_checkpoint_path):
+                model.load_state_dict(
+                    torch.load(f"{model_checkpoint_path}best.pth", map_location=device)
+                )
+                print("모델이 성공적으로 로드되었습니다.")
+        except Exception as e:
+            print(f"모델 로드 실패: {e}")
 
 
     # performance + result figuring

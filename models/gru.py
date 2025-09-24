@@ -62,6 +62,8 @@ class GRUDeepSC(nn.Module):
         self.dropout = p.get("dropout", dropout)
         self.channels = Channels()
 
+        # pdb.set_trace()
+
         # 올바른 파라미터 전달
         self.encoder = GRUCompressor_Both(
             self.input_dim, self.hidden_dim,

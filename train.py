@@ -91,6 +91,8 @@ def train_model(
     scheduler = ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5, verbose=True
     )
+
+    mi_opt = None
     if mi_net != None :
         mi_opt = torch.optim.Adam(mi_net.parameters(), lr=1e-3)
 
@@ -126,34 +128,36 @@ def train_model(
             batch = batch.to(device)
 
             # mi_net이 있다면 먼저 학습시키고
-            # mi = train_mi(model, mi_net, batch, noise_std, None, mi_opt, channel_type)
+            mi = None
+            if mi_net != None :
+                mi = train_mi(model, mi_net, batch, noise_std, None, mi_opt, channel_type)
 
             # 그 다음 메인 모델 학습
             optimizer.zero_grad()
             output = model(batch)
             loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
 
-            # # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함
-            # if mi_net is not None:
-            #     enc_output = model.encoder(batch, src_mask=None)
-            #     compressed = model.time_compressor(enc_output)
-            #     channel_enc_output = model.channel_encoder(compressed)
-            #     Tx_sig = PowerNormalize(channel_enc_output)
+            # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함
+            if mi_net is not None:
+                enc_output = model.encoder(batch, src_mask=None)
+                compressed = model.time_compressor(enc_output)
+                channel_enc_output = model.channel_encoder(compressed)
+                Tx_sig = PowerNormalize(channel_enc_output)
 
-            #     if channel_type == 'AWGN':
-            #         Rx_sig = channels.AWGN(Tx_sig, noise_std)
-            #     elif channel_type == 'rayleigh':
-            #         Rx_sig = channels.Rayleigh(Tx_sig, noise_std)
-            #     elif channel_type == 'rician':
-            #         Rx_sig = channels.Rician(Tx_sig, noise_std)
-            #     else:
-            #         raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
+                if channel_type == 'AWGN':
+                    Rx_sig = channels.AWGN(Tx_sig, noise_std)
+                elif channel_type == 'rayleigh':
+                    Rx_sig = channels.Rayleigh(Tx_sig, noise_std)
+                elif channel_type == 'rician':
+                    Rx_sig = channels.Rician(Tx_sig, noise_std)
+                else:
+                    raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
 
-            #     mi_net.eval()
-            #     joint, marginal = sample_batch(Tx_sig, Rx_sig)
-            #     mi_lb, _, _ = mutual_information(joint, marginal, mi_net)
-            #     loss_mine = -mi_lb
-            #     loss = loss + 0.0009 * loss_mine
+                mi_net.eval()
+                joint, marginal = sample_batch(Tx_sig, Rx_sig)
+                mi_lb, _, _ = mutual_information(joint, marginal, mi_net)
+                loss_mine = -mi_lb
+                loss = loss + 0.0009 * loss_mine
 
             loss.backward()
 
