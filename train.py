@@ -129,8 +129,9 @@ def train_model(
 
             # mi_net이 있다면 먼저 학습시키고
             mi = None
+            snr_db = 10
             if mi_net != None :
-                mi = train_mi(model, mi_net, batch, noise_std, None, mi_opt, channel_type)
+                mi = train_mi(model, mi_net, batch, snr_db, None, mi_opt, channel_type)
 
             # 그 다음 메인 모델 학습
             optimizer.zero_grad()
@@ -145,11 +146,11 @@ def train_model(
                 Tx_sig = PowerNormalize(channel_enc_output)
 
                 if channel_type == 'AWGN':
-                    Rx_sig = channels.AWGN(Tx_sig, noise_std)
+                    Rx_sig = channels.AWGN(Tx_sig, snr_db)
                 elif channel_type == 'rayleigh':
-                    Rx_sig = channels.Rayleigh(Tx_sig, noise_std)
+                    Rx_sig = channels.Rayleigh(Tx_sig, snr_db)
                 elif channel_type == 'rician':
-                    Rx_sig = channels.Rician(Tx_sig, noise_std)
+                    Rx_sig = channels.Rician(Tx_sig, snr_db)
                 else:
                     raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
 

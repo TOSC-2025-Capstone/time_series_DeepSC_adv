@@ -114,58 +114,33 @@ class NoamOpt:
 
 class Channels():
 
-    def AWGN(self, Tx_sig, n_var=0.1):
-        Rx_sig = Tx_sig + torch.normal(0, 0.2, size=Tx_sig.shape).to(device)
+    def AWGN(self, Tx_sig, snr_db=10):
+        snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환
+        signal_power = Tx_sig.pow(2).mean().item()  # 신호 평균 전력
+        n_var = signal_power / snr_linear         # 잡음 분산
+        # pdb.set_trace()
+        noise = torch.normal(
+            mean=0,
+            std=math.sqrt(n_var),
+            size=Tx_sig.shape,
+            device=Tx_sig.device
+        )
+        return Tx_sig + noise
 
-        # 0909 노이즈 추가 비교
-        # Rx_sig_copy = Rx_sig
-        # Tx_sig_copy = Tx_sig
 
-        # flatten = nn.Flatten()
-        # Rx_sig_flatten = flatten(Rx_sig_copy)
-        # Tx_sig_flatten = flatten(Tx_sig_copy)
-        # Rx_sig_flatten = Rx_sig_flatten.view(1, -1)
-        # Tx_sig_flatten = Tx_sig_flatten.view(1, -1)
-
-        # Rx_sig_df = pd.DataFrame(Rx_sig_flatten.cpu().detach().numpy())
-        # Tx_sig_df = pd.DataFrame(Tx_sig_flatten.cpu().detach().numpy())
-
-        # transposed_Rx_sig_df = Rx_sig_df.transpose()
-        # transposed_Tx_sig_df = Tx_sig_df.transpose()
-
-        # plt.figure(figsize=(15, 10))
-        # plt.hist(
-        #     transposed_Rx_sig_df,
-        #     bins=50,
-        #     alpha=0.5,
-        #     label="Rx",
-        #     density=True,
-        #     color="#3498db",
-        # )
-        # plt.hist(
-        #     transposed_Tx_sig_df,
-        #     bins=50,
-        #     alpha=0.8,
-        #     label="Tx",
-        #     density=True,
-        #     color="#e74c3c"
-        # )
-        # plt.show()
-        return Rx_sig
-
-    def Rayleigh(self, Tx_sig, n_var=0.1):
+    def Rayleigh(self, Tx_sig, snr=10):
         shape = Tx_sig.shape
         H_real = torch.normal(0, math.sqrt(1/2), size=[1]).to(device)
         H_imag = torch.normal(0, math.sqrt(1/2), size=[1]).to(device)
         H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
         Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
-        Rx_sig = self.AWGN(Tx_sig, n_var)
+        Rx_sig = self.AWGN(Tx_sig, snr)
         # Channel estimation
         Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
 
         return Rx_sig
 
-    def Rician(self, Tx_sig, n_var=0.1, K=1):
+    def Rician(self, Tx_sig, snr=10, K=1):
         shape = Tx_sig.shape
         mean = math.sqrt(K / (K + 1))
         std = math.sqrt(1 / (K + 1))
@@ -173,7 +148,7 @@ class Channels():
         H_imag = torch.normal(mean, std, size=[1]).to(device)
         H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
         Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
-        Rx_sig = self.AWGN(Tx_sig, n_var)
+        Rx_sig = self.AWGN(Tx_sig, snr)
         # Channel estimation
         Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
 
@@ -212,7 +187,7 @@ def SNR_to_noise(snr):
     return noise_std
 
 # 채널 상태만 학습함
-def train_mi(model, mi_net, src, n_var, padding_idx, opt, channel):
+def train_mi(model, mi_net, src, snr_db, padding_idx, opt, channel):
     mi_net.train()
     opt.zero_grad()
     channels = Channels()
@@ -223,11 +198,11 @@ def train_mi(model, mi_net, src, n_var, padding_idx, opt, channel):
     Tx_sig = PowerNormalize(channel_enc_output)
 
     if channel == 'AWGN':
-        Rx_sig = channels.AWGN(Tx_sig, n_var)
+        Rx_sig = channels.AWGN(Tx_sig, snr_db)
     elif channel == 'rayleigh':
-        Rx_sig = channels.Rayleigh(Tx_sig, n_var)
+        Rx_sig = channels.Rayleigh(Tx_sig, snr_db)
     elif channel == 'rician':
-        Rx_sig = channels.Rician(Tx_sig, n_var)
+        Rx_sig = channels.Rician(Tx_sig, snr_db)
     else:
         raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
 

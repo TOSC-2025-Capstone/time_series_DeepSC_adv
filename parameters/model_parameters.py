@@ -6,13 +6,14 @@ model_params = {
     "input_dim": 5,  # 모든 모델의 입력 피쳐 수
     # 여기
     # "compressed_len": 512,  # 모든 모델의 압축된 시퀀스 길이
-    # "compressed_len": 306,  # 모든 모델의 압축된 시퀀스 길이
+    # "compressed_len": 384,  # 모든 모델의 압축된 시퀀스 길이
+    # "compressed_len": 256,  # 모든 모델의 압축된 시퀀스 길이
     "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
     "num_layers": 2, # 모든 모델의 레이어 수
     "dropout": 0.1,
     # lstm, gru, at_lstm
     "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
-    "compressed_features": 5,  # lstm, gru 압축 피쳐 수
+    "compressed_features": 3,  # lstm, gru 압축 피쳐 수
     "reconstruct_len": 512,  # lstm, gru, at_lstm 모델 출력 sequence length
     "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
     # "reconstruct_features": 3,  # lstm, gru, at_lstm 복원 피쳐 수

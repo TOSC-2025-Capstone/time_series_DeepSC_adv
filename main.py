@@ -58,6 +58,10 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
+def count_parameters(model):
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total, trainable
 
 if __name__ == "__main__":
     print(f"========================== case_{case_index} start ==========================\n")
@@ -92,10 +96,12 @@ if __name__ == "__main__":
         model = OnlyChannel()
         print("OnlyChannel 모델이 선택되었습니다.")
 
-    pdb.set_trace()
+    total, trainable = count_parameters(model)
+    print(f"Total params: {total:,}")
+    print(f"Trainable params: {trainable:,}")
 
     # train
-    if is_trained == False or model_type != "only_channel":
+    if is_trained == False:
         print("========================== train ==========================\n")
         model.train()
         if model.training:

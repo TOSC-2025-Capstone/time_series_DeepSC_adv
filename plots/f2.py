@@ -72,6 +72,7 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
             for feature in features[:-1]:
                 row = df[(df["Feature"] == feature) & (df["Metric"] == metric)]
                 val = row["Mean"].values[0] if not row.empty else np.nan
+                # accuracy 로 변환
                 values.append(val)
 
             # LSTM 값 기준으로 비율 계산
@@ -219,27 +220,29 @@ def print_avg_mse_excluding_time(csv_paths, labels):
 if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
-        # "results/performance_test/case21.2/rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case21.3/rayleigh_gru_MSE/performance_statistics.csv",
-        # "results/performance_test/case21.4/rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case21.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case22.1/rayleigh_deepsc_MSE/performance_statistics.csv"
-        "results/performance_test/case23.1.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case23.1.2/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case23.1.4/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case23.1.3/rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case23.1.5/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case22.1/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case24.1.0/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case24.1.1/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case24.1.2/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case24.1.3/rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case24.3.1/rayleigh_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case24.3.2/rayleigh_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case24.3.3/rayleigh_gru_MSE/performance_statistics.csv",
+        # "results/performance_test/case25.1.4/rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_250924/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251002/{filename}/"
     )
+    # case_labels = ["snr 5", "snr 10", "snr 15", "noiseless"]
     # case_labels = ["DeepSC", "GRU", "LSTM"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer", "MI Net+Inverted-Transformer"]
     # case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "feature 20%", "both 15%"]
-    case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "both 15%"]
+    # case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "both 15%"]
+    # case_labels = ["no compress", "4/5", "3/5", "2/5", "1/5"]
+    # case_labels = ["no compress", "3/4", "2/4", "1/4"]
+    case_labels = ["case 24.1.0", "case 24.1.1", "case 24.1.2", "case 24.1.3", "case 24.3.1","case 24.3.2","case 24.3.3"]
+
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path=save_path
     )

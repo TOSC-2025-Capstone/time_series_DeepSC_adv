@@ -591,6 +591,7 @@ class DeepSC(nn.Module):
         self.compressed_len = p.get("compressed_len", compressed_len)
         self.d_comp = p.get("d_comp", 3)
 
+        # 의미 인코더 = encoder + time_compressor
         # self.encoder = Encoder(
         self.encoder = iTransformerEncoder(
             self.num_layers,
@@ -660,7 +661,9 @@ class DeepSC(nn.Module):
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        channel_syms = self.channels.Rayleigh(channel_encoded, 0.1)
+        snr_db = 10
+        channel_syms = self.channels.Rayleigh(channel_encoded, snr_db)
+        # channel_syms = channel_encoded
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)

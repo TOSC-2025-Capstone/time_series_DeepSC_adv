@@ -16,7 +16,7 @@ class Mine(nn.Module):
         super(Mine, self).__init__()
 
         self.dense1 = linear(in_dim,hidden_size)
-        self.dense2 = linear(hidden_size,hidden_size)
+        self.dense2 = linear(hidden_size, hidden_size)
         self.dense3 = linear(hidden_size, 1)
 
     def forward(self, inputs):

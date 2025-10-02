@@ -141,11 +141,63 @@ case 21.2 : compressed_features 6 으로 돌렸던 기존 21.2를 3으로 변경
 case 21.3 : compressed_features 6 으로 돌렸던 기존 21.2를 3으로 변경 후 재검증
 
 # 25.09.24
-case 23.1.1 : 21.1 최고 성능 모델에서 압축률 100%
-case 23.1.2 : 21.1 최고 성능 모델에서 압축률 60% (시퀀스만, compressed_len = 306 (306/512))
-case 23.1.3 : 21.1 최고 성능 모델에서 압축률 60% (피쳐만, d_comp = 3 (3/5))
-case 23.1.4 : 21.1 최고 성능 모델에서 압축률 20% (시퀀스만 compressed_len = 102 )
-case 23.1.5 : 21.1 최고 성능 모델에서 압축률 20% (피쳐만, d_comp = 1 (1/5))
+case 23.1.1 : 22.1 최고 성능 모델에서 압축률 100%
+case 23.1.2 : 22.1 최고 성능 모델에서 압축률 60% (시퀀스만, compressed_len = 306 (306/512))
+case 23.1.3 : 22.1 최고 성능 모델에서 압축률 60% (피쳐만, d_comp = 3 (3/5))
+case 23.1.4 : 22.1 최고 성능 모델에서 압축률 20% (시퀀스만 compressed_len = 102 )
+case 23.1.5 : 22.1 최고 성능 모델에서 압축률 20% (피쳐만, d_comp = 1 (1/5))
+
+case 24.1.0 : 21.1 최고 성능 모델에서 노이즈 없애기
+case 24.1.1 : 21.1 최고 성능 모델에서 노이즈 0.39 (snr 5)
+    channel_syms = self.channels.Rayleigh(channel_encoded, 5)
+case 24.1.2 : 21.1 최고 성능 모델에서 노이즈 0.22 (snr 10)
+    channel_syms = self.channels.Rayleigh(channel_encoded, 10)
+case 24.1.3 : 21.1 최고 성능 모델에서 노이즈 0.12 (snr 15)
+    channel_syms = self.channels.Rayleigh(channel_encoded, 15)
+
+case 24.5.1 : 22.1 최고 성능 모델에서 노이즈 0.39 (snr 5)
+case 24.5.2 : 22.1 최고 성능 모델에서 노이즈 0.22 (snr 10)
+case 24.5.3 : 22.1 최고 성능 모델에서 노이즈 0.12 (snr 15)
+
+case 24.2.1 : 21.2 최고 성능 모델에서 노이즈 0.39 (snr 5)
+case 24.2.2 : 21.2 최고 성능 모델에서 노이즈 0.22 (snr 10)
+case 24.2.3 : 21.2 최고 성능 모델에서 노이즈 0.12 (snr 15)
+
+# 25.09.29
+case 25.1.1 : 21.1 최고 성능 모델에서 피쳐만 압축 4/5, 채널 제거 (다시해야함 지금 0929 20:58)
+case 25.1.2 : 21.1 최고 성능 모델에서 피쳐만 압축 3/5, 채널 제거
+case 25.1.3 : 21.1 최고 성능 모델에서 피쳐만 압축 2/5, 채널 제거
+case 25.1.4 : 21.1 최고 성능 모델에서 피쳐만 압축 1/5, 채널 제거
+
+case 25.2.1 : 21.1 최고 성능 모델에서 시퀀스만 압축 3/4(384), 채널 제거
+case 25.2.2 : 21.1 최고 성능 모델에서 시퀀스만 압축 2/4(256), 채널 제거
+case 25.2.3 : 21.1 최고 성능 모델에서 시퀀스만 압축 1/4(128), 채널 제거
+
+case 26.1 : 22.1 case 에서 snr_db 15, loss + 100 * abs(loss_mine) 수치로 학습 (가중치 0.0009 -> 100)
+case 26.2 : 22.1 case 에서 snr_db 15, loss + abs(loss_mine) 수치로 학습 (가중치 0.0009 -> 1)
+case 26.3 : 22.1 case 에서 snr_db 15, loss + abs(loss_mine) 수치로 학습 (가중치 0.0009 -> 0.01)
+case 26.4 : 22.1 case 에서 snr_db 15, loss + abs(loss_mine) 수치로 학습 (가중치 0.0009 -> 0.0001)
+case 26.5 : 22.1 case 에서 snr_db 15, loss + loss_mine 수치로 학습 (가중치 0.0009 -> 0.0001)
+case 26.6 : 22.1 case 에서 snr_db 15, loss + loss_mine 수치로 학습 (가중치 0.0009 )
+case 26.7 : 21.1 case 에서 snr_db 15, loss (mi net x)
+case 26.8 : 21.1 case 에서 snr_db 10, loss (mi net x)
+
+
+# 25.10.02
+case 24.1.1 : 21.1 최고 성능 모델에서 (snr 5)
+    channel_syms = self.channels.Rayleigh(channel_encoded, 5)
+case 24.1.2 : 21.1 최고 성능 모델에서 (snr 10)
+    channel_syms = self.channels.Rayleigh(channel_encoded, 10)
+case 24.1.3 : 21.1 최고 성능 모델에서 (snr 15)
+    channel_syms = self.channels.Rayleigh(channel_encoded, 15)
+재검증
+
+((Pdb) SNR_to_noise(10)
+0.22360679774997896
+(Pdb) SNR_to_noise(5)
+0.3976353643835253
+(Pdb) SNR_to_noise(15)
+0.12574334296829354)
 
 # case 별 파라미터 저장
 case 11.1
