@@ -74,7 +74,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "24.1.2"
+case_index = "27.4.1"
 
 # 모델 종류
 class ModelType(Enum):
@@ -119,7 +119,7 @@ SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 # 현재 사용할 변수 설정들
 model_type = ModelType.DEEPSC.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
-channel_type = ChannelType.RAYLEIGH.value  # no_channel 선택
+channel_type = ChannelType.AWGN.value  # no_channel 선택
 scaler_type = ScalerType.ZSCORE.value  # minmax 선택
 
 # channel 노이즈 설정

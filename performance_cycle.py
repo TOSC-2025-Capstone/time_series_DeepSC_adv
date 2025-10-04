@@ -391,6 +391,7 @@ def total_performance_plot(feature_cols, all_metrics, save_dir):
 
     # 성능 통계 저장
     stats_df = pd.DataFrame(columns=["Feature", "Metric", "Mean", "Std", "Min", "Max"])
+    pdb.set_trace()
     for feature in feature_cols:
         for metric in metrics_names:
             values = all_metrics[feature][metric]
@@ -401,10 +402,10 @@ def total_performance_plot(feature_cols, all_metrics, save_dir):
                         {
                             "Feature": [feature],
                             "Metric": [metric],
-                            "Mean": [np.mean(values)],
-                            "Std": [np.std(values)],
-                            "Min": [np.min(values)],
-                            "Max": [np.max(values)],
+                            "Mean": [np.nanmean(values)],
+                            "Std": [np.nanstd(values)],
+                            "Min": [np.nanmin(values)],
+                            "Max": [np.nanmax(values)],
                         }
                     ),
                 ],

@@ -62,8 +62,6 @@ class GRUDeepSC(nn.Module):
         self.dropout = p.get("dropout", dropout)
         self.channels = Channels()
 
-        # pdb.set_trace()
-
         # 올바른 파라미터 전달
         self.encoder = GRUCompressor_Both(
             self.input_dim, self.hidden_dim,
@@ -78,9 +76,9 @@ class GRUDeepSC(nn.Module):
 
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        # compressed_on_channel = self.channels.Rayleigh(compressed, noise_std)
-        snr_db = 15
-        compressed_on_channel = self.channels.Rayleigh(compressed, snr_db)
+        snr_db = 20
+        # compressed_on_channel = self.channels.Rayleigh(compressed, snr_db)
+        compressed_on_channel = compressed
         reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
         return reconstructed
 

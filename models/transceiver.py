@@ -440,8 +440,6 @@ class LearnableTimeDecompressor(nn.Module):
         return x
 
 # 250914 claude iTransformer
-
-
 class InvertedMultiHeadAttention(nn.Module):
     """iTransformer의 핵심: 변수 축에서 어텐션 수행"""
     def __init__(self, num_heads, seq_len, dropout=0.1):
@@ -565,6 +563,35 @@ class iTransformerEncoder(nn.Module):
 
         return x
 
+class SmoothTimeDecompressor(nn.Module):
+    def __init__(self, d_model, target_len):
+        super().__init__()
+        self.target_len = target_len
+
+        # ConvTranspose 대신 Interpolation + Conv 사용
+        self.decompress = nn.Sequential(
+            nn.Linear(d_model, d_model * 2),  # 채널 확장
+            nn.GELU(),
+        )
+        self.smooth_conv = nn.Conv1d(d_model * 2, d_model, kernel_size=5, padding=2)
+
+    def forward(self, x):
+        # x: [batch, compressed_len, d_model]
+        batch, comp_len, d_model = x.shape
+
+        # 1단계: 피처 확장
+        x = self.decompress(x)  # [batch, comp_len, d_model*2]
+
+        # 2단계: 시간 축 보간 (부드러운 업샘플링)
+        x = x.permute(0, 2, 1)  # [batch, d_model*2, comp_len]
+        x = F.interpolate(x, size=self.target_len, mode='linear', align_corners=False)
+
+        # 3단계: 스무딩 컨볼루션
+        x = self.smooth_conv(x)  # [batch, d_model, target_len]
+        x = x.permute(0, 2, 1)  # [batch, target_len, d_model]
+
+        return x
+
 class DeepSC(nn.Module):
     def __init__(
         self,
@@ -592,8 +619,8 @@ class DeepSC(nn.Module):
         self.d_comp = p.get("d_comp", 3)
 
         # 의미 인코더 = encoder + time_compressor
-        # self.encoder = Encoder(
-        self.encoder = iTransformerEncoder(
+        self.encoder = Encoder(
+        # self.encoder = iTransformerEncoder(
             self.num_layers,
             self.input_dim,
             self.max_len,
@@ -612,10 +639,12 @@ class DeepSC(nn.Module):
 
         # 점진적 압축으로 변경
         self.channel_encoder = nn.Sequential(
-            nn.Linear(self.d_model, self.d_model // 4),  # 128 → 64
-            nn.ReLU(),
-            # nn.Dropout(0.1),
-            nn.Linear(self.d_model // 4, self.d_comp),  # 32 → 3
+            nn.Linear(self.d_model, self.d_model // 2),  # 128 → 64
+            nn.LayerNorm(self.d_model // 2),
+            # nn.ReLU(),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
         )
 
         self.channels = Channels()
@@ -638,11 +667,13 @@ class DeepSC(nn.Module):
 
         # 시계열 길이 복원
         self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
+        # self.time_decompressor = SmoothTimeDecompressor(self.d_model, self.max_len)
 
         # 업샘플링 레이어 추가 (compressed_len → max_len)
         self.upsample = nn.Upsample(
             size=self.max_len, mode="linear", align_corners=False
         )
+
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
@@ -661,9 +692,9 @@ class DeepSC(nn.Module):
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        snr_db = 10
-        channel_syms = self.channels.Rayleigh(channel_encoded, snr_db)
-        # channel_syms = channel_encoded
+        # snr_db = 20
+        # channel_syms = self.channels.AWGN(channel_encoded, snr_db)
+        channel_syms = channel_encoded
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)
