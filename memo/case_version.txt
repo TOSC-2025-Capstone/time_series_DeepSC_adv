@@ -129,7 +129,7 @@ case 20.2 :
 case 20.3 : 0.014357
 case 20.3.1 : 20.3 추가검증 (변화 x)
 
-case 21.1 : input_dim 5로 변경, time 제거 - InvertedTransformer
+case 21.1 : input_dim 5로 변경, time 제거 - InvertedTransformer (case 21은 모두 15% 압축률, rayliegh fading, 노이즈 표준편차 0.2고정)
 case 21.2 : input_dim 5로 변경, time 제거 - LSTM
 case 21.3 : input_dim 5로 변경, time 제거 - GRU
 case 21.4 : input_dim 5로 변경, time 제거 - Transformer
@@ -211,6 +211,29 @@ case 27.1.7 : 압축, 노이즈 없음, 압축에서도 레이어 노멀라이�
 
 case 27.4.0 : 21.4 + 27.1.7까지의 트랜시버 코드 변화에서 압축 노이즈 없음 (0.00706, 그냥 트랜스포머)
 case 27.4.1 : 27.4.0에서 전치 합성곱 복원만 재적용
+case 27.4.2 : TC loss 적용 -> 무의미
+
+# 압축률 동일하게 해놓고 비교 --- P1
+case 27.1.8 : 27.1.7에서 압룩률만 15% 적용 (인버티드)
+case 27.3.5 : 27.3.4에서 압축률만 15% 적용 (GRU)
+case 27.4.3 : 27.4.1에서 압축률만 15% 적용 (트랜스포머)
+
+# 노이즈까지 동일하게 해놓고 비교 --- P2
+case 27.1.9 : 27.1.8에서 노이즈 5db 적용 (인버티드)
+case 27.3.6 : 27.3.5에서 노이즈 5db 적용 (GRU)
+case 27.4.4 : 27.4.3에서 노이즈 5db 적용 (트랜스포머)
+
+case 27.2.1 : P1을 위한 베이스라인 LSTM 모델 성능 (압축률 15%, 비노이즈)
+case 27.2.2 : P2을 위한 베이스라인 LSTM 모델 성능 (압축률 15%, 노이즈 5db) (아직 안함)
+
+# 노이즈에 로버스트하게 어텐션의 약점 보완 진행
+case 28.4.1 : transformer, 압축 15%, 노이즈 5db, 로컬 어텐션 적용(window size 128 (seq_len / 4)) -> 학습 에포크 상 큰 차이없으므로 중단 후 다음 케이스 진행
+case 28.4.2 : 28.4.1에서 window size 32 = seq_len/8
+case 28.4.3 : transformer, 압축 15%, 노이즈 5db, 어텐션 직전에 디노이징 레이어 추가
+case 28.4.4 : transformer, 압축 15%, 노이즈 5db, residual + temperature
+case 28.4.5 : transformer, 압축 15%, 노이즈 5db, EMA 어텐션 적용 (RNN 기반의 순차적 스무딩 효과 모방)
+case 28.4.6 : transformer, 압축 15%, 노이즈 5db, EMA 어텐션 + noise-aware PE 적용
+
 
 ((Pdb) SNR_to_noise(10)
 0.22360679774997896

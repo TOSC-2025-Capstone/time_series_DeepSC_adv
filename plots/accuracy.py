@@ -6,6 +6,34 @@ import pandas as pd
 import json
 from parameters.parameters import case_index
 
+# 한글 폰트 설정 - 영어로 대체
+plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial', 'sans-serif']
+plt.rcParams['axes.unicode_minus'] = False    # 음수 표시 깨짐 방지
+
+# 전역 스타일 설정
+plt.style.use("seaborn-v0_8-white")
+plt.rcParams.update(
+    {
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "figure.titlesize": 30,
+        # "axes.titlesize": 24,
+        "axes.labelsize": 24, # mse
+        "xtick.labelsize": 30, # x 라벨
+        "ytick.labelsize": 30,
+        "legend.fontsize": 30,
+        "axes.grid": False,
+        "grid.alpha": 0.0,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        # 폰트/수식 설정 (마이너스 기호 경고 방지)
+        "mathtext.fontset": "dejavusans",
+        "mathtext.default": "regular",
+        "text.usetex": False,
+        "font.style": "normal",
+    }
+)
+
 def load_feature_statistics(stats_path="data/feature_statistics.json"):
     """
     피처 통계 정보 로드 (없으면 기본값 사용)
@@ -249,26 +277,23 @@ def compare_all_methods(csv_paths, case_labels, save_path=None, stats_path="data
 # 사용 예시
 if __name__ == "__main__":
     csv_paths = [
-        "results/performance_test/case24.1.0/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.1.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.1.2/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.1.3/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.5.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.5.2/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.5.3/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.3.1/rayleigh_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case24.3.2/rayleigh_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case24.3.3/rayleigh_gru_MSE/performance_statistics.csv",
-        # "results/performance_test/case24.2.1/rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case24.2.2/rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case24.2.3/rayleigh_lstm_MSE/performance_statistics.csv",
+#         case 27.1.8 : 27.1.7에서 압룩률만 15% 적용 (인버티드)
+        # case 27.3.5 : 27.3.4에서 압축률만 15% 적용 (GRU)
+        # case 27.4.3
+        # "results/performance_test/case27.1.8/AWGN_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case27.3.5/AWGN_gru_MSE/performance_statistics.csv",
+        # "results/performance_test/case27.4.3/AWGN_deepsc_MSE/performance_statistics.csv",
+        # case 27.4.3
+        "results/performance_test/case27.1.9/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case27.3.6/AWGN_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case27.4.4/AWGN_deepsc_MSE/performance_statistics.csv",
     ]
 
     # case_labels = ["no compress", "4/5", "3/5", "2/5", "1/5"]
     # case_labels = ["case 26.1", "case 26.2", "case 26.3", "case 26.4", "case 26.5", "case 26.6", "case 26.7"]
-    case_labels = ["case 24.1.0", "case 24.1.1", "case 24.1.2", "case 24.1.3", "case 24.5.1", "case 24.5.2", "case 24.5.3", "case 24.3.1","case 24.3.2","case 24.3.3"]
-    # case_labels = ["case 21.1","case 22.1", "case 26.5", "case 26.6", "case 26.7"]
-    save_path = f"./final_comparison_plots/accuracy_methods_comparison/case{case_index.split('.')[0]}_v4/"
+    # case_labels = ["case 24.1.0", "case 24.1.1", "case 24.1.2", "case 24.1.3", "case 24.5.1", "case 24.5.2", "case 24.5.3", "case 24.3.1","case 24.3.2","case 24.3.3"]
+    case_labels = ["case 27.1.9","case 27.3.6", "case 27.4.4"]
+    save_path = f"./final_comparison_plots/accuracy_methods_comparison/case{case_index.split('.')[0]}/3모델압축률15%_노이즈5db/"
 
     # 1단계: feature_statistics.json 생성 (한 번만 실행)
     print("🔄 1단계: 피처 통계 정보 생성")

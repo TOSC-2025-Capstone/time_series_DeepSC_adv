@@ -86,6 +86,38 @@ class PositionalEncoding(nn.Module):
         x = self.dropout(x)
         return x
 
+class NoiseAdaptivePositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout, max_len=5000):
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+
+        # 기본 sinusoidal PE
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.register_buffer("pe", pe.unsqueeze(0))
+
+        # 노이즈 감지 게이트
+        self.noise_detector = nn.Sequential(
+            nn.Linear(d_model, d_model // 4),
+            nn.ReLU(),
+            nn.Linear(d_model // 4, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        seq_len = x.size(1)
+
+        # 노이즈 레벨 추정
+        noise_level = self.noise_detector(x.mean(dim=1, keepdim=True))  # [batch, 1, 1]
+
+        # 노이즈 많으면 PE 약하게 적용
+        pe_strength = 1.0 - 0.5 * noise_level
+
+        x = x + pe_strength * self.pe[:, :seq_len]
+        return self.dropout(x)
 
 class MultiHeadedAttention(nn.Module):
     def __init__(self, num_heads, d_model, dropout=0.1):
@@ -184,19 +216,27 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    "Encoder is made up of self-attn and feed forward (defined below)"
+    def __init__(self, d_model, num_heads, dff, window_size=None, dropout=0.1):
+        """
+        window_size=None: 일반 Attention
+        window_size=int: Local Attention
+        """
+        super().__init__()
 
-    def __init__(self, d_model, num_heads, dff, dropout=0.1):
-        super(EncoderLayer, self).__init__()
+        # window_size에 따라 Attention 선택
+        if window_size is not None:
+            # self.mha = LocalMultiHeadedAttention(num_heads, d_model, window_size, dropout)
+            # self.mha = DenoisingMultiHeadAttention(num_heads, d_model, noise_threshold=0.3, dropout=0.1)
+            # self.mha = ResidualTemperatureAttention(num_heads, d_model, dropout=0.1)
+            self.mha = EMAAttention(num_heads, d_model, dropout=0.1)
+        else:
+            self.mha = MultiHeadedAttention(num_heads, d_model, dropout)
 
-        self.mha = MultiHeadedAttention(num_heads, d_model, dropout=0.1)
-        self.ffn = PositionwiseFeedForward(d_model, dff, dropout=0.1)
-
+        self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
         self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
         self.layernorm2 = nn.LayerNorm(d_model, eps=1e-6)
 
     def forward(self, x, mask):
-        "Follow Figure 1 (left) for connections."
         attn_output = self.mha(x, x, x, mask)
         x = self.layernorm1(x + attn_output)
 
@@ -204,6 +244,7 @@ class EncoderLayer(nn.Module):
         x = self.layernorm2(x + ffn_output)
 
         return x
+
 
 
 class TimeSeriesDecoderLayer(nn.Module):
@@ -235,27 +276,24 @@ class TimeSeriesDecoderLayer(nn.Module):
         return x
 
 class Encoder(nn.Module):
-    "Core encoder is a stack of N layers"
-
     def __init__(
-        self, num_layers, input_dim, max_len, d_model, num_heads, dff, dropout=0.1
+        self, num_layers, input_dim, max_len, d_model, num_heads, dff,
+        window_size=None, dropout=0.1
     ):
-        super(Encoder, self).__init__()
+        super().__init__()
 
         self.d_model = d_model
-        # nn.Embedding 대신 nn.Linear 사용 (시계열 데이터용)
         self.input_projection = nn.Linear(input_dim, d_model)
-        self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
-        # self.pos_encoding = PositionalEncoding(d_model, dropout, max_len)
-        self.enc_layers = nn.ModuleList(
-            [EncoderLayer(d_model, num_heads, dff, dropout) for _ in range(num_layers)]
-        )
+        # self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
+        self.pos_encoding = NoiseAdaptivePositionalEncoding(d_model, dropout, max_len)
+
+        self.enc_layers = nn.ModuleList([
+            EncoderLayer(d_model, num_heads, dff, window_size, dropout)
+            for _ in range(num_layers)
+        ])
 
     def forward(self, x, src_mask):
-        "Pass the input (and mask) through each layer in turn."
-        # x: (batch_size, seq_len, input_dim) - 시계열 데이터
-
-        x = self.input_projection(x)  # (batch_size, seq_len, d_model)
+        x = self.input_projection(x)
         x = self.pos_encoding(x)
 
         for enc_layer in self.enc_layers:
@@ -489,6 +527,358 @@ class InvertedMultiHeadAttention(nn.Module):
 
         return output
 
+class DenoisingMultiHeadAttention(nn.Module):
+    def __init__(self, num_heads, d_model, dropout=0.1, noise_threshold=0.3):
+        super().__init__()
+        assert d_model % num_heads == 0
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.d_model = d_model
+        self.noise_threshold = noise_threshold
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, d_model)
+        self.wv = nn.Linear(d_model, d_model)
+        self.dense = nn.Linear(d_model, d_model)
+        self.dropout = nn.Dropout(p=dropout)
+
+        self.noise_gate = nn.Sequential(
+            nn.Linear(d_model, d_model // 4),
+            nn.ReLU(),
+            nn.Linear(d_model // 4, 1),
+            nn.Sigmoid()
+        )
+
+        self.attn = None
+
+    def forward(self, query, key, value, mask=None):
+        batch_size = query.size(0)
+        seq_len = query.size(1)
+
+        # 1. 노이즈 레벨 추정
+        noise_scores = self.noise_gate(key)  # [batch, seq_len, 1]
+
+        # 2. Q, K, V 계산
+        Q = self.wq(query).view(batch_size, seq_len, self.num_heads, self.d_k)
+        Q = Q.transpose(1, 2)  # [batch, heads, seq_len, d_k]
+
+        K = self.wk(key).view(batch_size, seq_len, self.num_heads, self.d_k)
+        K = K.transpose(1, 2)  # [batch, heads, seq_len, d_k]
+
+        V = self.wv(value).view(batch_size, seq_len, self.num_heads, self.d_k)
+        V = V.transpose(1, 2)  # [batch, heads, seq_len, d_k]
+
+        # 3. Attention scores
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        # scores: [batch, heads, seq_len, seq_len]
+
+        # 4. 기존 mask 처리
+        if mask is not None:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0).unsqueeze(0)
+            elif mask.dim() == 3:
+                mask = mask.unsqueeze(1)
+            scores = scores.masked_fill(mask.bool(), -1e9)
+
+        # 5. 노이즈 마스킹 수정
+        noise_mask = (noise_scores >= self.noise_threshold).float()  # threshold 이상만 허용
+        # noise_mask: [batch, seq_len, 1]
+
+        # Key 위치에 대한 마스크 (마지막 차원)
+        noise_mask = noise_mask.squeeze(-1)  # [batch, seq_len]
+        noise_mask = noise_mask.unsqueeze(1).unsqueeze(2)  # [batch, 1, 1, seq_len]
+
+        # 노이즈가 높은 key 위치 차단
+        scores = scores.masked_fill((noise_mask < 0.5).bool(), -1e9)
+
+        # 6. Attention weights
+        attn_weights = F.softmax(scores, dim=-1)
+        # attn_weights: [batch, heads, seq_len, seq_len]
+        self.attn = attn_weights
+
+        # 7. Output 계산
+        output = torch.matmul(attn_weights, V)
+        # output: [batch, heads, seq_len, d_k]
+
+        # 8. Reshape
+        output = output.transpose(1, 2).contiguous()
+        # output: [batch, seq_len, heads, d_k]
+
+        output = output.view(batch_size, seq_len, self.d_model)
+        # output: [batch, seq_len, d_model]
+
+        # 9. Final transformation
+        output = self.dense(output)
+        output = self.dropout(output)
+
+        return output
+
+class LocalMultiHeadedAttention(nn.Module):
+    """일반 Transformer용 Local Attention"""
+    def __init__(self, num_heads, d_model, window_size=32, dropout=0.1):
+        super().__init__()
+        assert d_model % num_heads == 0
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.window_size = int(window_size)
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, d_model)
+        self.wv = nn.Linear(d_model, d_model)
+        self.dense = nn.Linear(d_model, d_model)
+
+        self.attn = None
+        self.dropout = nn.Dropout(p=dropout)
+
+    def create_local_mask(self, seq_len, device):
+        mask = torch.ones(seq_len, seq_len, dtype=torch.bool, device=device)
+        for i in range(seq_len):
+            start = max(0, i - self.window_size // 2)
+            end = min(seq_len, i + self.window_size // 2 + 1)
+            mask[i, start:end] = False
+        return mask
+
+    def forward(self, query, key, value, mask=None):
+        nbatches = query.size(0)
+        seq_len = query.size(1)
+
+        # 로컬 마스크 생성
+        local_mask = self.create_local_mask(seq_len, query.device)
+
+        if mask is not None:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0).unsqueeze(0)
+            elif mask.dim() == 3:
+                mask = mask.unsqueeze(1)
+            local_mask = local_mask.unsqueeze(0).unsqueeze(0) | mask
+        else:
+            local_mask = local_mask.unsqueeze(0).unsqueeze(0)
+
+        # Q, K, V 계산
+        query = self.wq(query).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
+        key = self.wk(key).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
+        value = self.wv(value).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
+
+        # Attention
+        x, self.attn = self.attention(query, key, value, mask=local_mask)
+
+        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.num_heads * self.d_k)
+        return self.dropout(self.dense(x))
+
+    def attention(self, query, key, value, mask=None):
+        d_k = query.size(-1)
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+
+        if mask is not None:
+            scores = scores.masked_fill(mask, -1e9)
+
+        p_attn = F.softmax(scores, dim=-1)
+        return torch.matmul(p_attn, value), p_attn
+
+class ResidualTemperatureAttention(nn.Module):
+    """Residual Attention + Temperature Scaling 결합"""
+    def __init__(self, num_heads, d_model, dropout=0.1):
+        super().__init__()
+        assert d_model % num_heads == 0
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.d_model = d_model
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, d_model)
+        self.wv = nn.Linear(d_model, d_model)
+        self.dense = nn.Linear(d_model, d_model)
+        self.dropout = nn.Dropout(p=dropout)
+
+        self.temperature_predictor = nn.Sequential(
+            nn.Linear(d_model, d_model // 4),
+            nn.ReLU(),
+            nn.Linear(d_model // 4, 1),
+            nn.Softplus()
+        )
+
+        self.attn_alpha = nn.Parameter(torch.ones(1) * 0.5)
+
+        self.attn = None
+        self.prev_attn = None
+
+    def forward(self, query, key, value, mask=None):
+        batch_size = query.size(0)
+        seq_len = query.size(1)
+
+        # Temperature 예측
+        temperature = self.temperature_predictor(query.mean(dim=1))
+        temperature = temperature.unsqueeze(1).unsqueeze(2) + 1.0
+
+        # Q, K, V 계산
+        Q = self.wq(query).view(batch_size, seq_len, self.num_heads, self.d_k)
+        Q = Q.transpose(1, 2)
+
+        K = self.wk(key).view(batch_size, seq_len, self.num_heads, self.d_k)
+        K = K.transpose(1, 2)
+
+        V = self.wv(value).view(batch_size, seq_len, self.num_heads, self.d_k)
+        V = V.transpose(1, 2)
+
+        # Attention scores
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+
+        # Mask 처리
+        if mask is not None:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0).unsqueeze(0)
+            elif mask.dim() == 3:
+                mask = mask.unsqueeze(1)
+            scores = scores.masked_fill(mask.bool(), -1e9)
+
+        # Temperature Scaling
+        scores = scores / temperature
+
+        # Softmax
+        attn_weights = F.softmax(scores, dim=-1)
+
+        # Residual Attention (배치 크기 체크 추가)
+        if self.prev_attn is not None:
+            # 배치 크기가 같을 때만 residual 적용
+            if self.prev_attn.size(0) == batch_size:
+                alpha = torch.sigmoid(self.attn_alpha)
+                attn_weights = alpha * attn_weights + (1 - alpha) * self.prev_attn
+
+        # 현재 attention 저장 (학습 모드일 때만)
+        if self.training:
+            self.prev_attn = attn_weights.detach()
+
+        self.attn = attn_weights
+
+        # Output 계산
+        output = torch.matmul(attn_weights, V)
+
+        # Reshape
+        output = output.transpose(1, 2).contiguous()
+        output = output.view(batch_size, seq_len, self.d_model)
+
+        # Final transformation
+        output = self.dense(output)
+        output = self.dropout(output)
+
+        return output
+
+class EMAAttention(nn.Module):
+    def __init__(self, num_heads, d_model, dropout=0.1, ema_decay=0.9):
+        super().__init__()
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.d_model = d_model
+        self.ema_decay = ema_decay
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, d_model)
+        self.wv = nn.Linear(d_model, d_model)
+        self.dense = nn.Linear(d_model, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+        # EMA state
+        self.register_buffer('ema_state', None)
+        self.attn = None
+
+    def forward(self, query, key, value, mask=None):
+        batch_size = query.size(0)
+        seq_len = query.size(1)
+
+        Q = self.wq(query).view(batch_size, seq_len, self.num_heads, self.d_k).transpose(1, 2)
+        K = self.wk(key).view(batch_size, seq_len, self.num_heads, self.d_k).transpose(1, 2)
+        V = self.wv(value).view(batch_size, seq_len, self.num_heads, self.d_k).transpose(1, 2)
+
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+
+        if mask is not None:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0).unsqueeze(0)
+            elif mask.dim() == 3:
+                mask = mask.unsqueeze(1)
+            scores = scores.masked_fill(mask.bool(), -1e9)
+
+        attn_weights = F.softmax(scores, dim=-1)
+
+        # EMA 스무딩 (GRU의 hidden state 업데이트와 유사)
+        if self.training:
+            if self.ema_state is None or self.ema_state.size(0) != batch_size:
+                self.ema_state = attn_weights.detach()
+            else:
+                self.ema_state = self.ema_decay * self.ema_state + (1 - self.ema_decay) * attn_weights.detach()
+
+            # 스무딩된 attention 사용
+            attn_weights = 0.7 * attn_weights + 0.3 * self.ema_state
+
+        self.attn = attn_weights
+        output = torch.matmul(attn_weights, V)
+        output = output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.d_model)
+
+        return self.dropout(self.dense(output))
+
+class LocalInvertedMultiHeadAttention(nn.Module):
+    """iTransformer용 Local Attention (변수 축)"""
+    def __init__(self, num_heads, seq_len, window_size=32, dropout=0.1):
+        super().__init__()
+        assert seq_len % num_heads == 0
+        self.d_k = seq_len // num_heads
+        self.num_heads = num_heads
+        self.seq_len = seq_len
+        self.window_size = window_size
+
+        self.wq = nn.Linear(seq_len, seq_len)
+        self.wk = nn.Linear(seq_len, seq_len)
+        self.wv = nn.Linear(seq_len, seq_len)
+        self.dense = nn.Linear(seq_len, seq_len)
+
+        self.dropout = nn.Dropout(p=dropout)
+
+    def create_local_mask(self, num_features, device):
+        """변수 축에서의 로컬 마스크"""
+        mask = torch.ones(num_features, num_features, dtype=torch.bool, device=device)
+        for i in range(num_features):
+            start = max(0, i - self.window_size // 2)
+            end = min(num_features, i + self.window_size // 2 + 1)
+            mask[i, start:end] = False
+        return mask
+
+    def forward(self, x):
+        # x: [batch, seq_len, features] -> [batch, features, seq_len]
+        x = x.transpose(1, 2)
+        batch_size, num_features, seq_len = x.shape
+
+        # 변수 축에서 로컬 마스크 생성
+        local_mask = self.create_local_mask(num_features, x.device)
+        local_mask = local_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, features, features]
+
+        # Q, K, V 계산
+        query = self.wq(x).view(batch_size, num_features, self.num_heads, self.d_k)
+        query = query.transpose(1, 2)
+
+        key = self.wk(x).view(batch_size, num_features, self.num_heads, self.d_k)
+        key = key.transpose(1, 2)
+
+        value = self.wv(x).view(batch_size, num_features, self.num_heads, self.d_k)
+        value = value.transpose(1, 2)
+
+        # Attention with local mask
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
+        scores = scores.masked_fill(local_mask, -1e9)
+
+        attn_weights = F.softmax(scores, dim=-1)
+        attn_output = torch.matmul(attn_weights, value)
+
+        # Concatenate heads
+        attn_output = attn_output.transpose(1, 2).contiguous()
+        attn_output = attn_output.view(batch_size, num_features, seq_len)
+
+        output = self.dense(attn_output)
+        output = self.dropout(output)
+
+        # [batch, features, seq_len] -> [batch, seq_len, features]
+        output = output.transpose(1, 2)
+        return output
+
 class InvertedFeedForward(nn.Module):
     """각 변수별로 독립적인 FFN"""
     def __init__(self, seq_len, d_ff, dropout=0.1):
@@ -510,31 +900,39 @@ class InvertedFeedForward(nn.Module):
         return x
 
 class iTransformerEncoderLayer(nn.Module):
-    """iTransformer 인코더 레이어"""
-    def __init__(self, seq_len, num_features, num_heads, d_ff, dropout=0.1):
+    def __init__(self, seq_len, num_features, num_heads, d_ff, window_size=None, dropout=0.1):
+        """
+        window_size=None: 일반 Inverted Attention
+        window_size=int: Local Inverted Attention
+        """
         super().__init__()
 
-        self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-        self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        # window_size에 따라 Attention 선택
+        if window_size is not None:
+            self.inverted_attention = LocalInvertedMultiHeadAttention(
+                num_heads, seq_len, window_size, dropout
+            )
+        else:
+            self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
 
-        # LayerNorm을 feature 차원에 적용
+        self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
 
-    def forward(self, x, mask=None):  # 기존 인터페이스 유지
-        # Self-attention with residual connection
+    def forward(self, x, mask=None):
         attn_output = self.inverted_attention(x)
         x = self.norm1(x + attn_output)
 
-        # FFN with residual connection
         ffn_output = self.inverted_ffn(x)
         x = self.norm2(x + ffn_output)
 
         return x
 
 class iTransformerEncoder(nn.Module):
-    """기존 Encoder를 대체하는 iTransformer 인코더"""
-    def __init__(self, num_layers, input_dim, max_len, d_model, num_heads, dff, dropout=0.1):
+    def __init__(
+        self, num_layers, input_dim, max_len, d_model, num_heads, dff,
+        window_size=None, dropout=0.1
+    ):
         super().__init__()
 
         # 입력을 d_model 차원으로 변환하지 않고 그대로 사용
@@ -544,23 +942,18 @@ class iTransformerEncoder(nn.Module):
 
         # iTransformer 레이어들 (input_dim 변수에 대해 작동)
         self.enc_layers = nn.ModuleList([
-            iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, dropout)
+            iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
             for _ in range(num_layers)
         ])
 
-        # 마지막에 d_model 차원으로 투영 (기존 DeepSC와 호환성을 위해)
+        # 기존 DeepSC와 호환성을 위해 d_model 차원으로 투영
         self.output_projection = nn.Linear(input_dim, d_model)
 
     def forward(self, x, src_mask):
-        # x: (batch_size, seq_len, input_dim) - 기존과 동일한 입력
-
-        # iTransformer 레이어들 통과
         for enc_layer in self.enc_layers:
             x = enc_layer(x, src_mask)
 
-        # 기존 DeepSC와 호환성을 위해 d_model 차원으로 투영
-        x = self.output_projection(x)  # (batch_size, seq_len, d_model)
-
+        x = self.output_projection(x)
         return x
 
 class SmoothTimeDecompressor(nn.Module):
@@ -603,6 +996,8 @@ class DeepSC(nn.Module):
         dff=512,
         dropout=0.1,
         compressed_len=None,
+        window_size=None,  # None=일반, int=Local
+        use_itransformer=False,  # True=iTransformer, False=Transformer
         params=None,
         **kwargs
     ):
@@ -617,18 +1012,24 @@ class DeepSC(nn.Module):
         self.dropout = p.get("dropout", dropout)
         self.compressed_len = p.get("compressed_len", compressed_len)
         self.d_comp = p.get("d_comp", 3)
+        self.window_size = p.get("window_size", window_size)
+        self.use_itransformer = p.get("use_itransformer", use_itransformer)
 
         # 의미 인코더 = encoder + time_compressor
-        self.encoder = Encoder(
-        # self.encoder = iTransformerEncoder(
-            self.num_layers,
-            self.input_dim,
-            self.max_len,
-            self.d_model,
-            self.num_heads,
-            self.dff,
-            self.dropout,
-        )
+        if self.use_itransformer:
+            self.encoder = iTransformerEncoder(
+                self.num_layers, self.input_dim, self.max_len,
+                self.d_model, self.num_heads, self.dff,
+                window_size=self.window_size,
+                dropout=self.dropout
+            )
+        else:
+            self.encoder = Encoder(
+                self.num_layers, self.input_dim, self.max_len,
+                self.d_model, self.num_heads, self.dff,
+                window_size=self.window_size,
+                dropout=self.dropout
+            )
 
         # 시계열 길이 압축 모듈 (선택)
         if self.compressed_len is not None:
@@ -692,9 +1093,9 @@ class DeepSC(nn.Module):
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        # snr_db = 20
-        # channel_syms = self.channels.AWGN(channel_encoded, snr_db)
-        channel_syms = channel_encoded
+        snr_db = 5
+        channel_syms = self.channels.AWGN(channel_encoded, snr_db)
+        # channel_syms = channel_encoded
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)

@@ -220,19 +220,16 @@ def print_avg_mse_excluding_time(csv_paths, labels):
 if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
-        "results/performance_test/case24.1.0/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.1.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.1.2/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.1.3/rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case24.3.1/rayleigh_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case24.3.2/rayleigh_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case24.3.3/rayleigh_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case27.2.2/AWGN_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case27.3.6/AWGN_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case27.1.9/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case27.4.4/AWGN_deepsc_MSE/performance_statistics.csv"
         # "results/performance_test/case25.1.4/rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251002/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251004/압축률15%+노이즈5db/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15", "noiseless"]
     # case_labels = ["DeepSC", "GRU", "LSTM"]
@@ -241,8 +238,8 @@ if __name__ == "__main__":
     # case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "both 15%"]
     # case_labels = ["no compress", "4/5", "3/5", "2/5", "1/5"]
     # case_labels = ["no compress", "3/4", "2/4", "1/4"]
-    case_labels = ["case 24.1.0", "case 24.1.1", "case 24.1.2", "case 24.1.3", "case 24.3.1","case 24.3.2","case 24.3.3"]
-
+    # case_labels = ["case 24.1.0", "case 24.1.1", "case 24.1.2", "case 24.1.3", "case 24.3.1","case 24.3.2","case 24.3.3"]
+    case_labels = ["case 27.2.2(LSTM)","case 27.3.6(GRU)","case 27.1.9(Inverted-Transformer)","case 27.4.4(Transformer)"]
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path=save_path
     )

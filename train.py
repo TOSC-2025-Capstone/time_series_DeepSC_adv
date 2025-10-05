@@ -114,8 +114,6 @@ def train_model(
 
     for epoch in range(num_epochs):
         start_time = time.time()  # 시작 시각 기록
-
-        noise_std = 0.35
         channels = Channels()
 
         # 학습 모드
