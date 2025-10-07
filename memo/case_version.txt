@@ -233,6 +233,13 @@ case 28.4.3 : transformer, 압축 15%, 노이즈 5db, 어텐션 직전에 디노
 case 28.4.4 : transformer, 압축 15%, 노이즈 5db, residual + temperature
 case 28.4.5 : transformer, 압축 15%, 노이즈 5db, EMA 어텐션 적용 (RNN 기반의 순차적 스무딩 효과 모방)
 case 28.4.6 : transformer, 압축 15%, 노이즈 5db, EMA 어텐션 + noise-aware PE 적용
+case 28.4.7 : transformer, 압축 15%, 노이즈 5db, 28.4.2~6까지 적용
+case 28.4.8 : transformer, 압축 15%, 노이즈 5db, 기존 구조로 롤백 및 MI 테스트
+case 28.4.9 : transformer, 압축 15%, 노이즈 5db, d_model 128, head 8
+case 28.4.10 : transformer, 압축 15%, 노이즈 5db, d_model 128, head 8 유지 + 디코더 사용 ===>> 이게 결정적인 문제였음... 노이즈 해석이 디코더 없이는 불가함
+case 28.4.11 : transformer, 압축 15%, 노이즈 5db, d_model 512, head 4 롤백 + 디코더 사용
+case 28.4.12 : transformer, 압축 15%, 노이즈 5db, d_model 512, head 4 유지 + 디코더 사용 + 28.4.7의 unifiedAttention 적용 (noise-aware만 제외)
+case 28.4.12 : transformer, 압축 15%, 노이즈 5db, d_model 512, head 4 유지 + 디코더 사용 noise-aware PE 적용
 
 
 ((Pdb) SNR_to_noise(10)
