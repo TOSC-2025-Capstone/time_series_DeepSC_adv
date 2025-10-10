@@ -282,7 +282,7 @@ Q1 -> case 30.3.1 : gru구조에서 MLP로만 압축 복원 (encoder/decoder 제
     => 에포크당 학습 0.2초 BestValLoss 1.5 굉장히 안좋음 (많이 학습을 해야할 것으로 보임 )
 Q1 -> case 30.3.2 : gru구조에서 MLP로만 압축 복원 (encoder/decoder 제외), 에포크를 10000번 수행 -> 3000 후반대부터 0.15에서 무변화
 
-Q2 -> case 31.3.1 : gru구조에서 늘리는 로직 제거
+Q2 -> case 31.3.1 : gru구조에서 늘리는 로직 제거 (단, 이 경우 hidden_dim = compressed_len 고정)
 
 
 ((Pdb) SNR_to_noise(10)

@@ -7,20 +7,16 @@ import pdb
 
 # 시퀀스, 피쳐 압축
 class GRUCompressor_Both(nn.Module):
-    def __init__(self, input_dim, hidden_dim, compressed_len=64, compressed_features=3, num_layers=2, dropout=0.1):
+    def __init__(self, input_dim, seq_len, hidden_dim, compressed_len=64, compressed_features=3, num_layers=2, dropout=0.1):
         super().__init__()
-        self.gru = nn.GRU(input_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
-        self.pool = nn.AdaptiveAvgPool1d(compressed_len)
-        # self.feature_compress = nn.Linear(hidden_dim, compressed_features)
+        self.gru = nn.GRU(seq_len, hidden_dim, num_layers, dropout=dropout, batch_first=True)
         self.feature_compress = nn.Linear(input_dim, compressed_features)
 
     def forward(self, x):
-        # x: [batch, 128, 6]
-        # gru_out, _ = self.gru(x)  # [batch, 128, hidden_dim]
-        gru_out = x
+        # x: [batch, seq_len, input_dim]
         # 시계열 길이 압축 (seq_len -> compressed_len)
-        time_compressed = gru_out.permute(0, 2, 1)  # [batch, hidden_dim, 128]
-        time_compressed = self.pool(time_compressed)  # [batch, hidden_dim, 64]
+        time_compressed = x.permute(0, 2, 1)  # [batch, hidden_dim, 128]
+        time_compressed, _ = self.gru(time_compressed)  # [batch, hidden_dim, 64]
         time_compressed = time_compressed.permute(0, 2, 1)  # [batch, 64, hidden_dim]
         # 피쳐 차원 압축 (input_dim -> compressed_features)
         compressed = self.feature_compress(time_compressed)  # [batch, 64, 3]
@@ -28,29 +24,30 @@ class GRUCompressor_Both(nn.Module):
 
 # 시퀀스, 피쳐 복원
 class GRUDecompressor_Both(nn.Module):
-    def __init__(self, compressed_features, hidden_dim, reconstruct_len=128, reconstruct_features=6, num_layers=2, dropout=0.1):
+    def __init__(self, compressed_len, compressed_features, hidden_dim, reconstruct_len=128, reconstruct_features=6, num_layers=2, dropout=0.1):
         super().__init__()
         # self.feature_expand = nn.Linear(compressed_features, hidden_dim)
-        self.feature_expand = nn.Linear(compressed_features, reconstruct_features) # 251010
+        # self.feature_expand = nn.Linear(compressed_features, reconstruct_features) # 251010
+        # self.feature_expand => 미사용 # 251010 v2
 
-        self.upsample = nn.Upsample(size=reconstruct_len, mode='linear', align_corners=False)
-        self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
+        # self.upsample = nn.Upsample(size=reconstruct_len, mode='linear', align_corners=False)
+        self.gru = nn.GRU(compressed_len, hidden_dim, num_layers, dropout=dropout, batch_first=True)
 
         # self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
-        self.output_layer = nn.Linear(reconstruct_features, reconstruct_features) # 251010
+        self.output_layer = nn.Linear(compressed_features, reconstruct_features) # 251010
 
     def forward(self, x):
-        # x: [batch, 64, 3]
-        feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
+        # x: [batch, compressed_len, compressed_features]
+        # feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
         # 시계열 길이 복원 (compressed_len -> reconstruct_len)
-        time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
-        time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
-        time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
+        time_expanded = x.permute(0, 2, 1)  # [batch, compressed_features, compressed_len]
+        # time_expanded = self.upsample(time_expanded)       # [batch, compressed_features, compressed_len]
+        time_expanded, _ = self.gru(time_expanded)       # [batch, compressed_features, hidden_dim(seq_len)]
+        time_expanded = time_expanded.permute(0, 2, 1)    # [batch, hidden_dim(seq_len), compressed_features]
         # GRU 처리
         # gru_out, _ = self.gru(time_expanded)  # [batch, 128, hidden_dim]
         # 피쳐 차원 복원
-        # output = self.output_layer(gru_out)  # [batch, 128, 6]
-        output = time_expanded
+        output = self.output_layer(time_expanded)  # [batch, hidden_dim(seq_len), reconstruct_features]
         return output
 
 # 모델
@@ -70,13 +67,13 @@ class GRUDeepSC(nn.Module):
         self.channels = Channels()
 
         # 올바른 파라미터 전달
-        self.encoder = GRUCompressor_Both(
-            self.input_dim, self.hidden_dim,
+        self.encoder = GRUCompressor_Both( # hidden_dim = compressed_len 로 시퀀스 압축
+            self.input_dim, self.seq_len, self.compressed_len,
             self.compressed_len, self.compressed_features,
             self.num_layers, self.dropout
         )
-        self.decoder = GRUDecompressor_Both(
-            self.compressed_features, self.hidden_dim,
+        self.decoder = GRUDecompressor_Both( # hidden_dim = seq_len 로 시퀀스 복원
+            self.compressed_len, self.compressed_features, self.seq_len,
             self.seq_len, self.input_dim,
             self.num_layers, self.dropout
         )
