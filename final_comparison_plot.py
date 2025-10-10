@@ -192,10 +192,10 @@ if __name__ == "__main__":
     # 예시 사용법
     prefix = "./results/performance_test"
     csv_paths = [
-        prefix + "/case21.1/rayleigh_deepsc_MSE/performance_statistics.csv",
-        prefix + "/case21.2/rayleigh_lstm_MSE/performance_statistics.csv",
-        prefix + "/case21.3/rayleigh_gru_MSE/performance_statistics.csv",
-        prefix + "/case21.4/rayleigh_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case29.2.2/AWGN_lstm_MSE/performance_statistics.csv",
+        prefix + "/case29.3.2/AWGN_gru_MSE/performance_statistics.csv",
+        prefix + "/case29.4.2/AWGN_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case29.1.2/AWGN_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
@@ -204,25 +204,25 @@ if __name__ == "__main__":
     )
     # case_labels = ["DeepSC", "GRU", "LSTM"]
     case_labels = ["21.1", "21.2", "21.3", "21.4"]
-    # final_statistic_comparison_plot(
-    #     csv_paths, case_labels, save_path=save_path
-    # )
+    final_statistic_comparison_plot(
+        csv_paths, case_labels, save_path=save_path
+    )
 
     # plot_feature_comparison(
-    plot_feature_comparison_with_residual(
-        original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-        model_1_path="./reconstruction/case21.1/reconstructed_rayleigh_deepsc_MSE",
-        model_2_path="./reconstruction/case21.2/reconstructed_rayleigh_lstm_MSE",
-        model_3_path="./reconstruction/case21.3/reconstructed_rayleigh_gru_MSE",
-        model_4_path="./reconstruction/case21.4/reconstructed_rayleigh_deepsc_MSE",
-        feature_names=[
-            "Voltage_measured",
-            "Current_measured",
-            "Temperature_measured",
-            "Current_load",
-            "Voltage_load",
-            # "Time",
-        ],
-        save_path=save_path,
-        filename=filename,
-    )
+    # plot_feature_comparison_with_residual(
+    #     original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
+    #     model_1_path="./reconstruction/case21.1/reconstructed_rayleigh_deepsc_MSE",
+    #     model_2_path="./reconstruction/case21.2/reconstructed_rayleigh_lstm_MSE",
+    #     model_3_path="./reconstruction/case21.3/reconstructed_rayleigh_gru_MSE",
+    #     model_4_path="./reconstruction/case21.4/reconstructed_rayleigh_deepsc_MSE",
+    #     feature_names=[
+    #         "Voltage_measured",
+    #         "Current_measured",
+    #         "Temperature_measured",
+    #         "Current_load",
+    #         "Voltage_load",
+    #         # "Time",
+    #     ],
+    #     save_path=save_path,
+    #     filename=filename,
+    # )
