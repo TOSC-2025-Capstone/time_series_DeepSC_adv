@@ -273,9 +273,16 @@ case 29.4.7 : 파라미터 단순화 - d_model: 512 dff: 512 num_heads: 4 num_la
 case 29.4.8 : 파라미터 단순화 - d_model: 512 dff: 512 num_heads: 4 num_layers: 4
 
 Q1. 그냥 오토인코더로만 압축복원하기 (MLP만 사용)
-Q2. 압축을 lstm/gru/transformer가 하게끔 입력 차원을 모델이 줄이게 변경하기
+Q2. 압축을 lstm/gru/transformer가 하게끔 입력 차원을 모델이 줄이게 입력 텐서의 차원을 트랜스포즈로 변경하기
+=> 기존의 encoder(피쳐 늘림)->time_compress(시퀀스 줄임) -> channel_encoder(피쳐 줄임)으로 하였지만
+=> 이제는 encoder(시퀀스 줄임, 트랜스포즈 적용 후 원복) -> channel_encoder(피쳐 줄임)으로 변경
 
-Q1 -> case 30.4.1 : MLP로만 압축 복원 (encoder/decoder 제외) -> 추후 베이스라인으로 사용도 가능할듯
+Q1 -> case 30.4.1 : transceiver구조에서 MLP로만 압축 복원 (encoder/decoder 제외) -> 추후 베이스라인으로 사용도 가능할듯
+Q1 -> case 30.3.1 : gru구조에서 MLP로만 압축 복원 (encoder/decoder 제외) -> 추후 베이스라인으로 사용도 가능할듯
+    => 에포크당 학습 0.2초 BestValLoss 1.5 굉장히 안좋음 (많이 학습을 해야할 것으로 보임 )
+Q1 -> case 30.3.2 : gru구조에서 MLP로만 압축 복원 (encoder/decoder 제외), 에포크를 10000번 수행 -> 3000 후반대부터 0.15에서 무변화
+
+Q2 -> case 31.3.1 : gru구조에서 늘리는 로직 제거
 
 
 ((Pdb) SNR_to_noise(10)

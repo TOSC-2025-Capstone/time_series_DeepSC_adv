@@ -11,16 +11,18 @@ class GRUCompressor_Both(nn.Module):
         super().__init__()
         self.gru = nn.GRU(input_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
         self.pool = nn.AdaptiveAvgPool1d(compressed_len)
-        self.feature_compress = nn.Linear(hidden_dim, compressed_features)
+        # self.feature_compress = nn.Linear(hidden_dim, compressed_features)
+        self.feature_compress = nn.Linear(input_dim, compressed_features)
 
     def forward(self, x):
         # x: [batch, 128, 6]
-        gru_out, _ = self.gru(x)  # [batch, 128, hidden_dim]
-        # 시계열 길이 압축
+        # gru_out, _ = self.gru(x)  # [batch, 128, hidden_dim]
+        gru_out = x
+        # 시계열 길이 압축 (seq_len -> compressed_len)
         time_compressed = gru_out.permute(0, 2, 1)  # [batch, hidden_dim, 128]
         time_compressed = self.pool(time_compressed)  # [batch, hidden_dim, 64]
         time_compressed = time_compressed.permute(0, 2, 1)  # [batch, 64, hidden_dim]
-        # 피쳐 차원 압축
+        # 피쳐 차원 압축 (input_dim -> compressed_features)
         compressed = self.feature_compress(time_compressed)  # [batch, 64, 3]
         return compressed
 
@@ -28,22 +30,27 @@ class GRUCompressor_Both(nn.Module):
 class GRUDecompressor_Both(nn.Module):
     def __init__(self, compressed_features, hidden_dim, reconstruct_len=128, reconstruct_features=6, num_layers=2, dropout=0.1):
         super().__init__()
-        self.feature_expand = nn.Linear(compressed_features, hidden_dim)
+        # self.feature_expand = nn.Linear(compressed_features, hidden_dim)
+        self.feature_expand = nn.Linear(compressed_features, reconstruct_features) # 251010
+
         self.upsample = nn.Upsample(size=reconstruct_len, mode='linear', align_corners=False)
         self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
-        self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
+
+        # self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
+        self.output_layer = nn.Linear(reconstruct_features, reconstruct_features) # 251010
 
     def forward(self, x):
         # x: [batch, 64, 3]
         feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
-        # 시계열 길이 복원
+        # 시계열 길이 복원 (compressed_len -> reconstruct_len)
         time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
         time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
         time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
         # GRU 처리
-        gru_out, _ = self.gru(time_expanded)  # [batch, 128, hidden_dim]
+        # gru_out, _ = self.gru(time_expanded)  # [batch, 128, hidden_dim]
         # 피쳐 차원 복원
-        output = self.output_layer(gru_out)  # [batch, 128, 6]
+        # output = self.output_layer(gru_out)  # [batch, 128, 6]
+        output = time_expanded
         return output
 
 # 모델

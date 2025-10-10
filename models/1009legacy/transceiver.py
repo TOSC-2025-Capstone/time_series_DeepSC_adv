@@ -1371,6 +1371,132 @@ class SimplifiedUltimateInvertedAttention(nn.Module):
 
         return self.dropout(output + cross_out)
 
+class LocalMultiHeadedAttention(nn.Module):
+    """일반 Transformer용 Local Attention"""
+    def __init__(self, num_heads, d_model, window_size=32, dropout=0.1):
+        super().__init__()
+        assert d_model % num_heads == 0
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.window_size = window_size
+
+        self.wq = nn.Linear(d_model, d_model)
+        self.wk = nn.Linear(d_model, d_model)
+        self.wv = nn.Linear(d_model, d_model)
+        self.dense = nn.Linear(d_model, d_model)
+
+        self.attn = None
+        self.dropout = nn.Dropout(p=dropout)
+
+    def create_local_mask(self, seq_len, device):
+        mask = torch.ones(seq_len, seq_len, dtype=torch.bool, device=device)
+        for i in range(seq_len):
+            start = max(0, i - self.window_size // 2)
+            end = min(seq_len, i + self.window_size // 2 + 1)
+            mask[i, start:end] = False
+        return mask
+
+    def forward(self, query, key, value, mask=None):
+        nbatches = query.size(0)
+        seq_len = query.size(1)
+
+        # 로컬 마스크 생성
+        local_mask = self.create_local_mask(seq_len, query.device)
+
+        if mask is not None:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0).unsqueeze(0)
+            elif mask.dim() == 3:
+                mask = mask.unsqueeze(1)
+            local_mask = local_mask.unsqueeze(0).unsqueeze(0) | mask
+        else:
+            local_mask = local_mask.unsqueeze(0).unsqueeze(0)
+
+        # Q, K, V 계산
+        query = self.wq(query).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
+        key = self.wk(key).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
+        value = self.wv(value).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
+
+        # Attention
+        x, self.attn = self.attention(query, key, value, mask=local_mask)
+
+        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.num_heads * self.d_k)
+        return self.dropout(self.dense(x))
+
+    def attention(self, query, key, value, mask=None):
+        d_k = query.size(-1)
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+
+        if mask is not None:
+            scores = scores.masked_fill(mask, -1e9)
+
+        p_attn = F.softmax(scores, dim=-1)
+        return torch.matmul(p_attn, value), p_attn
+
+
+class LocalInvertedMultiHeadAttention(nn.Module):
+    """iTransformer용 Local Attention (변수 축)"""
+    def __init__(self, num_heads, seq_len, window_size=32, dropout=0.1):
+        super().__init__()
+        assert seq_len % num_heads == 0
+        self.d_k = seq_len // num_heads
+        self.num_heads = num_heads
+        self.seq_len = seq_len
+        self.window_size = window_size
+
+        self.wq = nn.Linear(seq_len, seq_len)
+        self.wk = nn.Linear(seq_len, seq_len)
+        self.wv = nn.Linear(seq_len, seq_len)
+        self.dense = nn.Linear(seq_len, seq_len)
+
+        self.dropout = nn.Dropout(p=dropout)
+
+    def create_local_mask(self, num_features, device):
+        """변수 축에서의 로컬 마스크"""
+        mask = torch.ones(num_features, num_features, dtype=torch.bool, device=device)
+        for i in range(num_features):
+            start = max(0, i - self.window_size // 2)
+            end = min(num_features, i + self.window_size // 2 + 1)
+            mask[i, start:end] = False
+        return mask
+
+    def forward(self, x):
+        # x: [batch, seq_len, features] -> [batch, features, seq_len]
+        x = x.transpose(1, 2)
+        batch_size, num_features, seq_len = x.shape
+
+        # 변수 축에서 로컬 마스크 생성
+        local_mask = self.create_local_mask(num_features, x.device)
+        local_mask = local_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, features, features]
+
+        # Q, K, V 계산
+        query = self.wq(x).view(batch_size, num_features, self.num_heads, self.d_k)
+        query = query.transpose(1, 2)
+
+        key = self.wk(x).view(batch_size, num_features, self.num_heads, self.d_k)
+        key = key.transpose(1, 2)
+
+        value = self.wv(x).view(batch_size, num_features, self.num_heads, self.d_k)
+        value = value.transpose(1, 2)
+
+        # Attention with local mask
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
+        scores = scores.masked_fill(local_mask, -1e9)
+
+        attn_weights = F.softmax(scores, dim=-1)
+        attn_output = torch.matmul(attn_weights, value)
+
+        # Concatenate heads
+        attn_output = attn_output.transpose(1, 2).contiguous()
+        attn_output = attn_output.view(batch_size, num_features, seq_len)
+
+        output = self.dense(attn_output)
+        output = self.dropout(output)
+
+        # [batch, features, seq_len] -> [batch, seq_len, features]
+        output = output.transpose(1, 2)
+        return output
+
 class DeepSC(nn.Module):
     def __init__(
         self,
