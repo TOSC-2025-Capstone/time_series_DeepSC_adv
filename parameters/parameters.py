@@ -74,7 +74,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "31.3.1"
+case_index = "31.3.2"
 
 # 모델 종류
 class ModelType(Enum):
@@ -196,11 +196,11 @@ save_performance_dir = (
 """ ========================= 모델 파라미터 설정 ======================== """
 
 # epochs
-train_epochs = 800
+train_epochs = 400
 # batch size
 train_batch_size = 32
 # learning rate
-train_lr = 1e-5
+train_lr = 1e-2
 # input dimension
 input_dim = 5
 
