@@ -30,12 +30,22 @@ from models.mutual_info import sample_batch, mutual_information
 # 기본값으로 train parameter 셋을 그대로 입력함 , model, device만 전달
 def train_model(
     model=None,
+    expert_model=None,
     params: TrainParams = None,
     device=None,
     mi_net=None,
 ):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # (추가) expertModel이 전달되면, 학습되지 않도록 준비 작업을 수행
+    if expert_model is not None:
+        print("사전 학습된 Expert model을 전달받았습니다. 특징 공간 손실을 활성화합니다.")
+        expert_model.to(device)
+        expert_model.eval() # 평가 모드로 설정 (Dropout 등 비활성화)
+        # 전문가 모델의 모든 파라미터에 대해 그래디언트 계산을 중지 (가중치 고정)
+        for param in expert_model.parameters():
+            param.requires_grad = False
 
     if model is None:
         print("model을 전달해주세요!")
@@ -53,6 +63,8 @@ def train_model(
     num_epochs = params.num_epochs
     batch_size = params.batch_size
     lr = params.lr
+    # (추가) 특징 공간 손실의 가중치를 파라미터에서 가져옴
+    lambda_feat = params.lambda_feat
 
     # 1. 데이터 로드 (절대 경로로 변환)
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -134,7 +146,31 @@ def train_model(
             # 그 다음 메인 모델 학습
             optimizer.zero_grad()
             output = model(batch)
-            loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
+            # (수정) 손실 함수 계산 로직 변경
+            loss = None # 미리 선언
+            # 1. 기본적인 복원 손실 (Reconstruction Loss)
+            loss_recon = criterion(output, batch)
+
+            # 2. 특징 공간 손실 (Feature-Space Loss)
+            if expert_model is not None:
+                # 전문가 인코더로 특징 추출 (no_grad 사용하여 불필요한 연산 방지)
+                # 이 블록은 expert_model이 frozen 상태이므로 사실상 불필요하지만, 명시적으로 추가
+                with torch.no_grad():
+                    true_features = expert_model.encoder(batch, src_mask=None)
+
+                # 학습 중인 모델의 출력값으로 특징 추출 (그래디언트 흐름 유지 필요)
+                pred_features = expert_model.encoder(output, src_mask=None)
+
+                # 특징 벡터 간의 MSE 계산
+                loss_feature = criterion(pred_features, true_features)
+
+                # 두 손실을 가중합하여 최종 손실 계산
+                loss = loss_recon + lambda_feat * loss_feature
+            else:
+                # expert_model이 없으면 기존 방식 그대로 사용
+                loss = loss_recon
+
+            # loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
 
             # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함
             if mi_net is not None:
@@ -159,14 +195,19 @@ def train_model(
                 loss = loss + 0.0009 * loss_mine
 
             loss.backward()
-
             # 그래디언트 클리핑 추가
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
             optimizer.step()
 
             total_loss += loss.item() * batch.size(0)
-            train_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
+
+            # total_loss += loss.item() * batch.size(0)
+            # train_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
+            # (수정) 진행률 표시줄에 loss_feature도 추가하여 모니터링
+            if expert_model is not None:
+                train_pbar.set_postfix({"Loss": f"{loss.item():.6f}", "ReconL": f"{loss_recon.item():.4f}", "FeatL": f"{loss_feature.item():.4f}"})
+            else:
+                train_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
 
         avg_train_loss = total_loss / len(train_loader.dataset)
         print(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {avg_train_loss:.6f}")

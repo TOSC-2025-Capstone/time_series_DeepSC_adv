@@ -73,9 +73,9 @@ class LSTMDeepSC(nn.Module):
 
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        snr_db = 10
-        # compressed_on_channel = self.channels.AWGN(compressed, snr_db)
-        compressed_on_channel = compressed
+        snr_db = 5
+        compressed_on_channel = self.channels.AWGN(compressed, snr_db)
+        # compressed_on_channel = compressed
         reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
         return reconstructed
 

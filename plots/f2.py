@@ -220,15 +220,15 @@ def print_avg_mse_excluding_time(csv_paths, labels):
 if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
-        "results/performance_test/case29.2.3/AWGN_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case29.3.3/AWGN_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case29.4.3/AWGN_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case29.1.3/AWGN_deepsc_MSE/performance_statistics.csv"
+        "results/performance_test/case33.2.1/AWGN_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case33.3.1/AWGN_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case33.4.1/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case33.1.1/AWGN_deepsc_MSE/performance_statistics.csv"
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251009/비압축+비노이즈/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251011/압축15%+노이즈5db/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15", "noiseless"]
     # case_labels = ["DeepSC", "GRU", "LSTM"]

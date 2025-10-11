@@ -77,12 +77,21 @@ if __name__ == "__main__":
     # model create
     print("========================== model_select ==========================\n")
     model = None
+    expert_model = None
     mi_net = None
     if model_type == "deepsc":
         model = DeepSC(params=model_params).to(device)
         print("DeepSC 모델이 선택되었습니다.")
         if is_learning_minet == True and channel_type != "no_channel":
             mi_net = Mine().to(device)
+        if 1 :
+            expert_model_checkpoint_path = f"./checkpoints/cas29.4.1/MSE/deepsc/deepsc_battery_epochbest.pth" # 임시
+            expert_model = DeepSC(params=model_params).to(device)
+            if os.path.exists(expert_model_checkpoint_path):
+                model.load_state_dict(
+                    torch.load(f"{expert_model_checkpoint_path}best.pth", map_location=device)
+                )
+                print("모델이 성공적으로 로드되었습니다.")
     elif model_type == "lstm":
         model = LSTMDeepSC(params=model_params).to(device)
         print("LSTMDeepSC 모델이 선택되었습니다.")
@@ -106,7 +115,7 @@ if __name__ == "__main__":
         model.train()
         if model.training:
             print("현재 모델은 training 모드입니다.")
-            train_model(params=train_params, model=model, device=device, mi_net=mi_net)
+            train_model(params=train_params, model=model, expert_model=expert_model, device=device, mi_net=mi_net)
         else:
             print("현재 모델은 evaluation (eval) 모드입니다. 다시 실행하여 주세요")
             exit(1)
@@ -123,7 +132,6 @@ if __name__ == "__main__":
                 print("모델이 성공적으로 로드되었습니다.")
         except Exception as e:
             print(f"모델 로드 실패: {e}")
-
 
     # performance + result figuring
     print("========================== performance ==========================\n")

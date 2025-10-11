@@ -289,6 +289,37 @@ Q2 -> case 31.3.1 : gru구조에서 늘리는 로직 제거 (단, 시퀀스 압�
 Q2 -> case 31.3.2 : gru구조에서 늘리는 로직 제거 (단, 피쳐 압축에 gru 사용, 이 경우 hidden_dim = compressed_len 고정)
     => epoch 400, lr 1e-2 => 이것도 실패 0.23정도에서 무변화함
 
+Q3. 어쨌든 gru/lstm/transformer 등은 가장 시계열 길이가 길 때 하는 것이 이득임 (인코더든 디코더든)
+=> 즉, 인코더에서는 가장 먼저, 디코더에서는 가장 나중에 해야한다는 것
+
+Q3 -> case 31.4.1 : transformer 구조에서 decoder <-> time_decompressor 순서 변경 => 성공!! BestValLoss 0.011, 개형도 매우 깔끔
+=> 현재 압축률 15%, 비노이즈 상황 이제부터는 이 트랜스포머 모델을 다양한 상황대로 변경, 인버티드도 테스트 진행
+case 31.4.2 : 31.4.1에서 permute문 하나 제거 후 검증 => loss log 완전 동일
+
+이제부터 트랜스포머 구조에서 decoder <-> time_decompressor 순서 변경 지속 적용
+
+case 32.1.1 : InvertedTransformer, 15%, non noise (BestValLoss 0.013885)
+case 32.2.1 : lstm, 15%, non noise (BestValLoss 0.015793)
+case 32.3.1 : gru, 15%, non noise (BestValLoss 0.013332)
+case 32.4.1 : transformer, 15%, non noise (BestValLoss 0.011798) = case 31.4.1
+
+case 33.1.1 : InvertedTransformer, 15%, snr 5db ( BestValLoss 0.157926)
+case 33.2.1 : lstm, 15%, snr 5db (BestValLoss 0.081632)
+case 33.3.1 : gru, 15%, snr 5db (BestValLoss 0.045812)
+case 33.4.1 : transformer, 15%, snr 5db (BestValLoss 0.162381)
+
+case 33.4.2 : transformer, 33.4.1에서 local_window 32 적용
+case 33.4.3 : transformer, 33.4.1에서 local_window 32 적용, lr 1e-4, 12epoch, 0.17 정도 로스에서 수렴할 듯보임
+case 33.4.4 : transformer, 33.4.1에서 local_window 32 적용, 스무딩 디컴프레서 적용 13epoch 0.17정도 로스에서 수렴할 듯 보임
+case 33.4.5 : transformer, 33.4.1에서 local_window 32 적용, denoiser 모듈을 채널 직후에 두어서 노이즈 해소를 따로 수행
+
+=> 지금까지의 결론 : 구조적인 솔루션으로 해소불가한 문제임 -> 로스 건드려보기
+case 33.4.6 : transformer, 33.4.1에서 2단계 학습 (노이즈 없이 미리 학습한 전문가와 학습중모델 2개를 비교하는 loss), lambda_feat = 0.5
+case 33.4.7 : transformer, 33.4.6에서 lambda_feat = 3
+
+
+
+
 
 ((Pdb) SNR_to_noise(10)
 0.22360679774997896

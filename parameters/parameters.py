@@ -74,7 +74,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "31.3.2"
+case_index = "33.4.7"
 
 # 모델 종류
 class ModelType(Enum):
@@ -117,7 +117,7 @@ CHANNEL_TYPES = [
 SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
 # 현재 사용할 변수 설정들
-model_type = ModelType.GRU.value  # default
+model_type = ModelType.DEEPSC.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
 channel_type = ChannelType.AWGN.value  # no_channel 선택
 scaler_type = ScalerType.ZSCORE.value  # minmax 선택
@@ -196,11 +196,11 @@ save_performance_dir = (
 """ ========================= 모델 파라미터 설정 ======================== """
 
 # epochs
-train_epochs = 400
+train_epochs = 80
 # batch size
 train_batch_size = 32
 # learning rate
-train_lr = 1e-2
+train_lr = 1e-5
 # input dimension
 input_dim = 5
 
@@ -232,6 +232,7 @@ class TrainParams:
     batch_size: int = train_batch_size
     lr: float = train_lr
     loss_type: str = loss_type
+    lambda_feat: float = 3  # (추가) 특징 공간 손실의 가중치
 
 
 # test
