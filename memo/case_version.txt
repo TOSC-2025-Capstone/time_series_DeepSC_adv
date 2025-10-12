@@ -257,8 +257,8 @@ case 29.3.1 : gru, 압축 15%, 노이즈 x
 case 29.4.1 : transformer, 압축 15%, 노이즈 x, 디코더 적용
 
 case 29.1.2 : inverted-transformer, 압축 15%, 노이즈 10db, 디코더 적용
-case 29.2.2 : lstm, 압축 15%, 노이즈 10db
-case 29.3.2 : gru, 압축 15%, 노이즈 10db
+case 29.2.2 : lstm, 압축 15%, 노이즈 10db (BestValLoss 0.040650)
+case 29.3.2 : gru, 압축 15%, 노이즈 10db (BestValLoss 0.025521)
 case 29.4.2 : transformer, 압축 15%, 노이즈 10db, 디코더 적용
 
 case 29.1.3 : inverted-transformer, 압축 x, 노이즈 x, 디코더 적용
@@ -298,15 +298,15 @@ case 31.4.2 : 31.4.1에서 permute문 하나 제거 후 검증 => loss log 완�
 
 이제부터 트랜스포머 구조에서 decoder <-> time_decompressor 순서 변경 지속 적용
 
-case 32.1.1 : InvertedTransformer, 15%, non noise (BestValLoss 0.013885)
+case 32.1.1 : InvertedTransformer, 15%, non noise (BestValLoss 0.013885) (디코더가 없는 구조)
 case 32.2.1 : lstm, 15%, non noise (BestValLoss 0.015793)
 case 32.3.1 : gru, 15%, non noise (BestValLoss 0.013332)
-case 32.4.1 : transformer, 15%, non noise (BestValLoss 0.011798) = case 31.4.1
+case 32.4.1 : transformer, 15%, non noise (BestValLoss 0.011798) = case 31.4.1 (디코더가 없는 구조)
 
-case 33.1.1 : InvertedTransformer, 15%, snr 5db ( BestValLoss 0.157926)
+case 33.1.1 : InvertedTransformer, 15%, snr 5db ( BestValLoss 0.157926) (디코더가 없는 구조)
 case 33.2.1 : lstm, 15%, snr 5db (BestValLoss 0.081632)
 case 33.3.1 : gru, 15%, snr 5db (BestValLoss 0.045812)
-case 33.4.1 : transformer, 15%, snr 5db (BestValLoss 0.162381)
+case 33.4.1 : transformer, 15%, snr 5db (BestValLoss 0.162381) (디코더가 없는 구조)
 
 case 33.4.2 : transformer, 33.4.1에서 local_window 32 적용
 case 33.4.3 : transformer, 33.4.1에서 local_window 32 적용, lr 1e-4, 12epoch, 0.17 정도 로스에서 수렴할 듯보임
@@ -317,8 +317,77 @@ case 33.4.5 : transformer, 33.4.1에서 local_window 32 적용, denoiser 모듈�
 case 33.4.6 : transformer, 33.4.1에서 2단계 학습 (노이즈 없이 미리 학습한 전문가와 학습중모델 2개를 비교하는 loss), lambda_feat = 0.5
 case 33.4.7 : transformer, 33.4.6에서 lambda_feat = 3
 
+=> 32부터는 transformer 모델의 디코더를 제대로 거치지 않은 형태였음 재검증
+case 34.4.1 : case 33.4.1에 대한 재검증, transformer, 15%, snr 5db (BestValLoss 0.162381) 에서 변화할 예정
+    => BestValLoss 0.038666
+case 34.4.2 : case 32.4.1에 대한 재검증, transformer, 15%, non noise (BestValLoss 0.011798) 에서 변화할 예정
+    => BestValLoss 0.027656
+case 34.4.3 : case 34.4.2에서 노이즈 없는 상황의 성능향상을 위해 num_layers 1로 변경
+    => BestValLoss 0.027294
+case 34.4.4 : case 34.4.2에서 노이즈 없는 상황의 성능향상을 위해 num_layers 1로 변경 + dropout 0.3
+    => BestValLoss 0.05 ...
+case 34.4.5 : 모델 사이즈 줄이기, d_model 256 (num_layers 2, dropout 0.1로 복구)
+case 34.4.6 : 모델 사이즈 줄이기, d_model 256 (num_layers 2, dropout 0.1로 복구) + 가중치 감쇠 추가 1e-5
+case 34.4.7 : d_model 512로 복구 (num_layers 2, dropout 0.1로 복구) + 가중치 감쇠 추가 1e-5
+case 34.4.8 : d_model 512로 복구 (num_layers 2, dropout 0.1로 복구) + 가중치 감쇠 추가 1e-4
+    => BestValLoss 0.028596
 
+case 34.1.1 : case 33.1.1에 대한 재검증, InvertedTransformer, 15%, snr 5db ( BestValLoss 0.157926) 에서 변화할 예정
+    => BestValLoss 0.058300
+case 34.1.2 : case 32.1.1에 대한 재검증, InvertedTransformer, 15%, non noise (BestValLoss 0.013885) 에서 변화할 예정
+    => BestValLoss 0.021356
 
+case 34.3.1 : gru 기반에서 인코더 only 구조로 변경 후 테스트 (디컴프레서는 기존 트랜스포머 모델에서 사용하던거 가져와서 사용)
+    => BestValLoss 0.013395
+
+case 34.4.9 : Transformer, 15%, snr 10db(AWGN)
+    => BestValLoss 0.031290
+case 34.1.3 : InvertedTransformer, 15%, snr 10db(AWGN)
+    => BestValLoss 0.045860
+case 29.2.2, case 29.3.2 로 이미 15% + 10db 경우의 lstm, gru 성능은 체크함
+    => BestValLoss 0.040650(LSTM), 0.025521(GRU)
+
+case 34.4.10 : transformer, 15%, noise x, d_model 512, dff만 256으로 변경 => 실패
+case 34.4.11 : Transformer, 15%, snr 15db
+    => BestValLoss
+
+# 251012 P1 : num layer 1로 변경 후 테스트 -> 실패
+case 35.1.1 : InvertedTransformer, 15%, noise x, num layer 1
+    => BestValLoss 0.032779
+case 35.4.1 == case 34.4.3 : case 34.4.2에서 노이즈 없는 상황의 성능향상을 위해 num_layers 1로 변경
+    => BestValLoss 0.027294
+case 35.2.1 : LSTM, 15%, noise x, num_layers 1
+    => BestValLoss 0.020390
+
+# 251012 P2 : 4가지 모델 모두 디코더에서 데이터 관계학습 디코더를 제외 (인코더 only구조로 변경) 후 테스트
+Transformer, iTransformer 모델은 이미 해당 테스트 존재함
+case 36.2.1 : LSTM, 15%, noise x
+    => BestValLoss 0.015229 (디코더에서 관계학습할때보다 소폭 좋아짐, 0.015793)
+case 36.2.2 : LSTM, 15%, noise 5db
+    => BestValLoss 0.266070
+case 36.2.3 : LSTM, 15%, noise 5db, 노이즈 추가 직전에 power normalization 적용
+    => BestValLoss 0.157915
+case 36.2.4 : LSTM, 15%, noise x, 노이즈 추가 직전에 power normalization 적용
+    => BestValLoss 0.054966
+
+case 36.3.1 : GRU, 15%, noise x = case 34.3.1 => 0.013395 였음
+    => BestValLoss 0.013700
+case 36.3.2 : GRU, 15%, noise 5db
+    => BestValLoss 0.260193
+case 36.3.3 : GRU, 15%, noise 5db, 노이즈 추가 직전에 power normalization 적용
+    => BestValLoss 0.152500
+case 36.3.4 : GRU, 15%, noise x, power normalization만 적용 ()
+    => BestValLoss 0.028955
+
+case 36.4.1 : Transformer, 15%, noise x, power normalization만 적용
+    => BestValLoss 0.016210
+case 36.4.2 : Transformer, 15%, noise 5db, 노이즈 추가 직전에 power normalization 적용
+    => BestValLoss 0.152679
+
+case 36.1.1 : InvertedTransformer, 15%, noise x, power normalization만 적용
+    => BestValLoss 0.016990
+case 36.1.2 : InvertedTransformer, 15%, noise 5db, 노이즈 추가 직전에 power normalization 적용
+    => BestValLoss
 
 
 ((Pdb) SNR_to_noise(10)

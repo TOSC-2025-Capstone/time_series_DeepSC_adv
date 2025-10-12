@@ -30,7 +30,7 @@ from parameters.model_parameters import *
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.parameters import *
 from performance_cycle import performance_cycle
-from train import train_model
+from train_expert_ver import train_model
 
 from models.mutual_info import Mine
 
@@ -115,7 +115,8 @@ if __name__ == "__main__":
         model.train()
         if model.training:
             print("현재 모델은 training 모드입니다.")
-            train_model(params=train_params, model=model, expert_model=expert_model, device=device, mi_net=mi_net)
+            # train_model(params=train_params, model=model, expert_model=expert_model, device=device, mi_net=mi_net)
+            train_model(params=train_params, model=model, device=device, mi_net=mi_net)
         else:
             print("현재 모델은 evaluation (eval) 모드입니다. 다시 실행하여 주세요")
             exit(1)

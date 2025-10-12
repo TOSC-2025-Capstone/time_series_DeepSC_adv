@@ -112,6 +112,14 @@ class NoamOpt:
         weight_decay =   0
         return weight_decay
 
+def power_normalize(x):
+    x_square = torch.mul(x, x)
+    power = torch.mean(x_square).sqrt()
+    if power > 1:
+        x = torch.div(x, power)
+
+    return x
+
 class Channels():
     def AWGN(self, Tx_sig, snr_db=10):
         snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환
@@ -185,7 +193,7 @@ class Channels():
         # plt.tight_layout()
         # plt.savefig('signal_comparison_3x3.png', dpi=300, bbox_inches='tight')
         # plt.show()
-        # self.visualize_awgn_effect(Tx_sig, snr_db=15)
+        # # self.visualize_awgn_effect(Tx_sig, snr_db=15)
         return Tx_sig + noise
 
     def Rayleigh(self, Tx_sig, snr=10):

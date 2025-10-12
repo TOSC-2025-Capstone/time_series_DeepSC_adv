@@ -28,6 +28,9 @@ model_params = {
     # 10.04 addition
     "use_itransformer" : False,  # True=iTransformer, False=Transformer
     "window_size" : None, # None=일반, int=Local
+
+    # 10.12 snr_db parameter
+    "snr_db": 5,  # AWGN 채널 SNR 값
 }
 
 """ 주의사항

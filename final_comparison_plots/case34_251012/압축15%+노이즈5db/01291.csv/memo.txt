@@ -1,0 +1,6 @@
+해당 mse 비교
+   "results/performance_test/case33.2.1/AWGN_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case33.3.1/AWGN_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case34.4.1/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case34.1.1/AWGN_deepsc_MSE/performance_statistics.csv"
+    ]

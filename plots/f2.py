@@ -220,24 +220,19 @@ def print_avg_mse_excluding_time(csv_paths, labels):
 if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
-        "results/performance_test/case33.2.1/AWGN_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case33.3.1/AWGN_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case33.4.1/AWGN_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case33.1.1/AWGN_deepsc_MSE/performance_statistics.csv"
+        "results/performance_test/case32.2.1/AWGN_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case32.3.1/AWGN_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case34.4.2/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case34.1.2/AWGN_deepsc_MSE/performance_statistics.csv"
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251011/압축15%+노이즈5db/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251012/압축15%+노이즈x/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15", "noiseless"]
     # case_labels = ["DeepSC", "GRU", "LSTM"]
     case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
-    # case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "feature 20%", "both 15%"]
-    # case_labels = ["no compress", "sequence 60%", "sequence 20%", "feature 60%", "both 15%"]
-    # case_labels = ["no compress", "4/5", "3/5", "2/5", "1/5"]
-    # case_labels = ["no compress", "3/4", "2/4", "1/4"]
-    # case_labels = ["case 24.1.0", "case 24.1.1", "case 24.1.2", "case 24.1.3", "case 24.3.1","case 24.3.2","case 24.3.3"]
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path=save_path
     )

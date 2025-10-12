@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import Channels
+from utils import Channels, power_normalize
 import pdb
 # from parameters.parameters import noise_std
 
@@ -33,19 +33,47 @@ class GRUDecompressor_Both(nn.Module):
         self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
         self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
 
+        self.decompressor = LearnableTimeDecompressor(d_model=hidden_dim, target_len=reconstruct_len)
+
     def forward(self, x):
         # x: [batch, 64, 3]
         # 피쳐 차원 늘리기
         feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
         # 시계열 길이 복원
-        time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
-        time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
-        time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
+        time_expanded = self.decompressor(feature_expanded)  # [batch, 128, hidden_dim]
+        # time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
+        # time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
+        # time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
         # GRU 처리
-        gru_out, _ = self.gru(time_expanded)  # [batch, 128, hidden_dim]
+        # gru_out, _ = self.gru(time_expanded)  # [batch, 128, hidden_dim]
         # 피쳐 차원 복원 (원래 피쳐 수로 줄이기)
-        output = self.output_layer(gru_out)  # [batch, 128, 6]
+        output = self.output_layer(time_expanded)  # [batch, 128, 6]
         return output
+
+class LearnableTimeDecompressor(nn.Module):
+    """학습 가능한 시계열 복원기"""
+    def __init__(self, d_model, target_len):
+        super().__init__()
+        self.target_len = target_len
+
+        # 전치 합성곱으로 학습 가능한 복원
+        self.deconv_decompress = nn.Sequential(
+            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+        )
+
+        # 정확한 길이 맞추기
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
+
+    def forward(self, x):
+        # x: (batch, compressed_len, d_model)
+        x = x.permute(0, 2, 1)  # (batch, d_model, compressed_len)
+        x = self.deconv_decompress(x)
+        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
+        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
+        return x
 
 # 모델
 class GRUDeepSC(nn.Module):
@@ -62,6 +90,7 @@ class GRUDeepSC(nn.Module):
         self.num_layers = p.get("num_layers", num_layers)
         self.dropout = p.get("dropout", dropout)
         self.channels = Channels()
+        self.snr_db = p.get("snr_db", 5)  # AWGN 채널 SNR 값
 
         # 올바른 파라미터 전달
         self.encoder = GRUCompressor_Both(
@@ -77,10 +106,10 @@ class GRUDeepSC(nn.Module):
 
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        snr_db = 5
-        compressed_on_channel = self.channels.AWGN(compressed, snr_db)
-        # compressed_on_channel = compressed
-        reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
+        tx_sig = power_normalize(compressed)
+        # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+        rx_sig = tx_sig
+        reconstructed = self.decoder(rx_sig)  # [batch, seq_len, input_dim]
         return reconstructed
 
     def get_compression_ratio(self):

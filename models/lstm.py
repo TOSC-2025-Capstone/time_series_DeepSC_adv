@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import Channels
+from utils import Channels, power_normalize
 # from parameters.parameters import noise_std
 
 # 모델 파라미터에서 파라미터 딕셔너리 불러오기 -> 그대로 아래에서 클래스 인스턴스 생성
@@ -34,18 +34,46 @@ class LSTMDecompressor_Both(nn.Module):
         self.lstm = nn.LSTM(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
         self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
 
+        self.decompressor = LearnableTimeDecompressor(d_model=hidden_dim, target_len=reconstruct_len)
+
     def forward(self, x):
         # x: [batch, 64, 3]
         feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
         # 시계열 길이 복원
-        time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
-        time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
-        time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
+        time_expanded = self.decompressor(feature_expanded)  # [batch, 128, hidden_dim]
+        # time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
+        # time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
+        # time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
         # LSTM 처리
-        lstm_out, _ = self.lstm(time_expanded)  # [batch, 128, hidden_dim]
+        # lstm_out, _ = self.lstm(time_expanded)  # [batch, 128, hidden_dim]
         # 피쳐 차원 복원
-        output = self.output_layer(lstm_out)  # [batch, 128, 6]
+        output = self.output_layer(time_expanded)  # [batch, 128, 6]
         return output
+
+class LearnableTimeDecompressor(nn.Module):
+    """학습 가능한 시계열 복원기"""
+    def __init__(self, d_model, target_len):
+        super().__init__()
+        self.target_len = target_len
+
+        # 전치 합성곱으로 학습 가능한 복원
+        self.deconv_decompress = nn.Sequential(
+            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+        )
+
+        # 정확한 길이 맞추기
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
+
+    def forward(self, x):
+        # x: (batch, compressed_len, d_model)
+        x = x.permute(0, 2, 1)  # (batch, d_model, compressed_len)
+        x = self.deconv_decompress(x)
+        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
+        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
+        return x
 
 # 모델
 class LSTMDeepSC(nn.Module):
@@ -62,6 +90,7 @@ class LSTMDeepSC(nn.Module):
         self.num_layers = p.get("num_layers", num_layers)
         self.dropout = p.get("dropout", dropout)
         self.channels = Channels()
+        self.snr_db = p.get("snr_db", 5)  # AWGN 채널 SNR 값
 
         # 올바른 파라미터 전달
         self.encoder = LSTMCompressor_Both(
@@ -73,10 +102,10 @@ class LSTMDeepSC(nn.Module):
 
     def forward(self, x):
         compressed = self.encoder(x)  # [batch, compressed_len, compressed_features]
-        snr_db = 5
-        compressed_on_channel = self.channels.AWGN(compressed, snr_db)
-        # compressed_on_channel = compressed
-        reconstructed = self.decoder(compressed_on_channel)  # [batch, seq_len, input_dim]
+        tx_sig = power_normalize(compressed)
+        # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+        rx_sig = tx_sig
+        reconstructed = self.decoder(rx_sig)  # [batch, seq_len, input_dim]
         return reconstructed
 
     def get_compression_ratio(self):

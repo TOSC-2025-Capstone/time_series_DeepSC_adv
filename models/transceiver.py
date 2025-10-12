@@ -25,7 +25,7 @@ import math
 import pdb
 
 # from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
-from utils import Channels
+from utils import Channels, power_normalize
 
 class TimeSeriesPositionalEncoding(nn.Module):
     """시계열 특화 위치 인코딩"""
@@ -704,225 +704,6 @@ class iTransformerDecoder(nn.Module):
         # 변경 5: self.output_projection 호출 삭제, x를 그대로 반환
         return x
 
-
-class SmoothTimeDecompressor(nn.Module):
-    def __init__(self, d_model, target_len):
-        super().__init__()
-        self.target_len = target_len
-
-        # ConvTranspose 대신 Interpolation + Conv 사용
-        self.decompress = nn.Sequential(
-            nn.Linear(d_model, d_model * 2),  # 채널 확장
-            nn.GELU(),
-        )
-        self.smooth_conv = nn.Conv1d(d_model * 2, d_model, kernel_size=5, padding=2)
-
-    def forward(self, x):
-        # x: [batch, compressed_len, d_model]
-        batch, comp_len, d_model = x.shape
-
-        # 1단계: 피처 확장
-        x = self.decompress(x)  # [batch, comp_len, d_model*2]
-
-        # 2단계: 시간 축 보간 (부드러운 업샘플링)
-        x = x.permute(0, 2, 1)  # [batch, d_model*2, comp_len]
-        x = F.interpolate(x, size=self.target_len, mode='linear', align_corners=False)
-
-        # 3단계: 스무딩 컨볼루션
-        x = self.smooth_conv(x)  # [batch, d_model, target_len]
-        x = x.permute(0, 2, 1)  # [batch, target_len, d_model]
-
-        return x
-
-
-class LocalMultiHeadedAttention(nn.Module):
-    """일반 Transformer용 Local Attention"""
-    def __init__(self, num_heads, d_model, window_size=32, dropout=0.1):
-        super().__init__()
-        assert d_model % num_heads == 0
-        self.d_k = d_model // num_heads
-        self.num_heads = num_heads
-        self.window_size = window_size
-
-        self.wq = nn.Linear(d_model, d_model)
-        self.wk = nn.Linear(d_model, d_model)
-        self.wv = nn.Linear(d_model, d_model)
-        self.dense = nn.Linear(d_model, d_model)
-
-        self.attn = None
-        self.dropout = nn.Dropout(p=dropout)
-
-    def create_local_mask(self, seq_len, device):
-        mask = torch.ones(seq_len, seq_len, dtype=torch.bool, device=device)
-        for i in range(seq_len):
-            start = max(0, i - self.window_size // 2)
-            end = min(seq_len, i + self.window_size // 2 + 1)
-            mask[i, start:end] = False
-        return mask
-
-    def forward(self, query, key, value, mask=None):
-        nbatches = query.size(0)
-        seq_len = query.size(1)
-
-        # 로컬 마스크 생성
-        local_mask = self.create_local_mask(seq_len, query.device)
-
-        if mask is not None:
-            if mask.dim() == 2:
-                mask = mask.unsqueeze(0).unsqueeze(0)
-            elif mask.dim() == 3:
-                mask = mask.unsqueeze(1)
-            local_mask = local_mask.unsqueeze(0).unsqueeze(0) | mask
-        else:
-            local_mask = local_mask.unsqueeze(0).unsqueeze(0)
-
-        # Q, K, V 계산
-        query = self.wq(query).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
-        key = self.wk(key).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
-        value = self.wv(value).view(nbatches, -1, self.num_heads, self.d_k).transpose(1, 2)
-
-        # Attention
-        x, self.attn = self.attention(query, key, value, mask=local_mask)
-
-        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.num_heads * self.d_k)
-        return self.dropout(self.dense(x))
-
-    def attention(self, query, key, value, mask=None):
-        d_k = query.size(-1)
-        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-
-        if mask is not None:
-            scores = scores.masked_fill(mask, -1e9)
-
-        p_attn = F.softmax(scores, dim=-1)
-        return torch.matmul(p_attn, value), p_attn
-
-
-class LocalInvertedMultiHeadAttention(nn.Module):
-    """iTransformer용 Local Attention (변수 축)"""
-    def __init__(self, num_heads, seq_len, window_size=32, dropout=0.1):
-        super().__init__()
-        assert seq_len % num_heads == 0
-        self.d_k = seq_len // num_heads
-        self.num_heads = num_heads
-        self.seq_len = seq_len
-        self.window_size = window_size
-
-        self.wq = nn.Linear(seq_len, seq_len)
-        self.wk = nn.Linear(seq_len, seq_len)
-        self.wv = nn.Linear(seq_len, seq_len)
-        self.dense = nn.Linear(seq_len, seq_len)
-
-        self.dropout = nn.Dropout(p=dropout)
-
-    def create_local_mask(self, num_features, device):
-        """변수 축에서의 로컬 마스크"""
-        mask = torch.ones(num_features, num_features, dtype=torch.bool, device=device)
-        for i in range(num_features):
-            start = max(0, i - self.window_size // 2)
-            end = min(num_features, i + self.window_size // 2 + 1)
-            mask[i, start:end] = False
-        return mask
-
-    def forward(self, x):
-        # x: [batch, seq_len, features] -> [batch, features, seq_len]
-        x = x.transpose(1, 2)
-        batch_size, num_features, seq_len = x.shape
-
-        # 변수 축에서 로컬 마스크 생성
-        local_mask = self.create_local_mask(num_features, x.device)
-        local_mask = local_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, features, features]
-
-        # Q, K, V 계산
-        query = self.wq(x).view(batch_size, num_features, self.num_heads, self.d_k)
-        query = query.transpose(1, 2)
-
-        key = self.wk(x).view(batch_size, num_features, self.num_heads, self.d_k)
-        key = key.transpose(1, 2)
-
-        value = self.wv(x).view(batch_size, num_features, self.num_heads, self.d_k)
-        value = value.transpose(1, 2)
-
-        # Attention with local mask
-        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
-        scores = scores.masked_fill(local_mask, -1e9)
-
-        attn_weights = F.softmax(scores, dim=-1)
-        attn_output = torch.matmul(attn_weights, value)
-
-        # Concatenate heads
-        attn_output = attn_output.transpose(1, 2).contiguous()
-        attn_output = attn_output.view(batch_size, num_features, seq_len)
-
-        output = self.dense(attn_output)
-        output = self.dropout(output)
-
-        # [batch, features, seq_len] -> [batch, seq_len, features]
-        output = output.transpose(1, 2)
-        return output
-
-class SemanticDenoisingBlock(nn.Module):
-    """
-    압축된 의미 심볼 [B, T, C]에서 잡음을 제거하기 위한 모듈.
-    1D CNN과 Residual Connection을 사용하여 시계열적 노이즈를 필터링합니다.
-    """
-    def __init__(self, d_comp, hidden_dim_ratio=4, kernel_size=5):
-        """
-        초기화 메서드.
-        :param d_comp: 입력 특징의 차원 (channel_encoder의 출력 차원)
-        :param hidden_dim_ratio: FFN의 중간 레이어 확장 비율
-        :param kernel_size: 1D CNN 필터의 크기 (홀수 권장)
-        """
-        super().__init__()
-
-        # 1. 1D 컨볼루션 블록: 시간 축의 지역적 노이즈 필터링
-        self.conv_block = nn.Sequential(
-            # LayerNorm은 채널 축(d_comp)에 대해 적용
-            nn.LayerNorm(d_comp),
-            # Conv1d를 위해 (Batch, Length, Channels) -> (Batch, Channels, Length)
-            Permute((0, 2, 1)),
-            nn.Conv1d(
-                in_channels=d_comp,
-                out_channels=d_comp,
-                kernel_size=kernel_size,
-                padding='same', # 입력과 출력의 시퀀스 길이를 동일하게 유지
-                groups=d_comp # Depthwise-like convolution으로 각 채널 독립적 처리
-            ),
-            # 다시 원래 차원 순서로 복원
-            Permute((0, 2, 1)),
-            nn.GELU() # 활성화 함수
-        )
-
-        # 2. 점별 피드포워드 네트워크(FFN) 블록: 특징 축의 비선형 변환
-        hidden_dim = d_comp * hidden_dim_ratio
-        self.ffn_block = nn.Sequential(
-            nn.LayerNorm(d_comp),
-            nn.Linear(d_comp, hidden_dim),
-            nn.GELU(),
-            nn.Linear(hidden_dim, d_comp)
-        )
-
-    def forward(self, x):
-        """
-        :param x: 노이즈가 낀 입력 텐서 [batch, compressed_len, d_comp]
-        :return: 디노이징된 텐서 [batch, compressed_len, d_comp]
-        """
-        # 잔차 연결 1: Conv 블록은 '보정값'을 학습
-        x = x + self.conv_block(x)
-        # 잔차 연결 2: FFN 블록도 '보정값'을 학습
-        x = x + self.ffn_block(x)
-        return x
-
-# nn.Sequential 내에서 permute를 사용하기 위한 헬퍼 클래스
-class Permute(nn.Module):
-    def __init__(self, dims):
-        super().__init__()
-        self.dims = dims
-
-    def forward(self, x):
-        return x.permute(*self.dims)
-
-
 class DeepSC(nn.Module):
     def __init__(
         self,
@@ -952,6 +733,7 @@ class DeepSC(nn.Module):
         self.d_comp = p.get("d_comp", 3)
         self.window_size = p.get("window_size", window_size)
         self.use_itransformer = p.get("use_itransformer", use_itransformer)
+        self.snr_db = p.get("snr_db", 5)  # 기본 SNR 값
 
         # 의미 인코더 = encoder + time_compressor
         if self.use_itransformer:
@@ -987,8 +769,6 @@ class DeepSC(nn.Module):
 
         self.channels = Channels()
 
-        self.denoiser = SemanticDenoisingBlock(self.d_comp)
-
         if self.use_itransformer:
             self.decoder = iTransformerDecoder(
                 num_layers=self.num_layers,
@@ -1008,7 +788,6 @@ class DeepSC(nn.Module):
                 dropout=self.dropout
             )
 
-
         self.channel_decoder = ResidualChannelDecoder(
             self.d_comp, self.d_model
         )
@@ -1017,8 +796,8 @@ class DeepSC(nn.Module):
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
 
         # 시계열 길이 복원
-        # self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
-        self.time_decompressor = SmoothTimeDecompressor(self.d_model, self.max_len)
+        self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
+        # self.time_decompressor = SmoothTimeDecompressor(self.d_model, self.max_len)
 
         # 업샘플링 레이어 추가 (compressed_len → max_len)
         self.upsample = nn.Upsample(
@@ -1043,25 +822,24 @@ class DeepSC(nn.Module):
 
         # 4단계 : 채널 상태 적용
         # (batch_size, compressed_len, d_comp)
-        snr_db = 5
-        channel_syms = self.channels.AWGN(channel_encoded, snr_db)
-        # channel_syms = channel_encoded
-        # 노이즈가 낀 심볼을 디노이저에 통과시켜 정제
-        # denoised_syms = self.denoiser(channel_syms)
+        tx_sig = power_normalize(channel_encoded)
+        rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+        # rx_sig = tx_sig
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)
-        channel_decoded = self.channel_decoder(channel_syms)
+        channel_decoded = self.channel_decoder(rx_sig)
 
         # 6단계 : 시계열 복원
         # (batch_size, compressed_len->max_len, d_model)
         decompressed = self.time_decompressor(channel_decoded)
 
         # 7단계 : 의미 디코더
-        output = self.decoder(decompressed, use_mask=True) # transformer
+        # output = self.decoder(decompressed, use_mask=True) # transformer
 
         # 8단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
-        output = self.output_projection(decompressed)
+        # final_output = self.output_projection(output)
+        final_output = self.output_projection(decompressed)
 
-        return output
+        return final_output
