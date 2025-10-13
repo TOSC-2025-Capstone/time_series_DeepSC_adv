@@ -5,11 +5,6 @@ from typing import List
 
 import torch
 
-from models.attention_lstm import LSTMAttentionDeepSC
-from models.gru import GRUDeepSC
-from models.lstm import LSTMDeepSC
-from models.transceiver import DeepSC
-
 # from utils import SNR_to_noise
 import numpy as np
 import pdb
@@ -26,6 +21,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
+is_train_phase = True # 나중에 변경
+
 # True면 mutual information model 도 같이 학습함
 # is_learning_minet = True
 is_learning_minet = False
@@ -39,8 +36,8 @@ is_preprocessed = True
 is_skip_outlier_eliminate = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
-# is_trained = True
-is_trained = False
+is_trained = True
+# is_trained = False
 
 # 성능평가를 진행하지 않게 만듦
 # is_skip_performance = True
@@ -74,7 +71,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "36.4.2"
+case_index = "39.3.4"
 
 # 모델 종류
 class ModelType(Enum):
@@ -117,9 +114,9 @@ CHANNEL_TYPES = [
 SCALER_TYPES = [scaler.value for scaler in ScalerType]  # ['minmax', 'zscore']
 
 # 현재 사용할 변수 설정들
-model_type = ModelType.DEEPSC.value  # default
+model_type = ModelType.GRU.value  # default
 loss_type = LossType.MSE.value  # MSE로 설정
-channel_type = ChannelType.AWGN.value  # no_channel 선택
+channel_type = ChannelType.RAYLEIGH.value  # no_channel 선택
 scaler_type = ScalerType.ZSCORE.value  # minmax 선택
 
 # channel 노이즈 설정
@@ -179,8 +176,8 @@ preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_{scal
 # preprocessed_data_path = f"./cycle_preprocess/total_preprocessed/processed_{scaler_type}_{target_length}/case_{case_index}/"
 
 # 모델 저장 경로
+# model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 model_checkpoint_path = f"./checkpoints/case_{case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
-
 
 # train 중 validation 복원 plot 저장 경로
 save_fig_dir = f"results/case{case_index}/{channel_type}_{model_type}_{loss_type}"

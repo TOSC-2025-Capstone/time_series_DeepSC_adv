@@ -3,37 +3,52 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils import Channels, power_normalize
 import pdb
+from models.compressor import LearnableTimeCompressor, LearnableTimeDecompressor, ResidualChannelDecoder
 # from parameters.parameters import noise_std
 
 # 시퀀스, 피쳐 압축
-class GRUCompressor_Both(nn.Module):
-    def __init__(self, input_dim, hidden_dim, compressed_len=64, compressed_features=3, num_layers=2, dropout=0.1):
+class RNNBasedCompressor_Both(nn.Module):
+    def __init__(self, input_dim, hidden_dim, compressed_len=64, compressed_features=3, num_layers=2, dropout=0.1, model_type="gru"):
         super().__init__()
-        self.gru = nn.GRU(input_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
-        self.pool = nn.AdaptiveAvgPool1d(compressed_len)
-        self.feature_compress = nn.Linear(hidden_dim, compressed_features)
+        self.input_projection = nn.Linear(input_dim, hidden_dim)
+        if model_type not in ["gru", "lstm"]:
+            raise ValueError("model_type은 'gru' 또는 'lstm'이어야 합니다.")
+        if model_type == "lstm":
+            self.seq_model = nn.LSTM(input_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
+        elif model_type == "gru":  # "gru"
+            self.seq_model = nn.GRU(input_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
+        self.time_compressor = LearnableTimeCompressor(d_model=hidden_dim, target_len=compressed_len)
+        self.feature_compress = nn.Sequential(
+            nn.Linear(self.hidden_dim, self.hidden_dim // 2),  # 128 → 64
+            nn.LayerNorm(self.hidden_dim // 2),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(self.hidden_dim // 2, compressed_features),  # 32 → 3
+        )
 
     def forward(self, x):
         # x: [batch, 128, 6]
-        gru_out, _ = self.gru(x)  # [batch, 128, hidden_dim]
+        x = self.input_projection(x)  # [batch, 128, hidden_dim]
+        gru_out, _ = self.seq_model(x)  # [batch, 128, hidden_dim]
         # 시계열 길이 압축
-        time_compressed = gru_out.permute(0, 2, 1)  # [batch, hidden_dim, 128]
-        time_compressed = self.pool(time_compressed)  # [batch, hidden_dim, 64]
-        time_compressed = time_compressed.permute(0, 2, 1)  # [batch, 64, hidden_dim]
+        time_compressed = self.time_compressor(gru_out)  # [batch, 64, hidden_dim]
         # 피쳐 차원 압축
         compressed = self.feature_compress(time_compressed)  # [batch, 64, 3]
         return compressed
 
 # 시퀀스, 피쳐 복원
-class GRUDecompressor_Both(nn.Module):
-    def __init__(self, compressed_features, hidden_dim, reconstruct_len=128, reconstruct_features=6, num_layers=2, dropout=0.1):
+class RNNBasedDecompressor_Both(nn.Module):
+    def __init__(self, compressed_features, hidden_dim, reconstruct_len=128, reconstruct_features=6, num_layers=2, dropout=0.1, model_type="gru"):
         super().__init__()
-        self.feature_expand = nn.Linear(compressed_features, hidden_dim)
-        self.upsample = nn.Upsample(size=reconstruct_len, mode='linear', align_corners=False)
-        self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
-        self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
-
+        if model_type not in ["gru", "lstm"]:
+            raise ValueError("model_type은 'gru' 또는 'lstm'이어야 합니다.")
+        if model_type == "lstm":
+            self.seq_model = nn.LSTM(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
+        elif model_type == "gru":  # "gru"
+            self.seq_model = nn.GRU(hidden_dim, hidden_dim, num_layers, dropout=dropout, batch_first=True)
+        self.feature_expand = ResidualChannelDecoder(d_comp = compressed_features, d_model = hidden_dim)
         self.decompressor = LearnableTimeDecompressor(d_model=hidden_dim, target_len=reconstruct_len)
+        self.output_layer = nn.Linear(hidden_dim, reconstruct_features)
 
     def forward(self, x):
         # x: [batch, 64, 3]
@@ -41,43 +56,16 @@ class GRUDecompressor_Both(nn.Module):
         feature_expanded = self.feature_expand(x)  # [batch, 64, hidden_dim]
         # 시계열 길이 복원
         time_expanded = self.decompressor(feature_expanded)  # [batch, 128, hidden_dim]
-        # time_expanded = feature_expanded.permute(0, 2, 1)  # [batch, hidden_dim, 64]
-        # time_expanded = self.upsample(time_expanded)       # [batch, hidden_dim, 128]
-        # time_expanded = time_expanded.permute(0, 2, 1)    # [batch, 128, hidden_dim]
         # GRU 처리
-        # gru_out, _ = self.gru(time_expanded)  # [batch, 128, hidden_dim]
+        # gru_out, _ = self.seq_model(time_expanded)  # [batch, 128, hidden_dim]
         # 피쳐 차원 복원 (원래 피쳐 수로 줄이기)
         output = self.output_layer(time_expanded)  # [batch, 128, 6]
         return output
 
-class LearnableTimeDecompressor(nn.Module):
-    """학습 가능한 시계열 복원기"""
-    def __init__(self, d_model, target_len):
-        super().__init__()
-        self.target_len = target_len
-
-        # 전치 합성곱으로 학습 가능한 복원
-        self.deconv_decompress = nn.Sequential(
-            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-        )
-
-        # 정확한 길이 맞추기
-        self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
-
-    def forward(self, x):
-        # x: (batch, compressed_len, d_model)
-        x = x.permute(0, 2, 1)  # (batch, d_model, compressed_len)
-        x = self.deconv_decompress(x)
-        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
-        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
-        return x
 
 # 모델
-class GRUDeepSC(nn.Module):
-    """GRU 기반 DeepSC 모델, hidden_dim->compressed_len 시퀀스 압축, input_dim->compressed_features 피쳐 압축"""
+class RNNBasedSC(nn.Module):
+    """LSTM/GRU 기반 DeepSC 모델, hidden_dim->compressed_len 시퀀스 압축, input_dim->compressed_features 피쳐 압축"""
     def __init__(self, input_dim=6, seq_len=128, hidden_dim=128, compressed_len=64, compressed_features=3, num_layers=2, dropout=0.1, params=None, **kwargs):
         super().__init__()
         # params 딕셔너리가 있으면 거기서 값을 꺼내고, 없으면 인자로 받은 값을 사용
@@ -91,17 +79,19 @@ class GRUDeepSC(nn.Module):
         self.dropout = p.get("dropout", dropout)
         self.channels = Channels()
         self.snr_db = p.get("snr_db", 5)  # AWGN 채널 SNR 값
+        self.model_type = kwargs.get("model_type", "gru")  # 모델 타입 (gru/lstm)
+        assert self.model_type in ["gru", "lstm"], "model_type은 'gru' 또는 'lstm'이어야 합니다."
 
         # 올바른 파라미터 전달
-        self.encoder = GRUCompressor_Both(
+        self.encoder = RNNBasedCompressor_Both(
             self.input_dim, self.hidden_dim,
             self.compressed_len, self.compressed_features,
-            self.num_layers, self.dropout
+            self.num_layers, self.dropout, self.model_type
         )
-        self.decoder = GRUDecompressor_Both(
+        self.decoder = RNNBasedDecompressor_Both(
             self.compressed_features, self.hidden_dim,
             self.seq_len, self.input_dim,
-            self.num_layers, self.dropout
+            self.num_layers, self.dropout, self.model_type
         )
 
     def forward(self, x):

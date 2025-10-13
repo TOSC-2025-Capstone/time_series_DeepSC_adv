@@ -128,6 +128,7 @@ class Channels():
         noise = torch.normal(
             mean=0,
             std=math.sqrt(n_var),
+            # std=0.01,
             size=Tx_sig.shape,
             device=Tx_sig.device
         )

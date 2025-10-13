@@ -389,6 +389,125 @@ case 36.1.1 : InvertedTransformer, 15%, noise x, power normalization만 적용
 case 36.1.2 : InvertedTransformer, 15%, noise 5db, 노이즈 추가 직전에 power normalization 적용
     => BestValLoss
 
+# 2차 모듈화 진행 : transformer, lstm, gru모두 transceiver에서 해결 => 모델 간 큰 구조 통일, 데이터 관계 파악 레이어만 개별화
+추가로 이제부터는 power_normalize는 상시 적용
+
+먼저 디코더 단에서 데이터 관계 복구 없이 인코더 온리 구조 테스트
+case 37.3.1 : gru, 15%, noise 5db
+    => BestValLoss 0.150146
+case 37.4.1 : transformer, 15%, noise 5db
+    => BestValLoss 0.152071
+case 37.1.1 : InvertedTransformer, 15%, noise 5db
+    => BestValLoss 0.149797
+case 37.2.1 : LSTM, 15%, noise 5db
+    => BestValLoss 0.150921
+
+이제 디코더 단에서 데이터 관계복구도 같이 하는 경우 테스트
+case 37.3.2 : gru, 15%, noise 5db
+    => BestValLoss 0.020431 (case 29.3.1, 0.046에 비해 트랜시버로 합쳐지면서 생기는 레이어 구조 이득 및 파워 노멀라이제이션 영향)
+case 37.4.2 : transformer, 15%, noise 5db
+    => BestValLoss 0.055508
+case 37.1.2 : InvertedTransformer, 15%, noise 5db
+    => BestValLoss 0.034562
+case 37.2.2 : LSTM, 15%, noise 5db, rayleigh
+    => BestValLoss 0.017673
+
+case 37.3.3 : gru, 15%, noise 5db, rayleigh
+    => BestValLoss 0.020139
+
+인/디코더 모두 적용한 상황에서 레이어 수를 1로 변경, 앞으로는 rayleigh fading으로 고정 (AWGN과 큰 차이 없음)
+case 37.3.4 : gru, 15%, noise 5db
+    => BestValLoss 0.021518
+case 37.4.3 : transformer, 15%, noise 5db
+    => BestValLoss 0.065125
+case 37.1.3 : InvertedTransformer, 15%, noise 5db
+    => BestValLoss 0.037121
+case 37.2.3 : LSTM, 15%, noise 5db
+    => BestValLoss
+
+# 251013 태초부터 다시 점검, 오토인코더로만 테스트
+# 비압축, 비노이즈
+case 38.0.1 : only autoencoder, non compress, non-noise (늘리고 줄이고 줄인 다음 늘리고 늘리고 줄이는 로직은 유지)
+    => BestValLoss 0.000338, epoch_time 32s
+case 38.0.2 : only autoencoder, non compress, non-noise, channel_encoder,channel_decoder의 입출력 차원을 input dim으로 수정
+        encoded = self.feat_expander(x) 는 주석처리
+        self.time_compressor = LearnableTimeCompressor(self.input_dim, self.compressed_len)
+        self.time_decompressor = LearnableTimeDecompressor(self.input_dim, self.max_len)
+        channel_encoder, channel_decoder 모두 linear 레이어 하나로 처리 (5,3) 입출력이라서 복잡한 레이어 필요 x
+    => BestValLoss 1.188702, epoch_time 0.4s => epoch 640돌면 위 케이스와 같은 시간걸림
+case 38.0.3 : case 38.0.2 + epoch 80*80=640
+    => BestValLoss , epoch_time 0.4s
+case 38.0.4 : case 38.0.2 + epoch 80, lr 1e-3
+    => BestValLoss 0.719368, epoch_time 0.4s
+case 38.0.5 : case 38.0.2 + epoch 80, lr 1e-4
+    => BestValLoss 0.876388, epoch_time 0.4s
+case 38.0.6 : case 38.0.2 + epoch 1000, lr 1e-3 (최대한 빠르게 학습)
+    => BestValLoss 0.718770 (lr 0.000000n 미만으로 들어가며 학습 수렴), epoch_time 0.4s
+
+=> 결론 : 오래걸려도 38.0.1 구조가 정확함
+
+# 오토인코더만 적용한 모델에 환경 부여
+# 압축 15%, 비노이즈
+case 39.0.1 : only autoencoder, 15%, non-noise (늘리고 줄이고 줄인 다음 늘리고 늘리고 줄이는 로직은 유지)
+    => BestValLoss 0.011836, epoch_time 3.5s
+# 압축 15%, 노이즈 5db
+case 39.0.2 : only autoencoder, 15%, 5db (늘리고 줄이고 줄인 다음 늘리고 늘리고 줄이는 로직은 유지)
+    => BestValLoss 0.151094, epoch_time 3.5s
+case 39.0.3 : only autoencoder, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db
+    => BestValLoss 0.011836, epoch_time 3.5s, 39.0.2와 비교했을때 성능이 떨어지는 모습이 보임
+case 39.0.4 : only autoencoder, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 n_var = 0.01
+    => BestValLoss 0.011836
+case 39.0.5 : only autoencoder, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 n_var = 0.01, power_normalization만 인퍼런스에서 제거
+    => BestValLoss
+
+# 4가지 모델 비교, 압축 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, num_layers 1 (빠른 테스트를 위함)
+case 39.1.1 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db
+    => BestValLoss 0.029879 (이 값 자체는 15%, non-noise 경우와 동일함)
+case 39.1.2 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
+case 39.1.3 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 sigma 0.01, power_normalization만 인퍼런스에서 제거
+case 39.1.4 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 10db, power_normalization만 인퍼런스에서 제거
+case 39.1.5 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 15db, power_normalization만 인퍼런스에서 제거
+
+case 39.3.1 : gru, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db
+    => BestValLoss
+case 39.3.2 : gru, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 sigma 0.01, power_normalization만 인퍼런스에서 제거
+case 39.3.3 : gru, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
+case 39.3.4 : gru, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 10db, power_normalization만 인퍼런스에서 제거
+case 39.3.5 : gru, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 15db, power_normalization만 인퍼런스에서 제거
+
+# 17:25 => 39.1.2 성능 > 39.3.3 성능 (15%, 노이즈는 테스트시에만 끼우기, 5db, power_normalization만 인퍼런스에서 제거)
+
+    (Pdb) n_var = signal_power/snr_linear
+    0.2070829419707781
+    (Pdb) math.sqrt(n_var)
+    0.4550636680408337
+    (Pdb) signal_power
+    0.6548537611961365
+    (Pdb) snr_linear
+    3.1622776601683795
+    (Pdb) Tx_sig[0][:10]
+    tensor([[ 0.3318, -2.5868],
+            [ 1.0821,  0.7327],
+            [ 1.2128,  0.6719],
+            [ 0.6191, -1.0874],
+            [ 1.5147, -0.2930],
+            [ 0.7786,  0.5228],
+            [ 0.4806, -0.9885],
+            [ 1.3654, -0.2454],
+            [ 0.7011,  0.5481],
+            [ 0.4010, -0.9455]], device='cuda:0')
+    (Pdb) noise[0][:10]
+    tensor([[-0.1766, -0.3702],
+            [-0.1851,  0.3395],
+            [ 0.1455,  0.0535],
+            [-0.1107,  0.0704],
+            [ 0.5362,  0.5781],
+            [-0.4092, -0.3310],
+            [-0.0039,  0.4978],
+            [-0.4766, -0.2124],
+            [ 0.6032, -0.6384],
+            [-0.6585,  0.1196]], device='cuda:0')
+
 
 ((Pdb) SNR_to_noise(10)
 0.22360679774997896

@@ -27,6 +27,8 @@ import pdb
 # from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
 from utils import Channels, power_normalize
 
+import parameters.parameters as parameters
+
 class TimeSeriesPositionalEncoding(nn.Module):
     """시계열 특화 위치 인코딩"""
     def __init__(self, d_model, dropout, max_len=5000):
@@ -223,20 +225,7 @@ class EncoderLayer(nn.Module):
         """
         super().__init__()
 
-        # window_size에 따라 Attention 선택
-        if window_size is not None:
-            self.mha = LocalMultiHeadedAttention(num_heads, d_model, window_size, dropout)
-            # self.mha = DenoisingMultiHeadAttention(num_heads, d_model, noise_threshold=0.3, dropout=0.1)
-            # self.mha = ResidualTemperatureAttention(num_heads, d_model, dropout=0.1)
-            # self.mha = EMAAttention(num_heads, d_model, dropout=0.1)
-            # self.mha = UnifiedAttention(num_heads, d_model, inverted=False, seq_len=None,
-            #         denoising=True, noise_threshold=0.3,
-            #         local_window=window_size, use_temperature=True,
-            #         use_residual_attn=True, use_ema=True, ema_decay=0.9,
-            #         dropout=0.1)
-            # self.mha = MultiHeadedAttention(num_heads, d_model, dropout)
-        else:
-            self.mha = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.mha = MultiHeadedAttention(num_heads, d_model, dropout)
 
         self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
         self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
@@ -257,12 +246,8 @@ class DecoderLayer(nn.Module):
         super().__init__()
 
         # 기존 MultiHeadedAttention 사용
-        if window_size is not None:
-            self.self_attn = LocalMultiHeadedAttention(num_heads, d_model, window_size, dropout)
-            self.cross_attn = LocalMultiHeadedAttention(num_heads, d_model, window_size, dropout)
-        else:
-            self.self_attn = MultiHeadedAttention(num_heads, d_model, dropout)
-            self.cross_attn = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.self_attn = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.cross_attn = MultiHeadedAttention(num_heads, d_model, dropout)
         self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
 
         self.norm1 = nn.LayerNorm(d_model)
@@ -441,7 +426,7 @@ class LearnableTimeCompressor(nn.Module):
         skip = skip.permute(0, 2, 1)
         skip = F.adaptive_avg_pool1d(skip, self.target_len)
         skip = skip.permute(0, 2, 1)
-        skip = self.skip_proj(skip)
+        # skip = self.skip_proj(skip)
 
         return x + skip
 
@@ -725,35 +710,68 @@ class DeepSC(nn.Module):
         self.num_layers = p.get("num_layers", num_layers)
         self.input_dim = p.get("input_dim", input_dim)
         self.max_len = p.get("max_len", max_len)
+        self.seq_len = p.get("seq_len", 512)
         self.d_model = p.get("d_model", d_model)
         self.num_heads = p.get("num_heads", num_heads)
         self.dff = p.get("dff", dff)
         self.dropout = p.get("dropout", dropout)
         self.compressed_len = p.get("compressed_len", compressed_len)
         self.d_comp = p.get("d_comp", 3)
+
+        self.hidden_dim = p.get("hidden_dim", 512)
+        self.compressed_features = p.get("compressed_features", 0)
+
         self.window_size = p.get("window_size", window_size)
         self.use_itransformer = p.get("use_itransformer", use_itransformer)
         self.snr_db = p.get("snr_db", 5)  # 기본 SNR 값
+        self.model_type = kwargs.get("model_type", "deepsc")  # 모델 타입 (gru/lstm)
+        assert self.model_type in ["deepsc","gru", "lstm"], "model_type은 'deepsc', 'gru' 또는 'lstm'이어야 합니다."
+
+        self.feat_expander = nn.Linear(self.input_dim, self.d_model)
 
         # 의미 인코더 = encoder + time_compressor
-        if self.use_itransformer:
-            self.encoder = iTransformerEncoder(
-                self.num_layers, self.input_dim, self.max_len,
-                self.d_model, self.num_heads, self.dff,
-                window_size=self.window_size,
-                dropout=self.dropout
+        if self.model_type == 'deepsc':
+            if self.use_itransformer:
+                self.encoder = iTransformerEncoder(
+                    self.num_layers, self.input_dim, self.max_len,
+                    self.d_model, self.num_heads, self.dff,
+                    window_size=self.window_size,
+                    dropout=self.dropout
+                )
+            else:
+                self.encoder = Encoder(
+                    self.num_layers, self.input_dim, self.max_len,
+                    self.d_model, self.num_heads, self.dff,
+                    window_size=self.window_size,
+                    dropout=self.dropout
+                )
+        elif self.model_type == 'gru':
+            self.encoder = nn.Sequential(
+                nn.Linear(self.input_dim, self.hidden_dim),
+                nn.GRU(
+                    input_size=self.hidden_dim,
+                    hidden_size=self.hidden_dim,
+                    num_layers=self.num_layers,
+                    dropout=self.dropout,
+                    batch_first=True,
+                ),
             )
-        else:
-            self.encoder = Encoder(
-                self.num_layers, self.input_dim, self.max_len,
-                self.d_model, self.num_heads, self.dff,
-                window_size=self.window_size,
-                dropout=self.dropout
+        elif self.model_type == 'lstm':
+            self.encoder = nn.Sequential(
+                nn.Linear(self.input_dim, self.hidden_dim),
+                nn.LSTM(
+                    input_size=self.hidden_dim,
+                    hidden_size=self.hidden_dim,
+                    num_layers=self.num_layers,
+                    dropout=self.dropout,
+                    batch_first=True,
+                ),
             )
 
         # 시계열 길이 압축 모듈 (선택)
         if self.compressed_len is not None:
             self.time_compressor = LearnableTimeCompressor(self.d_model, self.compressed_len)
+            # self.time_compressor = LearnableTimeCompressor(self.input_dim, self.compressed_len)
         else:
             self.time_compressor = None
 
@@ -766,50 +784,68 @@ class DeepSC(nn.Module):
             nn.Dropout(0.1),
             nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
         )
+        # self.channel_encoder = nn.Linear(self.input_dim, self.d_comp)
 
         self.channels = Channels()
 
-        if self.use_itransformer:
-            self.decoder = iTransformerDecoder(
+        if self.model_type == 'deepsc':
+            if self.use_itransformer:
+                self.decoder = iTransformerDecoder(
+                    num_layers=self.num_layers,
+                    compressed_len=self.compressed_len,
+                    seq_len=self.max_len,
+                    num_features=self.d_model,
+                    num_heads=self.num_heads,
+                    d_ff=self.dff)
+            else:
+                self.decoder = Decoder(
+                    num_layers=self.num_layers,
+                    d_model=self.d_model,
+                    num_heads=self.num_heads,
+                    dff=self.dff,
+                    max_len=self.max_len,
+                    # max_len=self.compressed_len, # time_decompressor에서 복원
+                    dropout=self.dropout
+                )
+        elif self.model_type == 'gru':
+            self.decoder = nn.GRU(
+                input_size=self.hidden_dim,
+                hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
-                compressed_len=self.compressed_len,
-                seq_len=self.max_len,
-                num_features=self.d_model,
-                num_heads=self.num_heads,
-                d_ff=self.dff)
-        else:
-            self.decoder = Decoder(
+                dropout=self.dropout,
+                batch_first=True,
+            )
+        elif self.model_type == 'lstm':
+            self.decoder = nn.LSTM(
+                input_size=self.hidden_dim,
+                hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
-                d_model=self.d_model,
-                num_heads=self.num_heads,
-                dff=self.dff,
-                max_len=self.max_len,
-                # max_len=self.compressed_len, # time_decompressor에서 복원
-                dropout=self.dropout
+                dropout=self.dropout,
+                batch_first=True,
             )
 
         self.channel_decoder = ResidualChannelDecoder(
             self.d_comp, self.d_model
         )
+        # self.channel_decoder = nn.Linear(self.d_comp, self.input_dim)
 
         # 자연어 디코더 대신 시계열 출력 레이어 사용
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
 
         # 시계열 길이 복원
+        # self.time_decompressor = LearnableTimeDecompressor(self.input_dim, self.max_len)
         self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
         # self.time_decompressor = SmoothTimeDecompressor(self.d_model, self.max_len)
-
-        # 업샘플링 레이어 추가 (compressed_len → max_len)
-        self.upsample = nn.Upsample(
-            size=self.max_len, mode="linear", align_corners=False
-        )
-
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
         # 1단계: 의미 인코더
         # (batch, max_len, input_dim->d_model)
-        encoded = self.encoder(x, src_mask)
+        if self.model_type == 'deepsc' :
+            encoded = self.encoder(x, src_mask)
+        else:  # GRU/LSTM 인코더
+            encoded, _ = self.encoder(x)
+        # encoded = self.feat_expander(x)
 
         # 2단계: sequence compress (downsampling) (시계열 압축)
         # (batch, max_len->compressed_len, d_model)
@@ -821,10 +857,16 @@ class DeepSC(nn.Module):
         channel_encoded = self.channel_encoder(compressed)
 
         # 4단계 : 채널 상태 적용
-        # (batch_size, compressed_len, d_comp)
-        tx_sig = power_normalize(channel_encoded)
-        rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
-        # rx_sig = tx_sig
+        if parameters.is_train_phase == False:
+            # (batch_size, compressed_len, d_comp)
+            # tx_sig = power_normalize(channel_encoded)
+            tx_sig = channel_encoded
+
+            # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+            rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            # rx_sig = tx_sig
+        else:
+            rx_sig = channel_encoded
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)
@@ -835,11 +877,15 @@ class DeepSC(nn.Module):
         decompressed = self.time_decompressor(channel_decoded)
 
         # 7단계 : 의미 디코더
-        # output = self.decoder(decompressed, use_mask=True) # transformer
+        if self.model_type == 'deepsc' :
+            output = self.decoder(decompressed, use_mask=True)
+        else:  # GRU/LSTM 인코더
+            output, _ = self.decoder(decompressed)
+        # output = decompressed
 
         # 8단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
-        # final_output = self.output_projection(output)
-        final_output = self.output_projection(decompressed)
+        final_output = self.output_projection(output)
+        # final_output = output
 
         return final_output

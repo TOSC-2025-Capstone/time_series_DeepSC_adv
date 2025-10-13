@@ -18,10 +18,6 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from cycle_preprocess.cycle_preprocess import cycle_preprocess
-from models.attention_lstm import LSTMAttentionDeepSC
-from models.claude_transceiver import iTransformerDeepSC
-from models.gru import GRUDeepSC
-from models.lstm import LSTMDeepSC
 from models.mutual_info import Mine
 from models.transceiver import DeepSC
 from models.only_channel import OnlyChannel
@@ -29,6 +25,7 @@ from parameters.model_parameters import *
 
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.parameters import *
+import parameters.parameters as p
 from performance_cycle import performance_cycle
 from train_expert_ver import train_model
 
@@ -80,30 +77,16 @@ if __name__ == "__main__":
     expert_model = None
     mi_net = None
     if model_type == "deepsc":
-        model = DeepSC(params=model_params).to(device)
-        print("DeepSC 모델이 선택되었습니다.")
+        model = DeepSC(params=model_params, model_type=model_type).to(device)
+        print("Transformer 모델이 선택되었습니다.")
         if is_learning_minet == True and channel_type != "no_channel":
             mi_net = Mine().to(device)
-        if 1 :
-            expert_model_checkpoint_path = f"./checkpoints/cas29.4.1/MSE/deepsc/deepsc_battery_epochbest.pth" # 임시
-            expert_model = DeepSC(params=model_params).to(device)
-            if os.path.exists(expert_model_checkpoint_path):
-                model.load_state_dict(
-                    torch.load(f"{expert_model_checkpoint_path}best.pth", map_location=device)
-                )
-                print("모델이 성공적으로 로드되었습니다.")
     elif model_type == "lstm":
-        model = LSTMDeepSC(params=model_params).to(device)
-        print("LSTMDeepSC 모델이 선택되었습니다.")
+        model = DeepSC(params=model_params, model_type=model_type).to(device)
+        print("LSTM_SC 모델이 선택되었습니다.")
     elif model_type == "gru":
-        model = GRUDeepSC(params=model_params).to(device)
-        print("GRUDeepSC 모델이 선택되었습니다.")
-    elif model_type == "at_lstm":
-        model = LSTMAttentionDeepSC(params=model_params).to(device)
-        print("LSTMAttentionDeepSC 모델이 선택되었습니다.")
-    elif model_type == "only_channel" :
-        model = OnlyChannel()
-        print("OnlyChannel 모델이 선택되었습니다.")
+        model = DeepSC(params=model_params, model_type=model_type).to(device)
+        print("GRU_SC 모델이 선택되었습니다.")
 
     total, trainable = count_parameters(model)
     print(f"Total params: {total:,}")
@@ -136,6 +119,7 @@ if __name__ == "__main__":
 
     # performance + result figuring
     print("========================== performance ==========================\n")
+    p.is_train_phase = False
     if is_skip_performance == False:
         model.eval()
         if model.training:

@@ -476,7 +476,6 @@ def performance_cycle(
             return
         else:
             with torch.no_grad():
-                # 압축된 사이클 얻기
                 output_tensor = model(tensor_data.to(device))
 
         # 복원된 사이클 얻기
