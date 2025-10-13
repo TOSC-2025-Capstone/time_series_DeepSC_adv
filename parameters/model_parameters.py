@@ -29,7 +29,7 @@ model_params = {
     "use_itransformer" : True,  # True=iTransformer, False=Transformer
 
     # 10.12 snr_db parameter
-    "snr_db": 10,  # AWGN 채널 SNR 값
+    "snr_db": 5,  # AWGN 채널 SNR 값
 }
 
 """ 주의사항

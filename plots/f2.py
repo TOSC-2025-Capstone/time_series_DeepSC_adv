@@ -220,17 +220,17 @@ def print_avg_mse_excluding_time(csv_paths, labels):
 if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
-        "results/performance_test/case32.2.1/AWGN_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case32.3.1/AWGN_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case34.4.2/AWGN_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case34.1.2/AWGN_deepsc_MSE/performance_statistics.csv"
+        "results/performance_test/case39.2.3/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case39.3.5/Rayleigh_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case39.4.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case39.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251012/압축15%+노이즈x/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251014/압축15%+노이즈15db_4모델비교/{filename}/"
     )
-    # case_labels = ["snr 5", "snr 10", "snr 15", "noiseless"]
+    # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = ["DeepSC", "GRU", "LSTM"]
     case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
     final_statistic_comparison_plot(
