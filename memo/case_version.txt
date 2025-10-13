@@ -486,9 +486,16 @@ case 39.3.2 : gru, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 �
 *** case 39.2.3 : Transformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 15db, power_normalization만 인퍼런스에서 제거
 
 case 39.5.1 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
-    case 39.1.2의 재검증
+    case 39.1.2의 재검증 => 정상 확인완료
 
 # 17:25 => 39.1.2 성능 > 39.3.3 성능 (15%, 노이즈는 테스트시에만 끼우기, 5db, power_normalization만 인퍼런스에서 제거)
+
+case 40.1.1 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
+    => BestValLoss 1.032030 => 노이즈 없이 학습하는데 이 수치면 무의미하다고 판단함
+case 40.4.1 : Transformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
+    => BestValLoss 1.043107 => 무의미하다고 판단함
+
+case 41.1.1 :
 
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781

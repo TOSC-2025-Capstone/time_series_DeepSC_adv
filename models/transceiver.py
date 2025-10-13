@@ -734,7 +734,7 @@ class DeepSC(nn.Module):
             if self.use_itransformer:
                 self.encoder = iTransformerEncoder(
                     self.num_layers, self.input_dim, self.max_len,
-                    self.d_model, self.num_heads, self.dff,
+                    self.input_dim, self.num_heads, self.dff,
                     window_size=self.window_size,
                     dropout=self.dropout
                 )
@@ -747,9 +747,10 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.encoder = nn.Sequential(
-                nn.Linear(self.input_dim, self.hidden_dim),
+                # nn.Linear(self.input_dim, self.hidden_dim),
                 nn.GRU(
-                    input_size=self.hidden_dim,
+                    # input_size=self.hidden_dim,
+                    input_size=self.input_dim,
                     hidden_size=self.hidden_dim,
                     num_layers=self.num_layers,
                     dropout=self.dropout,
@@ -760,7 +761,8 @@ class DeepSC(nn.Module):
             self.encoder = nn.Sequential(
                 nn.Linear(self.input_dim, self.hidden_dim),
                 nn.LSTM(
-                    input_size=self.hidden_dim,
+                    # input_size=self.hidden_dim,
+                    input_size=self.input_dim,
                     hidden_size=self.hidden_dim,
                     num_layers=self.num_layers,
                     dropout=self.dropout,
@@ -809,7 +811,8 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.decoder = nn.GRU(
-                input_size=self.hidden_dim,
+                # input_size=self.hidden_dim,
+                input_size=self.input_dim,
                 hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
                 dropout=self.dropout,
@@ -817,7 +820,8 @@ class DeepSC(nn.Module):
             )
         elif self.model_type == 'lstm':
             self.decoder = nn.LSTM(
-                input_size=self.hidden_dim,
+                # input_size=self.hidden_dim,
+                input_size=self.input_dim,
                 hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
                 dropout=self.dropout,
@@ -835,7 +839,6 @@ class DeepSC(nn.Module):
         # 시계열 길이 복원
         # self.time_decompressor = LearnableTimeDecompressor(self.input_dim, self.max_len)
         self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
-        # self.time_decompressor = SmoothTimeDecompressor(self.d_model, self.max_len)
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터

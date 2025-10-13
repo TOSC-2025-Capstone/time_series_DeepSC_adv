@@ -20,13 +20,14 @@ model_params = {
     # deepsc
     "dff": 512,  # deepsc 모델 최대 노드 수
     "num_heads": 4,  # deepsc 모델 헤드 수
-    "d_model": 512,  # deepsc 모델 피쳐 확장 차원
+    # "d_model": 512,  # deepsc 모델 피쳐 확장 차원
+    "d_model": 8,  # deepsc 모델 피쳐 확장 차원
     "max_len": 512,  # deepsc 모델 출력 sequence length
     # "d_comp": 5,  # deepsc 압축 피쳐 수
     "d_comp": 3,  # deepsc 압축 피쳐 수
 
     # 10.04 addition
-    "use_itransformer" : True,  # True=iTransformer, False=Transformer
+    "use_itransformer" : False,  # True=iTransformer, False=Transformer
 
     # 10.12 snr_db parameter
     "snr_db": 5,  # AWGN 채널 SNR 값
