@@ -495,7 +495,105 @@ case 40.1.1 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테�
 case 40.4.1 : Transformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
     => BestValLoss 1.043107 => 무의미하다고 판단함
 
-case 41.1.1 :
+
+noise_type_1 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
+noise_type_2 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 10db, power_normalization만 인퍼런스에서 제거
+noise_type_3 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 15db, power_normalization만 인퍼런스에서 제거
+noise_type_4 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 20db, power_normalization만 인퍼런스에서 제거
+
+noise_type_1-1 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization를 train/test 모두 적용
+noise_type_2-1 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 10db, power_normalization를 train/test 모두 적용
+noise_type_3-1 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 15db, power_normalization를 train/test 모두 적용
+noise_type_4-1 = 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 20db, power_normalization를 train/test 모두 적용
+
+
+# case 41, 42는 target_len 변경 테스트 -> target_len 256, GRU, LSTM, snr 10 15도 비교
+case 41.1.1 : InvertedTransformer, 15%, target_len 256으로 테스트, noise_type_1 적용, compressed_len = 128/2 = 64
+    => 0.065692 (39.1.1에 비해 소폭 하락) epoch_time 2s
+
+case 42.1.1 : InvertedTransformer, 15%, target_len 1024으로 테스트, noise_type_1 적용, compressed_len = 128*2 = 256
+    => epoch_time 55s
+
+# case 43, 44는 num_layers 변경 테스트 (target_len 512, compressed_len 128로 복구)
+InvertedTransformer : 12,754,491
+Transformer : 12,493,834
+LSTM : 12,089,864
+GRU : 9,988,616
+
+case 43.1.1 : InvertedTransformer, 15%, noise_type_1 적용, num_layers 2
+    => BestValLoss 0.021830
+case 43.1.2 : InvertedTransformer, 15%, noise_type_2 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.1.3 : InvertedTransformer, 15%, noise_type_3 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.1.4 : InvertedTransformer, 15%, noise_type_4 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+
+case 43.4.1 : Transformer, 15%, noise_type_1 적용, num_layers 2
+    => BestValLoss 0.020173
+case 43.4.2 : Transformer, 15%, noise_type_2 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.4.3 : Transformer, 15%, noise_type_3 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.4.4 : Transformer, 15%, noise_type_4 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+
+case 43.2.1 : LSTM, 15%, noise_type_1 적용, num_layers 2
+    => BestValLoss 0.012215
+case 43.2.2 : LSTM, 15%, noise_type_2 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.2.3 : LSTM, 15%, noise_type_3 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.2.4 : LSTM, 15%, noise_type_4 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+
+case 43.3.1 : GRU, 15%, noise_type_1 적용, num_layers 2
+    => BestValLoss 0.011684
+case 43.3.2 : GRU, 15%, noise_type_2 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.3.3 : GRU, 15%, noise_type_3 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+case 43.3.4 : GRU, 15%, noise_type_4 적용, num_layers 2 (43.1.1 모델로 inference만 다시 진행)
+
+# case 44부터는 power_normalization을 train/test 에서 다 진행하는 noise type 적용
+case 44.1.1 : InvertedTransformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
+    => BestValLoss 0.026896
+case 44.1.2 : InvertedTransformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120,
+                feature_importance 적용하여 피쳐 간 관계성을 어텐션 스코어에 반영
+    => BestValLoss 0.028888
+case 44.1.3 : InvertedTransformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120,
+                layerNorm 인디코더에 추가, time/feature embedding 가중치 0.1 -> 0.5로 변경
+    => BestValLoss 0.025024
+*** case 44.1.4 : InvertedTransformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120,
+                크로스 어텐션에서 memory를 K, V로 사용하고 Q만 x로 사용 (원래 크로스 어텐션 방식으로)
+                    # Cross-Attention (encoder memory 참조)
+                    # cross_out = self.cross_attn(memory)
+                    cross_out = self.cross_attn(x, memory, memory)
+    => BestValLoss 0.026511 => 5db 복원 시 바이어스가 case 44.1 중에 제일 잘잡힘
+case 44.1.5 : InvertedTransformer, 15%, noise_type_2-1 (10db) 적용, num_layers 1, epochs 120, (inference만)
+                크로스 어텐션에서 memory를 K, V로 사용하고 Q만 x로 사용 (원래 크로스 어텐션 방식으로)
+case 44.1.6 : InvertedTransformer, 15%, noise_type_3-1 (15db) 적용, num_layers 1, epochs 120, (inference만)
+                크로스 어텐션에서 memory를 K, V로 사용하고 Q만 x로 사용 (원래 크로스 어텐션 방식으로)
+*** case 44.1.7 : InvertedTransformer, 15%, noise_type_1-1 (5db) 적용, num_layers 1, epochs 120
+                크로스 어텐션에서 memory를 K, V로 사용하고 Q만 x로 사용 (원래 크로스 어텐션 방식으로)
+                attention score 계산 시 root of dk(512/4 의 root)로 나누는 게 아니라 input_dim = 5 로 나눔
+                    (Pdb) self.input_dim
+                    5
+                    (Pdb) math.sqrt(self.d_k)
+                    11.313708498984761
+    => BestValLoss 0.026118
+case 44.1.8 : case 44.1.7에서 noise_type_2-1로 inference만
+case 44.1.9 : case 44.1.7에서 noise_type_3-1로 inference만
+
+
+case 44.4.1 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
+    => BestValLoss 0.032862
+case 44.4.10 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120,
+                TimeSeriesPositionalEncoding로 변경, En/Decoder에 layernorm_before_pe 추가
+    => BestValLoss 0.035462
+case 44.4.2 : Transformer, 15%, noise_type_2-1 적용, num_layers 1, epochs 120 (inference만)
+case 44.4.3 : Transformer, 15%, noise_type_3-1 적용, num_layers 1, epochs 120 (inference만)
+
+case 44.2.1 : LSTM, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
+    => BestValLoss 0.012806
+case 44.2.2 : LSTM, 15%, noise_type_2-1 적용, num_layers 1, epochs 120 (inference만)
+case 44.2.3 : LSTM, 15%, noise_type_3-1 적용, num_layers 1, epochs 120 (inference만)
+
+case 44.3.1 : GRU, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
+    => BestValLoss 0.014424
+case 44.3.2 : GRU, 15%, noise_type_2-1 적용, num_layers 1, epochs 120 (inference만)
+case 44.3.3 : GRU, 15%, noise_type_3-1 적용, num_layers 1, epochs 120 (inference만)
+
+case 45.4.1 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
 
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781

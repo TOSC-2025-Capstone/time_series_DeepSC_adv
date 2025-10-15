@@ -126,20 +126,15 @@ def plot_epoch_time_comparison(csv_paths, model_labels, save_path=None):
 if __name__ == "__main__":
     # Epoch vs Time 그래프를 위한 CSV 파일들
     csv_paths = [
-        # "results/case21.2/rayleigh_lstm_MSE/epoch_stats.csv",
-        # "results/case21.3/rayleigh_gru_MSE/epoch_stats.csv",
-        # "results/case21.4/rayleigh_deepsc_MSE/epoch_stats.csv",
-        # "results/case21.1/rayleigh_deepsc_MSE/epoch_stats.csv",
-        # "results/case22.1/rayleigh_deepsc_MSE/epoch_stats.csv"
-        "results/case33.2.1/AWGN_lstm_MSE/epoch_stats.csv",
-        "results/case33.3.1/AWGN_gru_MSE/epoch_stats.csv",
-        "results/case34.4.1/AWGN_deepsc_MSE/epoch_stats.csv",
-        "results/case34.1.1/AWGN_deepsc_MSE/epoch_stats.csv",
+        "results/case43.2.1/Rayleigh_lstm_MSE/epoch_stats.csv",
+        "results/case43.3.1/Rayleigh_gru_MSE/epoch_stats.csv",
+        "results/case43.4.1/Rayleigh_deepsc_MSE/epoch_stats.csv",
+        "results/case43.1.1/Rayleigh_deepsc_MSE/epoch_stats.csv",
     ]
 
-    case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer", ]
+    case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer", "MI Net+Inverted-Transformer"]
-    save_path = "./final_comparison_plots/epoch_time_comparison/"
+    save_path = "./final_comparison_plots/epoch_time_comparison/251014/case43"
 
     # 각 모델의 평균 학습시간 출력
     print_avg_training_time(csv_paths, case_labels)

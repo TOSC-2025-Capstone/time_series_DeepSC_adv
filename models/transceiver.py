@@ -28,6 +28,7 @@ import pdb
 from utils import Channels, power_normalize
 
 import parameters.parameters as parameters
+import parameters.model_parameters as mparams
 
 class TimeSeriesPositionalEncoding(nn.Module):
     """시계열 특화 위치 인코딩"""
@@ -278,6 +279,7 @@ class Encoder(nn.Module):
 
         self.d_model = d_model
         self.input_projection = nn.Linear(input_dim, d_model)
+        # self.layernorm_before_pe = nn.LayerNorm(d_model, eps=1e-6)
         # self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
         self.pos_encoding = NoiseAdaptivePositionalEncoding(d_model, dropout, max_len)
 
@@ -288,6 +290,7 @@ class Encoder(nn.Module):
 
     def forward(self, x, src_mask):
         x = self.input_projection(x)
+        # x = self.layernorm_before_pe(x)
         x = self.pos_encoding(x)
 
         for enc_layer in self.enc_layers:
@@ -304,6 +307,8 @@ class Decoder(nn.Module):
 
         # 학습 가능한 위치별 쿼리 임베딩
         self.pos_queries = nn.Parameter(torch.randn(max_len, d_model) * 0.1)
+
+        # self.layernorm_before_pe = nn.LayerNorm(d_model, eps=1e-6)
 
         # 위치 인코딩 (기존 것 재사용 가능)
         # self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
@@ -327,6 +332,8 @@ class Decoder(nn.Module):
         query_embed = self.pos_queries[:target_len].unsqueeze(0).repeat(batch_size, 1, 1)
 
         # 위치 인코딩 추가
+        # x = self.layernorm_before_pe(query_embed)
+        # x = self.pos_encoding(x)
         x = self.pos_encoding(query_embed)
 
         # 마스크 생성 (필요한 경우)
@@ -463,6 +470,7 @@ class InvertedMultiHeadAttention(nn.Module):
         self.d_k = seq_len // num_heads
         self.num_heads = num_heads
         self.seq_len = seq_len
+        self.input_dim = mparams.model_params.get("input_dim", None)
 
         self.wq = nn.Linear(seq_len, seq_len)
         self.wk = nn.Linear(seq_len, seq_len)
@@ -479,25 +487,28 @@ class InvertedMultiHeadAttention(nn.Module):
 
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x):
-        x_transposed = x.transpose(1, 2)
-        batch_size, num_features, seq_len = x_transposed.shape
+    def forward(self, query, key, value):
+        query_transposed = query.transpose(1, 2)
+        key_transposed = key.transpose(1, 2)
+        value_transposed = value.transpose(1, 2)
+        batch_size, num_features, seq_len = query_transposed.shape
 
         # Feature importance 계산
-        # feature_importance = self.feature_gate(x_transposed)  # [B, F, 1]
+        # feature_importance = self.feature_gate(query_transposed)  # [B, F, 1]
 
         # Q, K, V 계산
-        query = self.wq(x_transposed).view(batch_size, num_features, self.num_heads, self.d_k)
+        query = self.wq(query_transposed).view(batch_size, num_features, self.num_heads, self.d_k)
         query = query.transpose(1, 2)  # [B, num_heads, F, d_k]
 
-        key = self.wk(x_transposed).view(batch_size, num_features, self.num_heads, self.d_k)
+        key = self.wk(key_transposed).view(batch_size, num_features, self.num_heads, self.d_k)
         key = key.transpose(1, 2)  # [B, num_heads, F, d_k]
 
-        value = self.wv(x_transposed).view(batch_size, num_features, self.num_heads, self.d_k)
+        value = self.wv(value_transposed).view(batch_size, num_features, self.num_heads, self.d_k)
         value = value.transpose(1, 2)  # [B, num_heads, F, d_k]
 
         # Scaled dot-product attention with feature gating
-        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
+        # scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
+        scores = torch.matmul(query, key.transpose(-2, -1)) / self.input_dim
         # scores shape: [B, num_heads, F, F]
 
         # Feature importance를 attention에 반영 (차원 맞추기)
@@ -555,7 +566,7 @@ class iTransformerEncoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(num_features)
 
     def forward(self, x, mask=None):
-        attn_output = self.inverted_attention(x)
+        attn_output = self.inverted_attention(x,x,x)
         x = self.norm1(x + attn_output)
 
         ffn_output = self.inverted_ffn(x)
@@ -581,6 +592,8 @@ class iTransformerEncoder(nn.Module):
             torch.randn(1, max_len, 1) * 0.1
         )
 
+        # self.layernorm_before_pe = nn.LayerNorm(input_dim, eps=1e-6)
+
         self.enc_layers = nn.ModuleList([
             iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
             for _ in range(num_layers)
@@ -592,6 +605,7 @@ class iTransformerEncoder(nn.Module):
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
         x = x + self.time_pos_embedding + self.feature_pos_embedding
+
         x = self.dropout(x)
 
         for enc_layer in self.enc_layers:
@@ -622,12 +636,13 @@ class InvertedDecoderLayer(nn.Module):
         memory: [batch, seq_len, num_features]
         """
         # Self-Attention (feature 축)
-        attn_out = self.self_attn(x)
+        attn_out = self.self_attn(x,x,x)
         x = self.norm1(x + attn_out)
 
         # Cross-Attention (encoder memory 참조)
         # memory를 같은 축으로 맞춰줌
-        cross_out = self.cross_attn(memory)
+        # cross_out = self.cross_attn(memory)
+        cross_out = self.cross_attn(x,memory,memory)
         x = self.norm2(x + cross_out)
 
         # Feed Forward
@@ -734,7 +749,7 @@ class DeepSC(nn.Module):
             if self.use_itransformer:
                 self.encoder = iTransformerEncoder(
                     self.num_layers, self.input_dim, self.max_len,
-                    self.input_dim, self.num_heads, self.dff,
+                    self.d_model, self.num_heads, self.dff,
                     window_size=self.window_size,
                     dropout=self.dropout
                 )
@@ -747,10 +762,9 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.encoder = nn.Sequential(
-                # nn.Linear(self.input_dim, self.hidden_dim),
+                nn.Linear(self.input_dim, self.hidden_dim),
                 nn.GRU(
-                    # input_size=self.hidden_dim,
-                    input_size=self.input_dim,
+                    input_size=self.hidden_dim,
                     hidden_size=self.hidden_dim,
                     num_layers=self.num_layers,
                     dropout=self.dropout,
@@ -761,8 +775,7 @@ class DeepSC(nn.Module):
             self.encoder = nn.Sequential(
                 nn.Linear(self.input_dim, self.hidden_dim),
                 nn.LSTM(
-                    # input_size=self.hidden_dim,
-                    input_size=self.input_dim,
+                    input_size=self.hidden_dim,
                     hidden_size=self.hidden_dim,
                     num_layers=self.num_layers,
                     dropout=self.dropout,
@@ -811,8 +824,7 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.decoder = nn.GRU(
-                # input_size=self.hidden_dim,
-                input_size=self.input_dim,
+                input_size=self.hidden_dim,
                 hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
                 dropout=self.dropout,
@@ -820,8 +832,7 @@ class DeepSC(nn.Module):
             )
         elif self.model_type == 'lstm':
             self.decoder = nn.LSTM(
-                # input_size=self.hidden_dim,
-                input_size=self.input_dim,
+                input_size=self.hidden_dim,
                 hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
                 dropout=self.dropout,
@@ -859,17 +870,17 @@ class DeepSC(nn.Module):
         # (batch_size, compressed_len, d_model->d_comp)
         channel_encoded = self.channel_encoder(compressed)
 
+        tx_sig = power_normalize(channel_encoded)
         # 4단계 : 채널 상태 적용
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
-            # tx_sig = power_normalize(channel_encoded)
-            tx_sig = channel_encoded
+            # tx_sig = channel_encoded
 
             # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
             rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
             # rx_sig = tx_sig
         else:
-            rx_sig = channel_encoded
+            rx_sig = tx_sig
 
         # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
         # (batch_size, compressed_len, d_comp -> d_model)
