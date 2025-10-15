@@ -123,13 +123,19 @@ class NoiseAdaptivePositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class MultiHeadedAttention(nn.Module):
-    def __init__(self, num_heads, d_model, dropout=0.1):
+    def __init__(self, num_heads, d_model, dropout=0.1, max_len=512):
         "Take in model size and number of heads."
         super(MultiHeadedAttention, self).__init__()
         assert d_model % num_heads == 0
         # We assume d_v always equals d_k
         self.d_k = d_model // num_heads
         self.num_heads = num_heads
+
+        # # 수정: 학습 가능한 Temporal Bias 정의
+        # # [num_heads, max_len, max_len] 크기로 정의하여 Attention Score에 더함
+        # self.temporal_bias = nn.Parameter(
+        #     torch.randn(1, num_heads, max_len, max_len) * 0.01
+        # )
 
         self.wq = nn.Linear(d_model, d_model)
         self.wk = nn.Linear(d_model, d_model)
@@ -178,6 +184,14 @@ class MultiHeadedAttention(nn.Module):
         d_k = query.size(-1)
         scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
         # print(mask.shape)
+
+        # # 수정: Temporal Bias 추가
+        # # bias를 현재 시퀀스 길이에 맞게 잘라서 scores에 더함
+        # seq_len = scores.size(-1)
+        # bias = self.temporal_bias[:, :, :seq_len, :seq_len] # [1, num_heads, seq_len, seq_len]
+
+        # scores = scores + bias # scores에 시간적 위치 가중치 적용
+
         if mask is not None:
             # 根据mask，指定位置填充 -1e9
             scores += mask * -1e9
@@ -202,6 +216,84 @@ class PositionwiseFeedForward(nn.Module):
         x = self.dropout(x)
         return x
 
+class Conv1dFeedForward(nn.Module):
+    """
+    Conv1D 기반의 FFN 구현 (Temporal Block)
+    d_model을 Channel로 간주하여 시계열 특징을 추출함
+    """
+    def __init__(self, d_model, d_ff, dropout=0.1, kernel_size=3):
+        super().__init__()
+
+        # 1. d_model -> d_ff로 확장하는 Conv1D (kernel_size=1은 Linear와 유사)
+        # kernel_size=3을 사용하여 지역적인 시간 특징을 혼합
+        self.conv_1 = nn.Conv1d(in_channels=d_model,
+                                out_channels=d_ff,
+                                kernel_size=kernel_size,
+                                padding=kernel_size // 2) # 시퀀스 길이 유지를 위한 padding
+
+        # 2. d_ff -> d_model로 축소하는 Conv1D (Projection 역할)
+        self.conv_2 = nn.Conv1d(in_channels=d_ff,
+                                out_channels=d_model,
+                                kernel_size=kernel_size,
+                                padding=kernel_size // 2)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        # x: [Batch, Seq_Len, d_model]
+
+        # 1. Conv1D 입력 형태 맞추기: [B, d_model, Seq_Len]
+        x = x.transpose(1, 2)
+
+        # 2. Conv 블록 통과
+        x = self.conv_1(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+
+        x = self.conv_2(x)
+
+        # 3. Transformer 출력 형태 맞추기: [Batch, Seq_Len, d_model]
+        x = x.transpose(1, 2)
+
+        return x
+
+class Conv1dInvertedFeedForward(nn.Module):
+    """
+    Conv1D 기반의 Inverted FFN 대체 (Temporal Block 역할)
+    """
+    def __init__(self, seq_len, d_ff, dropout=0.1, kernel_size=3):
+        super().__init__()
+
+        # Inverted Attention Layer의 출력 차원(Features)을 채널로 사용
+        self.conv_1 = nn.Conv1d(in_channels=seq_len,      # 이전 Inverted FFN의 seq_len이 Channel 역할을 하도록
+                                out_channels=d_ff,
+                                kernel_size=kernel_size,
+                                padding=kernel_size // 2)
+
+        self.conv_2 = nn.Conv1d(in_channels=d_ff,
+                                out_channels=seq_len,
+                                kernel_size=kernel_size,
+                                padding=kernel_size // 2)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        # x: [Batch, Seq_Len, Features]
+        # 1. Conv1D 입력 형태 맞추기: [B, Seq_Len, Features] -> [B, Features, Seq_Len]
+        # d_model 차원 대신, Seq_Len 차원이 Channel 역할을 하도록 이미 구현되어 있음 (Inverted Logic)
+        x = x.transpose(1, 2)
+
+        # 2. Conv 블록 통과
+        x = self.conv_1(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+
+        x = self.conv_2(x)
+
+        # 3. Transformer 출력 형태 맞추기: [Batch, Features, Seq_Len] -> [Batch, Seq_Len, Features]
+        x = x.transpose(1, 2)
+
+        return x
 
 # class LayerNorm(nn.Module):
 #     "Construct a layernorm module (See citation for details)."
@@ -219,16 +311,17 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self, d_model, num_heads, dff, window_size=None, dropout=0.1):
+    def __init__(self, d_model, num_heads, dff, window_size=None, dropout=0.1, max_len=512):
         """
         window_size=None: 일반 Attention
         window_size=int: Local Attention
         """
         super().__init__()
 
-        self.mha = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.mha = MultiHeadedAttention(num_heads, d_model, dropout, max_len=max_len)
 
         self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
+        # self.ffn = Conv1dFeedForward(d_model, dff, dropout, kernel_size=5)
         self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
         self.layernorm2 = nn.LayerNorm(d_model, eps=1e-6)
 
@@ -243,13 +336,14 @@ class EncoderLayer(nn.Module):
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, d_model, num_heads, dff, dropout=0.1, window_size=None):
+    def __init__(self, d_model, num_heads, dff, dropout=0.1, window_size=None, max_len=512):
         super().__init__()
 
         # 기존 MultiHeadedAttention 사용
-        self.self_attn = MultiHeadedAttention(num_heads, d_model, dropout)
-        self.cross_attn = MultiHeadedAttention(num_heads, d_model, dropout)
+        self.self_attn = MultiHeadedAttention(num_heads, d_model, dropout, max_len)
+        self.cross_attn = MultiHeadedAttention(num_heads, d_model, dropout, max_len)
         self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
+        # self.ffn = Conv1dFeedForward(d_model, dff, dropout, kernel_size=5)
 
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -279,18 +373,16 @@ class Encoder(nn.Module):
 
         self.d_model = d_model
         self.input_projection = nn.Linear(input_dim, d_model)
-        # self.layernorm_before_pe = nn.LayerNorm(d_model, eps=1e-6)
-        # self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
-        self.pos_encoding = NoiseAdaptivePositionalEncoding(d_model, dropout, max_len)
+        self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
+        # self.pos_encoding = NoiseAdaptivePositionalEncoding(d_model, dropout, max_len)
 
         self.enc_layers = nn.ModuleList([
-            EncoderLayer(d_model, num_heads, dff, window_size, dropout)
+            EncoderLayer(d_model, num_heads, dff, window_size, dropout, max_len)
             for _ in range(num_layers)
         ])
 
     def forward(self, x, src_mask):
         x = self.input_projection(x)
-        # x = self.layernorm_before_pe(x)
         x = self.pos_encoding(x)
 
         for enc_layer in self.enc_layers:
@@ -308,16 +400,13 @@ class Decoder(nn.Module):
         # 학습 가능한 위치별 쿼리 임베딩
         self.pos_queries = nn.Parameter(torch.randn(max_len, d_model) * 0.1)
 
-        # self.layernorm_before_pe = nn.LayerNorm(d_model, eps=1e-6)
-
         # 위치 인코딩 (기존 것 재사용 가능)
-        # self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
-        self.pos_encoding = NoiseAdaptivePositionalEncoding(d_model, dropout, max_len)
+        self.pos_encoding = TimeSeriesPositionalEncoding(d_model, dropout, max_len)
+        # self.pos_encoding = NoiseAdaptivePositionalEncoding(d_model, dropout, max_len)
 
         # 디코더 레이어들
         self.decoder_layers = nn.ModuleList([
-            # DecoderLayer(d_model, num_heads, dff, dropout)
-            DecoderLayer(d_model, num_heads, dff, dropout)
+            DecoderLayer(d_model, num_heads, dff, dropout, max_len=max_len)
             for _ in range(num_layers)
         ])
 
@@ -332,8 +421,6 @@ class Decoder(nn.Module):
         query_embed = self.pos_queries[:target_len].unsqueeze(0).repeat(batch_size, 1, 1)
 
         # 위치 인코딩 추가
-        # x = self.layernorm_before_pe(query_embed)
-        # x = self.pos_encoding(x)
         x = self.pos_encoding(query_embed)
 
         # 마스크 생성 (필요한 경우)
@@ -357,7 +444,6 @@ class ChannelDecoder(nn.Module):
         self.linear1 = nn.Linear(in_features, size1)
         self.linear2 = nn.Linear(size1, size2)
         self.linear3 = nn.Linear(size2, size1)
-        # self.linear4 = nn.Linear(size1, d_model)
 
         self.layernorm = nn.LayerNorm(size1, eps=1e-6)
 
@@ -507,8 +593,7 @@ class InvertedMultiHeadAttention(nn.Module):
         value = value.transpose(1, 2)  # [B, num_heads, F, d_k]
 
         # Scaled dot-product attention with feature gating
-        # scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
-        scores = torch.matmul(query, key.transpose(-2, -1)) / self.input_dim
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
         # scores shape: [B, num_heads, F, F]
 
         # Feature importance를 attention에 반영 (차원 맞추기)
@@ -561,7 +646,8 @@ class iTransformerEncoderLayer(nn.Module):
         # window_size에 따라 Attention 선택
         self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
 
-        self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        # self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
 
@@ -582,9 +668,11 @@ class iTransformerEncoder(nn.Module):
         self.input_dim = input_dim
         self.max_len = max_len
 
+        self.input_projection = nn.Linear(input_dim, d_model) # case 45
+
         # Feature-wise positional encoding 추가
         self.feature_pos_embedding = nn.Parameter(
-            torch.randn(1, 1, input_dim) * 0.1
+            torch.randn(1, 1, d_model) * 0.1
         )
 
         # Time-wise positional encoding
@@ -595,7 +683,8 @@ class iTransformerEncoder(nn.Module):
         # self.layernorm_before_pe = nn.LayerNorm(input_dim, eps=1e-6)
 
         self.enc_layers = nn.ModuleList([
-            iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
+            # iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
+            iTransformerEncoderLayer(max_len, d_model, num_heads, dff, window_size, dropout) # case 45
             for _ in range(num_layers)
         ])
 
@@ -604,6 +693,7 @@ class iTransformerEncoder(nn.Module):
 
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
+        x = self.input_projection(x)
         x = x + self.time_pos_embedding + self.feature_pos_embedding
 
         x = self.dropout(x)
@@ -611,7 +701,7 @@ class iTransformerEncoder(nn.Module):
         for enc_layer in self.enc_layers:
             x = enc_layer(x, src_mask)
 
-        x = self.output_projection(x)
+        # x = self.output_projection(x) # case 45
         return x
 
 class InvertedDecoderLayer(nn.Module):
@@ -624,7 +714,8 @@ class InvertedDecoderLayer(nn.Module):
         super().__init__()
         self.self_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
         self.cross_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-        self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        # self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
 
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
@@ -641,7 +732,6 @@ class InvertedDecoderLayer(nn.Module):
 
         # Cross-Attention (encoder memory 참조)
         # memory를 같은 축으로 맞춰줌
-        # cross_out = self.cross_attn(memory)
         cross_out = self.cross_attn(x,memory,memory)
         x = self.norm2(x + cross_out)
 

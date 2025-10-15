@@ -38,7 +38,7 @@ plt.rcParams.update(
 
 
 # 특정 케이스의 세 모델 복원 지표(MSE,MAE,RMSE)정보를 저장한 csv들을 받아서 plot하는 함수
-def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None):
+def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None, metric_type=None):
     # 1. 데이터 읽기
     dfs = [pd.read_csv(path) for path in csv_paths]
 
@@ -46,7 +46,8 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None)
         case_labels = [f"Case {i+1}" for i in range(len(dfs))]
 
     # 2. 지표 종류 정의 (MSE만 사용)
-    metrics = ["MSE"]
+    metrics = []
+    metrics.append(metric_type)
 
     # 3. Feature 순서 정의 (첫 번째 df 기준) - Time 제외
     features = [f for f in dfs[0]["Feature"].unique() if f != "Time"]
@@ -225,22 +226,29 @@ if __name__ == "__main__":
         # "results/performance_test/case39.3.5/Rayleigh_gru_MSE/performance_statistics.csv",
         # "results/performance_test/case39.4.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case39.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case44.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case44.3.1/Rayleigh_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case44.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case44.1.4/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case44.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
+
+        # "results/performance_test/case44.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case44.3.1/Rayleigh_gru_MSE/performance_statistics.csv",
+        # "results/performance_test/case44.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case44.1.4/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case44.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
+
+        # "results/performance_test/case44.2.3/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case45.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case45.1.9/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case45.1.13/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
+    metric_type = "MSE"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251015/압축15%+노이즈5db_4모델비교/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251015/{metric_type}/압축15%+노이즈15db_iT/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
-    # case_labels = ["DeepSC", "GRU", "LSTM"]
-    case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer-v1", "Inverted-Transformer-v2"]
+    case_labels = [ "Inverted-Transformer_k7" , "Inverted-Transformer_k3", "Inverted-Transformer_k5"]
+    # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer-v1"]
     final_statistic_comparison_plot(
-        csv_paths, case_labels, save_path=save_path
+        csv_paths, case_labels, save_path=save_path, metric_type=metric_type
     )
 
     # 모델별 평균 MSE (Feature != 'Time') 출력

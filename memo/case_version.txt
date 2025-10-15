@@ -490,6 +490,7 @@ case 39.5.1 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테�
 
 # 17:25 => 39.1.2 성능 > 39.3.3 성능 (15%, 노이즈는 테스트시에만 끼우기, 5db, power_normalization만 인퍼런스에서 제거)
 
+# case 40은 5->512로 늘리는 레이어 제거 테스트
 case 40.1.1 : InvertedTransformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
     => BestValLoss 1.032030 => 노이즈 없이 학습하는데 이 수치면 무의미하다고 판단함
 case 40.4.1 : Transformer, 15%, 학습 시에는 노이즈 없음, 테스트 시에는 노이즈 snr 5db, power_normalization만 인퍼런스에서 제거
@@ -514,7 +515,7 @@ case 41.1.1 : InvertedTransformer, 15%, target_len 256으로 테스트, noise_ty
 case 42.1.1 : InvertedTransformer, 15%, target_len 1024으로 테스트, noise_type_1 적용, compressed_len = 128*2 = 256
     => epoch_time 55s
 
-# case 43, 44는 num_layers 변경 테스트 (target_len 512, compressed_len 128로 복구)
+# case 43는 num_layers 변경 테스트 (target_len 512, compressed_len 128로 복구)
 InvertedTransformer : 12,754,491
 Transformer : 12,493,834
 LSTM : 12,089,864
@@ -593,7 +594,41 @@ case 44.3.1 : GRU, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
 case 44.3.2 : GRU, 15%, noise_type_2-1 적용, num_layers 1, epochs 120 (inference만)
 case 44.3.3 : GRU, 15%, noise_type_3-1 적용, num_layers 1, epochs 120 (inference만)
 
-case 45.4.1 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120
+case 45.1.1 : InvertedTransformer. 15%. noise_type_1-1, num_layers 1, epochs 120, iTransformer encoder에 512로 늘리는 구조 추가
+    => BestValLoss 0.024865 => noise 낀 테스트 데이터 복원은 성능이 오히려 하락함 => 오염됨 (45.4.1 결과 덮어씌워짐)
+case 45.1.3 : InvertedTransformer. 15%. noise_type_3-1, num_layers 1, epochs 120, iTransformer encoder에 512로 늘리는 구조 추가
+case 45.1.4 : InvertedTransformer. 15%. noise_type_3-1, num_layers 1, epochs 120, iTransformer encoder에 512로 늘리는 구조 추가
+
+# case 45부터는 iTransformer encoder도 512로 늘리는 구조로 고정
+*** case 45.1.5 : InvertedTransformer, 15%. noise_type_1-1, num_layers 1, epochs 120, inverted ffn을 conv1d 구조로 변경, kernel size 3
+    => BestValLoss 0.021221
+case 45.1.6 : InvertedTransformer, 15%. noise_type_1-1, num_layers 1, epochs 120, inverted ffn을 conv1d 구조로 변경, kernel size 9
+    => BestValLoss
+*** case 45.1.7 : InvertedTransformer, 15%. noise_type_1-1, num_layers 1, epochs 120, inverted ffn을 conv1d 구조로 변경, kernel size 7
+    => BestValLoss 0.018739
+case 45.1.8 : case 45.1.7, noise_type_3-1 (inference만) 15db 기준 lstm과 최종 mse 유사
+case 45.1.9 : case 45.1.5, noise_type_3-1 (inference만)
+case 45.1.10 : case 45.1.7, non-noise (inference만)
+case 45.1.11 : case 45.1.5, non-noise (inference만)
+*** case 45.1.12 : InvertedTransformer, 15%. noise_type_1-1, num_layers 1, epochs 120, inverted ffn을 conv1d 구조로 변경, kernel size 5
+    => BestValLoss 0.020494
+
+=> case 45에서 ffn conv의 커널 사이즈는 3이 적절할듯 (3,5,7 성능이 크게 다르지 않으므로 가장 빨리학습하는 3으로 선정)
+
+
+case 45.4.1 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120, 디코더 단의 mask 로직 제거
+    => BestValLoss 0.028927
+case 45.4.2 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120, case 44전까지의 iTransformer처럼 5 512 5에서 바로 인코딩
+    => BestValLoss 0.685599 (epoch 85에서 중단 )
+case 45.4.3 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120, attention score에 temporal bias 추가
+    => BestValLoss 0.036587 (epoch 99)
+case 45.4.4 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120, ffn 레이어 conv1d 구조로 변경,
+    => BestValLoss 0.051473 (epoch 64 lr 0.0000001 미만)
+
+
+# iTransformer 성능 조정 후 통합 테스트 케이스 (입력 프로젝션 + ffn_conv로 변경 및 kernel_size 3)
+case 46.1.1 :
+
 
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781

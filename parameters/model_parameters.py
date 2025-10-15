@@ -24,13 +24,15 @@ model_params = {
     "d_comp": 3,  # deepsc 압축 피쳐 수
 
     # 10.04 addition
-    "use_itransformer" : False,  # True=iTransformer, False=Transformer
+    "use_itransformer" : True,  # True=iTransformer, False=Transformer
 
     # 10.12 snr_db parameter
-    "snr_db": 5,  # AWGN 채널 SNR 값, noise_type_1
+    # "snr_db": 5,  # AWGN 채널 SNR 값, noise_type_1
     # "snr_db": 10,  # AWGN 채널 SNR 값, noise_type_2
-    # "snr_db": 15,  # AWGN 채널 SNR 값, noise_type_3
+    "snr_db": 15,  # AWGN 채널 SNR 값, noise_type_3
     # "snr_db": 20,  # AWGN 채널 SNR 값, noise_type_4
+
+    "kernel_size": 3,
 }
 
 """ 주의사항
