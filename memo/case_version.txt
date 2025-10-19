@@ -615,7 +615,6 @@ case 45.1.11 : case 45.1.5, non-noise (inference만)
 
 => case 45에서 ffn conv의 커널 사이즈는 3이 적절할듯 (3,5,7 성능이 크게 다르지 않으므로 가장 빨리학습하는 3으로 선정)
 
-
 case 45.4.1 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120, 디코더 단의 mask 로직 제거
     => BestValLoss 0.028927
 case 45.4.2 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120, case 44전까지의 iTransformer처럼 5 512 5에서 바로 인코딩
@@ -627,8 +626,70 @@ case 45.4.4 : Transformer, 15%, noise_type_1-1 적용, num_layers 1, epochs 120,
 
 
 # iTransformer 성능 조정 후 통합 테스트 케이스 (입력 프로젝션 + ffn_conv로 변경 및 kernel_size 3)
-case 46.1.1 :
+case 46.1.1 : InvertedTransformer, 15%. noise_type_1-1, num_layers 1, epochs 120 (Total params:10,454,283)
+    => BestValLoss 0.021221
+case 46.1.2 : InvertedTransformer, 15%. noise_type_2-1, num_layers 1, epochs 120
+case 46.1.3 : InvertedTransformer, 15%. noise_type_3-1, num_layers 1, epochs 120 (inference만)
+case 46.1.4 : InvertedTransformer, 15%. noise_type_4-1, num_layers 1, epochs 120 (inference만)
+case 46.1.5 : InvertedTransformer, 15%. snr 3db, num_layers 1, epochs 120 (inference만)
+case 46.1.6 : InvertedTransformer, 15%. snr 6db, num_layers 1, epochs 120 (inference만)
+case 46.1.7 : InvertedTransformer, 15%. snr 9db, num_layers 1, epochs 120 (inference만)
+case 46.1.8 : InvertedTransformer, 15%. snr 12db, num_layers 1, epochs 120 (inference만)
+case 46.1.9 : InvertedTransformer, 15%. snr 18db, num_layers 1, epochs 120 (inference만)
+case 46.1.10 : InvertedTransformer, 15%. snr 21db, num_layers 1, epochs 120 (inference만)
 
+case 46.4.1 : Transformer, 15%. noise_type_1-1, num_layers 1, epochs 120 (Total params: 8,680,968)
+    => BestValLoss
+case 46.4.2 : Transformer, 15%. noise_type_2-1, num_layers 1, epochs 120
+case 46.4.3 : Transformer, 15%. noise_type_3-1, num_layers 1, epochs 120
+case 46.4.4 : Transformer, 15%. noise_type_4-1, num_layers 1, epochs 120
+case 46.4.5 : Transformer, 15%. snr 3db, num_layers 1, epochs 120 (inference만)
+case 46.4.6 : Transformer, 15%. snr 6db, num_layers 1, epochs 120 (inference만)
+case 46.4.7 : Transformer, 15%. snr 9db, num_layers 1, epochs 120 (inference만)
+case 46.4.8 : Transformer, 15%. snr 12db, num_layers 1, epochs 120 (inference만)
+case 46.4.9 : Transformer, 15%. snr 18db, num_layers 1, epochs 120 (inference만)
+case 46.4.10 : Transformer, 15%. snr 21db, num_layers 1, epochs 120 (inference만)
+
+case 46.2.1 : LSTM, 15%, noise_type_1-1 적용, num_layers 1, epochs 120 (Total params: 7,887,368)
+    => BestValLoss 0.012806
+case 46.2.2 : LSTM, 15%, noise_type_2-1 적용, num_layers 1, epochs 120 (Total params: 7,887,368)
+case 46.2.3 : LSTM, 15%, noise_type_3-1 적용, num_layers 1, epochs 120 (Total params: 7,887,368)
+case 46.2.4 : LSTM, 15%, noise_type_4-1 적용, num_layers 1, epochs 120 (Total params: 7,887,368)
+case 46.2.5 : LSTM, 15%. snr 3db, num_layers 1, epochs 120 (inference만)
+case 46.2.6 : LSTM, 15%. snr 6db, num_layers 1, epochs 120 (inference만)
+case 46.2.7 : LSTM, 15%. snr 9db, num_layers 1, epochs 120 (inference만)
+case 46.2.8 : LSTM, 15%. snr 12db, num_layers 1, epochs 120 (inference만)
+case 46.2.9 : LSTM, 15%. snr 18db, num_layers 1, epochs 120 (inference만)
+case 46.2.10 : LSTM, 15%. snr 21db, num_layers 1, epochs 120 (inference만)
+
+case 46.3.1 : GRU, 15%, noise_type_1-1 적용, num_layers 1, epochs 120 (Total params: 6,836,744)
+    => BestValLoss 0.014424
+case 46.3.2 : GRU, 15%, noise_type_2-1 적용, num_layers 1, epochs 120 (Total params: 6,836,744)
+case 46.3.3 : GRU, 15%, noise_type_3-1 적용, num_layers 1, epochs 120 (Total params: 6,836,744)
+case 46.3.4 : GRU, 15%, noise_type_4-1 적용, num_layers 1, epochs 120 (Total params: 6,836,744)
+case 46.3.5 : GRU, 15%. snr 3db, num_layers 1, epochs 120 (inference만)
+case 46.3.6 : GRU, 15%. snr 6db, num_layers 1, epochs 120 (inference만)
+case 46.3.7 : GRU, 15%. snr 9db, num_layers 1, epochs 120 (inference만)
+case 46.3.8 : GRU, 15%. snr 12db, num_layers 1, epochs 120 (inference만)
+case 46.3.9 : GRU, 15%. snr 18db, num_layers 1, epochs 120 (inference만)
+case 46.3.10 : GRU, 15%. snr 21db, num_layers 1, epochs 120 (inference만)
+
+# case 47은 snr 12db로 테스트 진행 (일반적 조건)
+case 47.1.1 : InvertedTransformer, no-compress num_layers 1, epochs 120
+case 47.1.2 : InvertedTransformer, feat compress 4/5 num_layers 1, epochs 120
+case 47.1.3 : InvertedTransformer, feat compress 3/5 num_layers 1, epochs 120
+case 47.1.4 : InvertedTransformer, feat compress 2/5 num_layers 1, epochs 120
+case 47.1.5 : InvertedTransformer, feat compress 1/5 num_layers 1, epochs 120
+
+case 47.1.6 : InvertedTransformer, sequence compress 3/4 num_layers 1, epochs 120
+case 47.1.7 : InvertedTransformer, sequence compress 2/4 num_layers 1, epochs 120
+case 47.1.8 : InvertedTransformer, sequence compress 1/4 num_layers 1, epochs 120
+
+case 47.2.1 : lstm, no-compress num_layers 1, epochs 120
+case 47.2.2 : lstm, feat compress 4/5 num_layers 1, epochs 120
+case 47.2.3 : lstm, feat compress 3/5 num_layers 1, epochs 120
+case 47.2.4 : lstm, feat compress 2/5 num_layers 1, epochs 120
+case 47.2.5 : lstm, feat compress 1/5 num_layers 1, epochs 120
 
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781

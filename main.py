@@ -133,6 +133,11 @@ if __name__ == "__main__":
     gc.collect()
     torch.cuda.empty_cache()
     if is_skip_full_reconstruct == False :
+        model.eval()
+        if model.training:
+            print("현재 모델은 training 모드입니다.")
+        else:
+            print("현재 모델은 evaluation (eval) 모드입니다.")
         performance_cycle(
             params=recons_params, model=model, device=device, is_full_reconstruct=True
         )

@@ -227,26 +227,33 @@ if __name__ == "__main__":
         # "results/performance_test/case39.4.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case39.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
-        # "results/performance_test/case44.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case44.3.1/Rayleigh_gru_MSE/performance_statistics.csv",
-        # "results/performance_test/case44.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case44.1.4/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case44.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case46.2.10/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case46.3.10/Rayleigh_gru_MSE/performance_statistics.csv",
+        # "results/performance_test/case46.4.10/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case46.1.10/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
-        # "results/performance_test/case44.2.3/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case45.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case45.1.9/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case45.1.13/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.4/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case47.1.6/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case47.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case47.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+
     ]
 
     filename = "01291.csv"
-    metric_type = "MSE"
+    metric_type = "MAE"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251015/{metric_type}/압축15%+노이즈15db_iT/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251019/{metric_type}/피쳐압축별/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
-    case_labels = [ "Inverted-Transformer_k7" , "Inverted-Transformer_k3", "Inverted-Transformer_k5"]
-    # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer-v1"]
+    # case_labels = [ "Inverted-Transformer_k7" , "Inverted-Transformer_k3", "Inverted-Transformer_k5"]
+    # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
+    case_labels = ["no-compress", "feature 4/5", "feature 3/5", "feature 2/5", "feature 1/5"]
+    # case_labels = ["no-compress", "sequence 3/4", "sequence 2/4", "sequence 1/4"]
+
     final_statistic_comparison_plot(
         csv_paths, case_labels, save_path=save_path, metric_type=metric_type
     )

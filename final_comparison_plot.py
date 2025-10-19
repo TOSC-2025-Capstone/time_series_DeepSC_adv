@@ -126,10 +126,14 @@ def plot_feature_comparison_with_residual(
     df_model_4 = pd.read_csv(os.path.join(model_4_path, filename.replace(".csv", "_reconstructed.csv")))
 
     models = {
-        "LSTM": (df_model_1, "green", "-."),
-        "GRU": (df_model_2, "red", ":"),
-        "Transformer": (df_model_3, "purple", (0, (3, 1, 1, 1))),
-        "InvertedTransformer": (df_model_4, "orange", "--"),
+        # "LSTM": (df_model_1, "green", "-."),
+        # "GRU": (df_model_2, "red", ":"),
+        # "Transformer": (df_model_3, "purple", (0, (3, 1, 1, 1))),
+        # "InvertedTransformer": (df_model_4, "orange", "--"),
+        "LSTM": (df_model_1, "green", "-"),
+        "GRU": (df_model_2, "red", "-"),
+        "Transformer": (df_model_3, "purple", "-"),
+        "InvertedTransformer": (df_model_4, "orange", "-"),
     }
 
     # -----------------------
@@ -192,15 +196,15 @@ if __name__ == "__main__":
     # 예시 사용법
     prefix = "./results/performance_test"
     csv_paths = [
-        prefix + "/case43.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        prefix + "/case43.3.1/Rayleigh_gru_MSE/performance_statistics.csv",
-        prefix + "/case43.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        prefix + "/case43.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case46.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        prefix + "/case46.3.1/Rayleigh_gru_MSE/performance_statistics.csv",
+        prefix + "/case46.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        prefix + "/case46.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}/{filename}/snr5db/"
     )
     # case_labels = ["DeepSC", "GRU", "LSTM"]
     case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
@@ -211,10 +215,10 @@ if __name__ == "__main__":
     # plot_feature_comparison(
     plot_feature_comparison_with_residual(
         original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-        model_1_path="./reconstruction/case39.2.1/reconstructed_rayleigh_lstm_MSE",
-        model_2_path="./reconstruction/case39.3.3/reconstructed_rayleigh_gru_MSE",
-        model_3_path="./reconstruction/case39.4.1/reconstructed_rayleigh_deepsc_MSE",
-        model_4_path="./reconstruction/case39.1.2/reconstructed_rayleigh_deepsc_MSE",
+        model_1_path="./reconstruction/case46.2.1/reconstructed_rayleigh_lstm_MSE",
+        model_2_path="./reconstruction/case46.3.1/reconstructed_rayleigh_gru_MSE",
+        model_3_path="./reconstruction/case46.4.1/reconstructed_rayleigh_deepsc_MSE",
+        model_4_path="./reconstruction/case46.1.1/reconstructed_rayleigh_deepsc_MSE",
         feature_names=[
             "Voltage_measured",
             "Current_measured",
