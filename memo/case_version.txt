@@ -691,6 +691,10 @@ case 47.2.3 : lstm, feat compress 3/5 num_layers 1, epochs 120
 case 47.2.4 : lstm, feat compress 2/5 num_layers 1, epochs 120
 case 47.2.5 : lstm, feat compress 1/5 num_layers 1, epochs 120
 
+case 47.2.6 : lstm, sequence compress 3/4 num_layers 1, epochs 120
+case 47.2.7 : lstm, sequence compress 2/4 num_layers 1, epochs 120
+case 47.2.8 : lstm, sequence compress 1/4 num_layers 1, epochs 120
+
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781
     (Pdb) math.sqrt(n_var)

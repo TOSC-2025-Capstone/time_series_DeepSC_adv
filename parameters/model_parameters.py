@@ -20,7 +20,7 @@ model_params = {
     "num_heads": 4,  # deepsc 모델 헤드 수
     "d_model": 512,  # deepsc 모델 피쳐 확장 차원
     "max_len": 512,  # deepsc 모델 출력 sequence length
-    "d_comp": 3,  # deepsc 압축 피쳐 수
+    "d_comp": 4,  # deepsc 압축 피쳐 수
     # "d_comp": 1,  # deepsc 압축 피쳐 수
 
     # 10.04 addition

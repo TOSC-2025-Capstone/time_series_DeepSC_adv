@@ -60,8 +60,10 @@ def final_statistic_comparison_plot(csv_paths, case_labels=None, save_path=None,
     palette = ["#D9D9D9", "#BDBDBD", "#8C8C8C", "#696969", "#000000"]
 
     for metric in metrics:
-        plt.figure(figsize=(32, 10))
-        bar_width = 0.15
+        # plt.figure(figsize=(32, 10))
+        plt.figure(figsize=(48, 10))
+        # bar_width = 0.15
+        bar_width = 0.10
         # 피쳐별 간격을 위해 x 위치를 조정
         # x = np.arange(len(features)) * 0.85  # 피쳐간 간격 더 축소
         x = np.arange(len(features)) * 0.85  # 피쳐간 간격 더 축소
@@ -232,11 +234,14 @@ if __name__ == "__main__":
         # "results/performance_test/case46.4.10/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case46.1.10/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
+        "results/performance_test/case47.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
         "results/performance_test/case47.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case47.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case47.1.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case47.1.4/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case47.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.2.6/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.6/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.2.7/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case47.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case47.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case47.1.6/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case47.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case47.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
@@ -246,12 +251,14 @@ if __name__ == "__main__":
     filename = "01291.csv"
     metric_type = "MAE"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251019/{metric_type}/피쳐압축별/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251019/{metric_type}/시퀀스압축별/lstm+iT/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = [ "Inverted-Transformer_k7" , "Inverted-Transformer_k3", "Inverted-Transformer_k5"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
-    case_labels = ["no-compress", "feature 4/5", "feature 3/5", "feature 2/5", "feature 1/5"]
+    # case_labels = ["no-compress", "feature 4/5", "feature 3/5", "feature 2/5", "feature 1/5"]
+    # case_labels = ["no-compress_lstm","no-compress_iT", "feature 3/5_lstm","feature 3/5_IT", "feature 1/5_lstm","feature 1/5_iT"]
+    case_labels = ["no-compress_lstm","no-compress_iT", "sequence 3/4_lstm", "sequence 2/4_lstm", "sequence 1/4_lstm", "sequence 3/4_iT", "sequence 2/4_iT", "sequence 1/4_iT"]
     # case_labels = ["no-compress", "sequence 3/4", "sequence 2/4", "sequence 1/4"]
 
     final_statistic_comparison_plot(
