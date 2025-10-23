@@ -964,11 +964,8 @@ class DeepSC(nn.Module):
         # 4단계 : 채널 상태 적용
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
-            # tx_sig = channel_encoded
-
             # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
             rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
-            # rx_sig = tx_sig
         else:
             rx_sig = tx_sig
 
