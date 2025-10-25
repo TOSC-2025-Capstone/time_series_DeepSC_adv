@@ -87,7 +87,7 @@ def train_model(
     elif params.loss_type == LossType.Huber.value:
         criterion = nn.HuberLoss()
         print("학습 로스로 HuberLoss가 설정되었습니다.")
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5, verbose=True
     )

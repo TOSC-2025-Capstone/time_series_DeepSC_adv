@@ -27,7 +27,7 @@ from parameters.model_parameters import *
 from parameters.parameters import *
 import parameters.parameters as p
 from performance_cycle import performance_cycle
-from train_expert_ver import train_model
+from train import train_model
 
 from models.mutual_info import Mine
 

@@ -10,8 +10,8 @@ model_params = {
     # "compressed_len": 256,  # 모든 모델의 압축된 시퀀스 길이
     "compressed_len": 128,  # 모든 모델의 압축된 시퀀스 길이
     # "compressed_len": 64,  # 모든 모델의 압축된 시퀀스 길이
-    "num_layers": 1, # 모든 모델의 레이어 수
-    "dropout": 0,
+    "num_layers": 4, # 모든 모델의 레이어 수
+    "dropout": 0.1,
     # lstm, gru, at_lstm
     "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
     "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
@@ -27,7 +27,7 @@ model_params = {
     "use_itransformer" : True,  # True=iTransformer, False=Transformer
 
     # 10.12 snr_db parameter
-    "snr_db": 3,  # AWGN 채널 SNR 값
+    "snr_db": 5,  # AWGN 채널 SNR 값
     # "snr_db": 5,  # AWGN 채널 SNR 값, noise_type_1
     # "snr_db": 10,  # AWGN 채널 SNR 값, noise_type_2
     # "snr_db": 15,  # AWGN 채널 SNR 값, noise_type_3

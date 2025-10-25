@@ -982,6 +982,7 @@ class DeepSC(nn.Module):
             output = self.decoder(decompressed, use_mask=True)
         else:  # GRU/LSTM 인코더
             output, _ = self.decoder(decompressed)
+        # output, _ = self.decoder(decompressed)
         # output = decompressed
 
         # 8단계: 출력 투영

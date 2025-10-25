@@ -301,11 +301,11 @@ class CycleDataComparator:
 
 
 def main():
-    case_number = "46.2.5"
-    # model_type = "deepsc"
-    model_type = "lstm"
+    case_number = "48.1.6"
+    model_type = "deepsc"
+    # model_type = "lstm"
     # 임계값 설정 (5%, 10%, 15% 등)
-    threshold_percent = 15  # 이 값을 변경하여 다른 임계값 사용 가능
+    threshold_percent = 5  # 이 값을 변경하여 다른 임계값 사용 가능
 
     # 경로 설정
     original_path = r"./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512"
