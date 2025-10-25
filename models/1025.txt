@@ -1,0 +1,107 @@
+# ========================================
+# 기존 transceiver.py에 통합하는 방법
+# ========================================
+
+"""
+기존 파일의 다음 부분들을 교체하세요:
+
+1. InvertedMultiHeadAttention (Line 552-616)
+   → ImprovedInvertedMultiHeadAttention으로 교체
+
+2. InvertedFeedForward (Line 618-636)
+   → EfficientInvertedFFN으로 교체
+
+3. LearnableTimeDecompressor (Line 526-549)
+   → ImprovedTimeDecompressor로 교체
+   주의: __init__에 compressed_len 파라미터 추가 필요
+
+4. Channel Encoder (Line 884-891)
+   → GradualChannelEncoder로 교체
+
+5. Channel Decoder (Line 932-934)
+   → GradualChannelDecoder로 교체
+
+6. iTransformerEncoder (Line 663-705)
+   → ImprovedITransformerEncoder로 교체
+
+7. iTransformerDecoder (Line 745-795)
+   → ImprovedITransformerDecoder로 교체
+
+8. iTransformerEncoderLayer (Line 638-661)
+   → ImprovedITransformerEncoderLayer로 교체
+
+9. InvertedDecoderLayer (Line 707-742)
+   → ImprovedInvertedDecoderLayer로 교체
+
+10. LearnableTimeCompressor (Line 489-524)
+    → ImprovedTimeCompressor로 교체
+"""
+
+# ========================================
+# DeepSC 클래스 수정 사항
+# ========================================
+
+class DeepSC(nn.Module):
+    def __init__(self, params=None, **kwargs):
+        super(DeepSC, self).__init__()
+        # ... (기존 파라미터 초기화)
+
+        # ===== 수정 1: Encoder 교체 =====
+        if self.use_itransformer:
+            self.encoder = ImprovedITransformerEncoder(
+                self.num_layers, self.input_dim, self.max_len,
+                self.d_model, self.num_heads, self.dff,
+                dropout=self.dropout
+            )
+        else:
+            self.encoder = Encoder(...)  # 기존 Transformer는 유지
+
+        # ===== 수정 2: Time Compressor 교체 =====
+        if self.compressed_len is not None:
+            self.time_compressor = ImprovedTimeCompressor(
+                self.d_model,
+                self.compressed_len
+            )
+
+        # ===== 수정 3: Channel Encoder 교체 =====
+        self.channel_encoder = GradualChannelEncoder(
+            self.d_model,
+            self.d_comp
+        )
+
+        # ... (channels 등 기존 코드)
+
+        # ===== 수정 4: Channel Decoder 교체 =====
+        self.channel_decoder = GradualChannelDecoder(
+            self.d_comp,
+            self.d_model
+        )
+
+        # ===== 수정 5: Time Decompressor 교체 =====
+        self.time_decompressor = ImprovedTimeDecompressor(
+            self.d_model,
+            self.compressed_len,  # 추가 파라미터
+            self.max_len
+        )
+
+        # ===== 수정 6: Decoder 교체 =====
+        if self.model_type == 'deepsc':
+            if self.use_itransformer:
+                self.decoder = ImprovedITransformerDecoder(
+                    num_layers=self.num_layers,
+                    compressed_len=self.compressed_len,
+                    seq_len=self.max_len,
+                    num_features=self.d_model,
+                    num_heads=self.num_heads,
+                    d_ff=self.dff,
+                    dropout=self.dropout
+                )
+            else:
+                self.decoder = Decoder(...)  # 기존 유지
+
+        # ... (나머지 기존 코드 유지)
+
+    def forward(self, x, src_mask=None):
+        # Forward 로직은 기존과 동일하게 유지됩니다
+        # 내부적으로 개선된 모듈들이 자동으로 적용됩니다
+        pass
