@@ -710,6 +710,11 @@ case 48.2.3 : case 46 + layer 4 (5db)
 case 48.2.4 : case 48.2.2 + 20db
 case 48.2.5 : case 48.2.3 + 20db
 
+case 49.1.1 : InvertedTransformer, 우선순위 1번
+case 49.1.2 : InvertedTransformer, 우선순위 1+4번
+case 49.1.3 : InvertedTransformer, 우선순위 1+4+3번
+
+
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781
     (Pdb) math.sqrt(n_var)

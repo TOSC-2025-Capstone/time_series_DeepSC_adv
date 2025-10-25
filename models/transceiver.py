@@ -89,6 +89,46 @@ class PositionalEncoding(nn.Module):
         x = self.dropout(x)
         return x
 
+# ========================================
+# Priority 5: Adaptive Positional Encoding
+# ========================================
+class AdaptivePositionalEncoding(nn.Module):
+    """
+    압축률에 따라 적응적으로 조정되는 PE
+    """
+    def __init__(self, d_model, dropout, max_len=5000):
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.d_model = d_model
+
+        # Sinusoidal PE generator (동적 생성)
+        self.register_buffer('div_term',
+            torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model))
+        )
+
+        # Learnable scale factor
+        self.scale_factor = nn.Parameter(torch.ones(1))
+
+    def forward(self, x):
+        """
+        x: [B, T, D]
+        """
+        seq_len = x.size(1)
+        device = x.device
+
+        # 동적으로 PE 생성
+        position = torch.arange(0, seq_len, device=device).unsqueeze(1).float()
+        pe = torch.zeros(seq_len, self.d_model, device=device)
+
+        pe[:, 0::2] = torch.sin(position * self.div_term)
+        pe[:, 1::2] = torch.cos(position * self.div_term)
+
+        # Adaptive scaling
+        pe = pe * self.scale_factor
+
+        x = x + pe.unsqueeze(0)
+        return self.dropout(x)
+
 class NoiseAdaptivePositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout, max_len=5000):
         super().__init__()
@@ -486,69 +526,277 @@ class ResidualChannelDecoder(nn.Module):
 
         return out2
 
+# ========================================
+# Priority 3: 점진적 Channel Encoder/Decoder
+# ========================================
+class GradualChannelEncoder(nn.Module):
+    """
+    점진적 compression: 512 → 256 → 128 → 64 → 32 → 3
+    Skip: 2-hop residual connection
+    """
+    def __init__(self, d_model, d_comp):
+        super().__init__()
+
+        # 점진적 압축 경로
+        dims = [d_model, d_model//2, d_model//4, d_model//8, d_model//16, d_comp]
+        # dims[0]=512, dims[1]=256, dims[2]=128, dims[3]=64, dims[4]=32, dims[5]=3
+
+        self.layers = nn.ModuleList()
+        for i in range(len(dims) - 1):
+            self.layers.append(nn.Sequential(
+                nn.Linear(dims[i], dims[i+1]),
+                nn.LayerNorm(dims[i+1]),
+                nn.GELU(),
+                nn.Dropout(0.1) if i < len(dims) - 2 else nn.Identity()
+            ))
+
+        # Skip connections for 2-hop residual
+        # layer i의 출력에 더할 skip: dims[i-2]의 출력 → dims[i]의 출력
+        # 따라서 projection: dims[i-2+1] → dims[i+1]
+        #
+        # i=2 (layer[2]): dims[2] → dims[3] (128→64)
+        #   skip: dims[0+1] → dims[3] (256→64) ← layer[0]의 출력(256)
+        # i=3 (layer[3]): dims[3] → dims[4] (64→32)
+        #   skip: dims[1+1] → dims[4] (128→32) ← layer[1]의 출력(128)
+        # i=4 (layer[4]): dims[4] → dims[5] (32→3)
+        #   skip: dims[2+1] → dims[5] (64→3) ← layer[2]의 출력(64)
+
+        self.skip_projs = nn.ModuleList()
+        for i in range(2, len(self.layers)):  # i=2,3,4
+            in_dim = dims[i-1]   # layer[i-2]의 출력 차원
+            out_dim = dims[i+1]  # layer[i]의 출력 차원
+            self.skip_projs.append(nn.Linear(in_dim, out_dim))
+
+    def forward(self, x):
+        """
+        x: [B, T, d_model=512]
+        Returns: [B, T, d_comp=3]
+        """
+        outputs = []  # 각 layer의 출력 저장
+        out = x
+
+        for i, layer in enumerate(self.layers):
+            out = layer(out)
+
+            # Skip connection: i >= 2일 때
+            if i >= 2:
+                skip_idx = i - 2
+                # layer[i-2]의 출력을 현재 layer 출력 차원으로 projection
+                skip_output = outputs[i-2]
+                skip = self.skip_projs[skip_idx](skip_output)
+                out = out + skip
+
+            outputs.append(out)
+
+        return out
+
+
+class GradualChannelDecoder(nn.Module):
+    """
+    점진적 expansion: 3 → 32 → 64 → 128 → 256 → 512
+    Skip: 2-hop residual connection
+    """
+    def __init__(self, d_comp, d_model):
+        super().__init__()
+
+        # 점진적 확장 경로
+        dims = [d_comp, d_model//16, d_model//8, d_model//4, d_model//2, d_model]
+        # dims[0]=3, dims[1]=32, dims[2]=64, dims[3]=128, dims[4]=256, dims[5]=512
+
+        self.layers = nn.ModuleList()
+        for i in range(len(dims) - 1):
+            self.layers.append(nn.Sequential(
+                nn.Linear(dims[i], dims[i+1]),
+                nn.LayerNorm(dims[i+1]),
+                nn.GELU(),
+                nn.Dropout(0.1) if i < len(dims) - 2 else nn.Identity()
+            ))
+
+        # Skip connections for 2-hop residual
+        # layer i의 출력에 더할 skip: dims[i-2]의 출력 → dims[i]의 출력
+        # 따라서 projection: dims[i-2+1] → dims[i+1]
+        #
+        # i=2 (layer[2]): dims[2] → dims[3] (64→128)
+        #   skip: dims[0+1] → dims[3] (32→128) ← layer[0]의 출력(32)
+        # i=3 (layer[3]): dims[3] → dims[4] (128→256)
+        #   skip: dims[1+1] → dims[4] (64→256) ← layer[1]의 출력(64)
+        # i=4 (layer[4]): dims[4] → dims[5] (256→512)
+        #   skip: dims[2+1] → dims[5] (128→512) ← layer[2]의 출력(128)
+
+        self.skip_projs = nn.ModuleList()
+        for i in range(2, len(self.layers)):  # i=2,3,4
+            in_dim = dims[i-1]   # layer[i-2]의 출력 차원
+            out_dim = dims[i+1]  # layer[i]의 출력 차원
+            self.skip_projs.append(nn.Linear(in_dim, out_dim))
+
+    def forward(self, x):
+        """
+        x: [B, T, d_comp=3]
+        Returns: [B, T, d_model=512]
+        """
+        outputs = []  # 각 layer의 출력 저장
+        out = x
+
+        for i, layer in enumerate(self.layers):
+            out = layer(out)
+
+            # Skip connection: i >= 2일 때
+            if i >= 2:
+                skip_idx = i - 2
+                # layer[i-2]의 출력을 현재 layer 출력 차원으로 projection
+                skip_output = outputs[i-2]
+                skip = self.skip_projs[skip_idx](skip_output)
+                out = out + skip
+
+            outputs.append(out)
+
+        return out
+
+# ========================================
+# 개선된 Time Compressor (Priority 8 residual 추가)
+# ========================================
 class LearnableTimeCompressor(nn.Module):
-    """학습 가능한 시계열 압축기"""
+    """
+    학습 가능한 시계열 압축기 with enhanced residual
+    """
     def __init__(self, d_model, target_len):
         super().__init__()
         self.target_len = target_len
 
-        # 1D Conv로 학습 가능한 압축
+        # Multi-scale compression
         self.conv_compress = nn.Sequential(
             nn.Conv1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+            nn.BatchNorm1d(d_model),
+            nn.GELU(),
             nn.Conv1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+            nn.BatchNorm1d(d_model),
+            nn.GELU(),
         )
 
-        # 정확한 길이 맞추기
+        # Adaptive pooling
         self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
 
-        # Skip connection을 위한 projection
-        self.skip_proj = nn.Linear(d_model, d_model)
+        # Enhanced skip connection
+        self.skip_proj = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.LayerNorm(d_model),
+            nn.GELU()
+        )
 
     def forward(self, x):
-        # x: (batch, seq_len, d_model)
-        skip = x  # Skip connection 저장
+        """
+        x: [B, T, D]
+        """
+        skip = x
 
-        x = x.permute(0, 2, 1)  # (batch, d_model, seq_len)
+        # Convolution path
+        x = x.transpose(1, 2)  # [B, D, T]
         x = self.conv_compress(x)
-        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
-        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
+        x = self.adaptive_pool(x)
+        x = x.transpose(1, 2)  # [B, target_len, D]
 
-        # Skip connection (원본을 target_len으로 압축)
-        skip = skip.permute(0, 2, 1)
+        # Enhanced skip connection
+        skip = skip.transpose(1, 2)
         skip = F.adaptive_avg_pool1d(skip, self.target_len)
-        skip = skip.permute(0, 2, 1)
-        # skip = self.skip_proj(skip)
+        skip = skip.transpose(1, 2)
+        skip = self.skip_proj(skip)
 
         return x + skip
 
+# ========================================
+# Priority 2: 개선된 Time Decompressor
+# ========================================
 class LearnableTimeDecompressor(nn.Module):
-    """학습 가능한 시계열 복원기"""
-    def __init__(self, d_model, target_len):
+    """
+    Multi-scale deconvolution + learned interpolation
+    정보 손실 최소화 시계열 복원
+    """
+    def __init__(self, d_model, compressed_len, target_len):
         super().__init__()
+        self.compressed_len = compressed_len
         self.target_len = target_len
+        self.expansion_ratio = target_len / compressed_len
 
-        # 전치 합성곱으로 학습 가능한 복원
-        self.deconv_decompress = nn.Sequential(
-            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose1d(d_model, d_model, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
+        # Multi-scale deconvolution branches
+        num_scales = int(math.log2(self.expansion_ratio))
+
+        self.deconv_branches = nn.ModuleList()
+        for i in range(num_scales):
+            branch = nn.ModuleList([
+                nn.ConvTranspose1d(
+                    d_model, d_model,
+                    kernel_size=4, stride=2, padding=1,
+                    output_padding=0
+                ),
+                nn.BatchNorm1d(d_model),
+                nn.GELU()
+            ])
+            self.deconv_branches.append(nn.Sequential(*branch))
+
+        # Learned interpolation pathway
+        self.interpolation_net = nn.Sequential(
+            nn.Linear(d_model, d_model * 2),
+            nn.GELU(),
+            nn.Dropout(0.1),
+            nn.Linear(d_model * 2, d_model)
         )
 
-        # 정확한 길이 맞추기
-        self.adaptive_pool = nn.AdaptiveAvgPool1d(target_len)
+        # Content-aware fusion gate
+        self.fusion_gate = nn.Sequential(
+            nn.Linear(d_model, d_model // 4),
+            nn.GELU(),
+            nn.Linear(d_model // 4, 2),  # 2-way gate
+            nn.Softmax(dim=-1)
+        )
+
+        # Residual upsampling
+        self.residual_upsample = nn.Linear(compressed_len, target_len)
 
     def forward(self, x):
-        # x: (batch, compressed_len, d_model)
-        x = x.permute(0, 2, 1)  # (batch, d_model, compressed_len)
-        x = self.deconv_decompress(x)
-        x = self.adaptive_pool(x)  # (batch, d_model, target_len)
-        x = x.permute(0, 2, 1)  # (batch, target_len, d_model)
-        return x
+        """
+        x: [B, compressed_len, d_model]
+        Returns: [B, target_len, d_model]
+        """
+        batch_size = x.size(0)
 
-# 250914 claude iTransformer
+        # 1. Multi-scale deconvolution
+        x_deconv = x.transpose(1, 2)  # [B, d_model, compressed_len]
+        for deconv_layer in self.deconv_branches:
+            x_deconv = deconv_layer(x_deconv)
+
+        # Adjust to exact target length
+        if x_deconv.size(2) != self.target_len:
+            x_deconv = F.interpolate(x_deconv, size=self.target_len,
+                                    mode='linear', align_corners=False)
+
+        x_deconv = x_deconv.transpose(1, 2)  # [B, target_len, d_model]
+
+        # 2. Learned interpolation
+        x_interp = self.interpolation_net(x)  # [B, compressed_len, d_model]
+        x_interp_t = x_interp.transpose(1, 2)  # [B, d_model, compressed_len]
+        x_interp_up = F.interpolate(x_interp_t, size=self.target_len,
+                                     mode='linear', align_corners=False)
+        x_interp_up = x_interp_up.transpose(1, 2)  # [B, target_len, d_model]
+
+        # 3. Residual upsampling
+        x_residual = x.transpose(1, 2)  # [B, d_model, compressed_len]
+        x_residual = self.residual_upsample(x_residual)  # [B, d_model, target_len]
+        x_residual = x_residual.transpose(1, 2)  # [B, target_len, d_model]
+
+        # 4. Content-aware fusion
+        fusion_weights = self.fusion_gate(x_deconv)  # [B, target_len, 2]
+        w1 = fusion_weights[..., 0:1]  # [B, target_len, 1]
+        w2 = fusion_weights[..., 1:2]
+
+        # Weighted combination
+        output = w1 * x_deconv + w2 * x_interp_up + 0.1 * x_residual
+
+        return output
+
+# iTransformer
+# ========================================
+# Priority 1: 개선된 Inverted Multi-Head Attention
+# ========================================
 class InvertedMultiHeadAttention(nn.Module):
     def __init__(self, num_heads, seq_len, dropout=0.1):
         super().__init__()
@@ -614,184 +862,341 @@ class InvertedMultiHeadAttention(nn.Module):
         output = output.transpose(1, 2)
 
         return output
+#     """
+#     iTransformer용 Inverted Attention (수정됨)
+#     - Feature 축(마지막 차원)을 따라 attention 수행
+#     - seq_len을 고정하지 않고 동적으로 처리
+#     """
+#     def __init__(self, num_heads, seq_len, num_features=None, dropout=0.1):
+#         """
+#         Args:
+#             num_heads: attention head 수
+#             seq_len: 시퀀스 길이 (512)
+#             num_features: feature 차원 (d_model=512) - 실제로는 사용 안 함
+#             dropout: dropout 비율
+#         """
+#         super().__init__()
+#         self.num_heads = num_heads
+#         self.seq_len = seq_len
 
+#         # d_k를 적응적으로 설정
+#         # seq_len이 클 경우 과도한 파라미터 방지
+#         self.d_k = max(16, seq_len // (num_heads * 2))
+
+#         # Hidden dimension
+#         hidden_dim = self.d_k * num_heads
+#         self.hidden_dim = hidden_dim
+
+#         # Compact projection (seq_len → hidden_dim)
+#         self.input_projection = nn.Linear(seq_len, hidden_dim)
+
+#         # Q, K, V projection
+#         self.wq = nn.Linear(hidden_dim, hidden_dim)
+#         self.wk = nn.Linear(hidden_dim, hidden_dim)
+#         self.wv = nn.Linear(hidden_dim, hidden_dim)
+
+#         # Output projection (hidden_dim → seq_len)
+#         self.output_projection = nn.Linear(hidden_dim, seq_len)
+
+#         # Feature importance gating
+#         self.feature_gate = nn.Sequential(
+#             nn.Linear(hidden_dim, hidden_dim // 4),
+#             nn.GELU(),
+#             nn.Linear(hidden_dim // 4, num_heads),
+#             nn.Softmax(dim=-1)
+#         )
+
+#         self.dropout = nn.Dropout(dropout)
+#         self.scale = math.sqrt(self.d_k)
+
+#     def forward(self, query, key, value):
+#         """
+#         Input: [B, T, F] where F = d_model
+#         Output: [B, T, F]
+
+#         iTransformer는 Feature 축을 따라 attention 수행
+#         """
+#         # Feature axis로 transpose
+#         query_t = query.transpose(1, 2)  # [B, T, F] → [B, F, T]
+#         key_t = key.transpose(1, 2)      # [B, T, F] → [B, F, T]
+#         value_t = value.transpose(1, 2)  # [B, T, F] → [B, F, T]
+
+#         batch_size, num_features, seq_len = query_t.shape
+#         # batch_size = 32
+#         # num_features = d_model = 512
+#         # seq_len = 512
+
+#         # Compact projection (seq_len → hidden_dim)
+#         query_proj = self.input_projection(query_t)  # [B, F, hidden_dim]
+#         key_proj = self.input_projection(key_t)
+#         value_proj = self.input_projection(value_t)
+
+#         # Feature importance 계산 (batch별 평균)
+#         feature_importance = self.feature_gate(
+#             query_proj.mean(dim=1)  # [B, F, hidden] → [B, hidden] → [B, num_heads]
+#         )
+
+#         # Q, K, V transformation and reshape
+#         # [B, F, hidden_dim] → [B, F, num_heads, d_k] → [B, num_heads, F, d_k]
+#         Q = self.wq(query_proj).view(batch_size, num_features, self.num_heads, self.d_k).transpose(1, 2)
+#         K = self.wk(key_proj).view(batch_size, num_features, self.num_heads, self.d_k).transpose(1, 2)
+#         V = self.wv(value_proj).view(batch_size, num_features, self.num_heads, self.d_k).transpose(1, 2)
+
+#         # Scaled dot-product attention
+#         # scores: [B, num_heads, F, F]
+#         scores = torch.matmul(Q, K.transpose(-2, -1)) / self.scale
+
+#         # Apply feature importance (head별 가중치)
+#         importance_weight = feature_importance.view(batch_size, self.num_heads, 1, 1)
+#         scores = scores * importance_weight
+
+#         attn_weights = F.softmax(scores, dim=-1)
+#         attn_weights = self.dropout(attn_weights)
+
+#         # Attention output: [B, num_heads, F, d_k]
+#         attn_output = torch.matmul(attn_weights, V)
+
+#         # Concatenate heads: [B, num_heads, F, d_k] → [B, F, num_heads*d_k]
+#         attn_output = attn_output.transpose(1, 2).contiguous()
+#         attn_output = attn_output.view(batch_size, num_features, self.hidden_dim)
+
+#         # Project back to original seq_len: [B, F, hidden_dim] → [B, F, T]
+#         output = self.output_projection(attn_output)
+#         output = self.dropout(output)
+
+#         # Transpose back to [B, T, F]
+#         output = output.transpose(1, 2)
+
+#         return output
+
+# ========================================
+# Priority 4: 효율적인 Inverted FFN
+# ========================================
 class InvertedFeedForward(nn.Module):
-    """각 변수별로 독립적인 FFN"""
-    def __init__(self, seq_len, d_ff, dropout=0.1):
+    """
+    파라미터 효율적인 Inverted Feed-Forward Network
+    - Depthwise Convolution 사용
+    - 파라미터 수 약 10배 감소
+    """
+    def __init__(self, seq_len, d_ff, dropout=0.1, kernel_size=3):
         super().__init__()
-        self.w_1 = nn.Linear(seq_len, d_ff)
-        self.w_2 = nn.Linear(d_ff, seq_len)
+
+        # Bottleneck ratio 적용
+        hidden_dim = max(seq_len // 4, 32)
+
+        # Feature별 독립 처리를 위한 Depthwise Conv
+        self.feature_processor = nn.Sequential(
+            # 1. Pointwise expansion
+            nn.Conv1d(1, hidden_dim, kernel_size=1),
+            nn.BatchNorm1d(hidden_dim),
+            nn.GELU(),
+
+            # 2. Depthwise spatial mixing
+            nn.Conv1d(hidden_dim, hidden_dim, kernel_size=kernel_size,
+                     padding=kernel_size//2, groups=hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.GELU(),
+
+            # 3. Pointwise projection
+            nn.Conv1d(hidden_dim, 1, kernel_size=1),
+        )
+
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # x: [batch, seq_len, features]
-        x = x.transpose(1, 2)  # [batch, features, seq_len]
+        """
+        x: [B, T, F]
+        """
+        batch_size, seq_len, num_features = x.shape
 
-        x = self.w_1(x)
-        x = F.relu(x)
-        x = self.w_2(x)
-        x = self.dropout(x)
+        # Feature별 독립 처리
+        x_reshaped = x.transpose(1, 2).reshape(batch_size * num_features, 1, seq_len)
 
-        x = x.transpose(1, 2)  # [batch, seq_len, features]
-        return x
+        output = self.feature_processor(x_reshaped)
+        output = self.dropout(output)
 
+        # Reshape back
+        output = output.reshape(batch_size, num_features, seq_len).transpose(1, 2)
+
+        return output
+
+# ========================================
+# 개선된 Encoder Layer
+# ========================================
 class iTransformerEncoderLayer(nn.Module):
-    def __init__(self, seq_len, num_features, num_heads, d_ff, window_size=None, dropout=0.1):
-        """
-        window_size=None: 일반 Inverted Attention
-        window_size=int: Local Inverted Attention
-        """
+    """
+    개선된 Inverted Encoder Layer
+    """
+    def __init__(self, seq_len, num_features, num_heads, d_ff, dropout=0.1):
         super().__init__()
 
-        # window_size에 따라 Attention 선택
+        # Priority 1: 개선된 attention
+        # self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, num_features, dropout)
         self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
 
-        # self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
-        self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
+        # Priority 4: 효율적인 FFN
+        self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout)
+
+        # Pre-LN
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
 
-    def forward(self, x, mask=None):
-        attn_output = self.inverted_attention(x,x,x)
-        x = self.norm1(x + attn_output)
+        self.dropout = nn.Dropout(dropout)
 
-        ffn_output = self.inverted_ffn(x)
-        x = self.norm2(x + ffn_output)
+    def forward(self, x, mask=None):
+        # Pre-LN + Attention
+        x_norm = self.norm1(x)
+        attn_output = self.inverted_attention(x_norm, x_norm, x_norm)
+        x = x + self.dropout(attn_output)
+
+        # Pre-LN + FFN
+        x_norm = self.norm2(x)
+        ffn_output = self.inverted_ffn(x_norm)
+        x = x + self.dropout(ffn_output)
 
         return x
 
 class iTransformerEncoder(nn.Module):
-    def __init__(self, num_layers, input_dim, max_len, d_model, num_heads, dff,
-                 window_size=None, dropout=0.1):
+    """
+    개선된 iTransformer Encoder
+    """
+    def __init__(self, num_layers, input_dim, max_len, d_model, num_heads, dff, dropout=0.1):
         super().__init__()
 
         self.input_dim = input_dim
         self.max_len = max_len
 
-        self.input_projection = nn.Linear(input_dim, d_model) # case 45
+        # Input projection
+        self.input_projection = nn.Linear(input_dim, d_model)
 
-        # Feature-wise positional encoding 추가
-        self.feature_pos_embedding = nn.Parameter(
-            torch.randn(1, 1, d_model) * 0.1
-        )
+        # Priority 5: Adaptive PE
+        self.adaptive_pe = AdaptivePositionalEncoding(d_model, dropout, max_len)
 
-        # Time-wise positional encoding
-        self.time_pos_embedding = nn.Parameter(
-            torch.randn(1, max_len, 1) * 0.1
-        )
-
-        # self.layernorm_before_pe = nn.LayerNorm(input_dim, eps=1e-6)
-
+        # Encoder layers
         self.enc_layers = nn.ModuleList([
-            # iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
-            iTransformerEncoderLayer(max_len, d_model, num_heads, dff, window_size, dropout) # case 45
+            iTransformerEncoderLayer(max_len, d_model, num_heads, dff, dropout)
             for _ in range(num_layers)
         ])
 
-        self.output_projection = nn.Linear(input_dim, d_model)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, src_mask):
-        # 양방향 positional encoding 추가
+    def forward(self, x, src_mask=None):
+        """
+        x: [B, T, input_dim]
+        """
+        # Input projection
         x = self.input_projection(x)
-        x = x + self.time_pos_embedding + self.feature_pos_embedding
 
+        # Priority 5: Adaptive PE
+        x = self.adaptive_pe(x)
         x = self.dropout(x)
 
+        # Encoder layers
         for enc_layer in self.enc_layers:
             x = enc_layer(x, src_mask)
 
-        # x = self.output_projection(x) # case 45
         return x
 
 class InvertedDecoderLayer(nn.Module):
     """
-    iTransformer 기반 디코더 레이어:
-      - Self-Attention: feature-axis
-      - Cross-Attention: feature-axis 기준 encoder memory 참조
+    개선된 Inverted Decoder Layer
     """
     def __init__(self, seq_len, num_features, num_heads, d_ff, dropout=0.1):
         super().__init__()
+
+        # Priority 1: 개선된 attention
         self.self_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
         self.cross_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-        # self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
-        self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
 
+        # Priority 4: 효율적인 FFN
+        self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout)
+
+        # Pre-LN (더 안정적)
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
         self.norm3 = nn.LayerNorm(num_features)
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x, memory, self_mask=None, cross_mask=None):
         """
-        x: [batch, seq_len, num_features]
-        memory: [batch, seq_len, num_features]
+        x: [B, T, F]
+        memory: [B, T, F]
         """
-        # Self-Attention (feature 축)
-        attn_out = self.self_attn(x,x,x)
-        x = self.norm1(x + attn_out)
+        # Pre-LN + Self-Attention
+        x_norm = self.norm1(x)
+        attn_out = self.self_attn(x_norm, x_norm, x_norm)
+        x = x + self.dropout(attn_out)
 
-        # Cross-Attention (encoder memory 참조)
-        # memory를 같은 축으로 맞춰줌
-        cross_out = self.cross_attn(x,memory,memory)
-        x = self.norm2(x + cross_out)
+        # Pre-LN + Cross-Attention
+        x_norm = self.norm2(x)
+        cross_out = self.cross_attn(x_norm, memory, memory)
+        x = x + self.dropout(cross_out)
 
-        # Feed Forward
-        ffn_out = self.ffn(x)
-        x = self.norm3(x + ffn_out)
+        # Pre-LN + FFN
+        x_norm = self.norm3(x)
+        ffn_out = self.ffn(x_norm)
+        x = x + self.dropout(ffn_out)
 
         return x
 
 
 class iTransformerDecoder(nn.Module):
     """
-    iTransformer 기반 디코더 (수정 버전)
-    - 입력으로 max_len 길이의 시퀀스를 받도록 변경
+    Memory 기반 Query initialization으로 개선된 Decoder
     """
     def __init__(self, num_layers, compressed_len, seq_len, num_features, num_heads, d_ff, dropout=0.1):
         super().__init__()
-        # compressed_len은 이제 사용되지 않지만, 호환성을 위해 파라미터는 유지
         self.num_features = num_features
-        self.seq_len = seq_len # max_len에 해당
+        self.seq_len = seq_len
+        self.compressed_len = compressed_len
 
-        # 변경 1: feature_queries를 compressed_len 대신 seq_len 기준으로 생성
-        self.feature_queries = nn.Parameter(torch.randn(num_features, seq_len) * 0.1)
+        # Priority 6: Memory 기반 query generation
+        self.query_generator = nn.Sequential(
+            nn.Linear(num_features, num_features * 2),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(num_features * 2, num_features)
+        )
 
-        # Feature-wise positional encoding
-        self.feature_pos_embedding = nn.Parameter(torch.randn(1, 1, num_features) * 0.1)
+        # Learnable query base
+        self.query_base = nn.Parameter(torch.randn(num_features, seq_len) * 0.01)
 
-        # 변경 2: time_pos_embedding을 compressed_len 대신 seq_len 기준으로 생성
-        self.time_pos_embedding = nn.Parameter(torch.randn(1, seq_len, 1) * 0.1)
-        self.dropout = nn.Dropout(dropout)
+        # Priority 5: Adaptive PE
+        self.adaptive_pe = AdaptivePositionalEncoding(num_features, dropout, max_len=seq_len)
 
-        # 변경 3: InvertedDecoderLayer를 compressed_len 대신 seq_len 기준으로 생성
+        # Decoder layers
         self.decoder_layers = nn.ModuleList([
             InvertedDecoderLayer(seq_len, num_features, num_heads, d_ff, dropout)
             for _ in range(num_layers)
         ])
 
-        # 변경 4: 시퀀스 길이 복원 기능이 불필요하므로 output_projection 삭제
-        # self.output_projection = nn.Linear(compressed_len, seq_len)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, memory, target_len=None, use_mask=False):
         """
-        memory: [batch, seq_len, num_features] (이미 max_len으로 복원된 텐서)
+        memory: [B, T, F] (max_len으로 복원된 텐서)
         """
         batch_size = memory.size(0)
 
-        # feature query 임베딩 준비
-        query_embed = self.feature_queries.unsqueeze(0).repeat(batch_size, 1, 1) # [B, F, T(max_len)]
-        x = query_embed.transpose(1, 2) # [B, T(max_len), F]
+        # Priority 6: Memory 기반 query 초기화
+        # Memory의 global feature를 사용하여 query 생성
+        memory_global = memory.mean(dim=1)  # [B, F]
+        query_context = self.query_generator(memory_global)  # [B, F]
 
-        # Positional Encoding 적용
-        x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # Context-aware query
+        query_embed = self.query_base.unsqueeze(0) + query_context.unsqueeze(-1)  # [B, F, T]
+        # query_embed = query_embed.repeat(batch_size, 1, 1)
+        x = query_embed.transpose(1, 2)  # [B, T, F]
+
+        # Priority 5: Adaptive PE 적용
+        x = self.adaptive_pe(x)
         x = self.dropout(x)
 
-        # 각 디코더 레이어 통과
+        # Decoder layers
         for layer in self.decoder_layers:
-            # 이제 x와 memory 모두 시퀀스 길이가 max_len으로 동일함
             x = layer(x, memory)
 
-        # 변경 5: self.output_projection 호출 삭제, x를 그대로 반환
         return x
 
 class DeepSC(nn.Module):
@@ -840,7 +1245,7 @@ class DeepSC(nn.Module):
                 self.encoder = iTransformerEncoder(
                     self.num_layers, self.input_dim, self.max_len,
                     self.d_model, self.num_heads, self.dff,
-                    window_size=self.window_size,
+                    # window_size=self.window_size,
                     dropout=self.dropout
                 )
             else:
@@ -881,16 +1286,17 @@ class DeepSC(nn.Module):
             self.time_compressor = None
 
         # 점진적 압축으로 변경
-        self.channel_encoder = nn.Sequential(
-            nn.Linear(self.d_model, self.d_model // 2),  # 128 → 64
-            nn.LayerNorm(self.d_model // 2),
-            # nn.ReLU(),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
+        # self.channel_encoder = nn.Sequential(
+        #     nn.Linear(self.d_model, self.d_model // 2),  # 128 → 64
+        #     nn.LayerNorm(self.d_model // 2),
+        #     # nn.ReLU(),
+        #     nn.GELU(),
+        #     nn.Dropout(0.1),
+        #     nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
+        # )
+        self.channel_encoder = GradualChannelEncoder(
+            self.d_model, self.d_comp
         )
-        # self.channel_encoder = nn.Linear(self.input_dim, self.d_comp)
-
         self.channels = Channels()
 
         if self.model_type == 'deepsc':
@@ -929,7 +1335,8 @@ class DeepSC(nn.Module):
                 batch_first=True,
             )
 
-        self.channel_decoder = ResidualChannelDecoder(
+        # self.channel_decoder = ResidualChannelDecoder(
+        self.channel_decoder = GradualChannelDecoder(
             self.d_comp, self.d_model
         )
         # self.channel_decoder = nn.Linear(self.d_comp, self.input_dim)
@@ -939,7 +1346,7 @@ class DeepSC(nn.Module):
 
         # 시계열 길이 복원
         # self.time_decompressor = LearnableTimeDecompressor(self.input_dim, self.max_len)
-        self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
+        self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.compressed_len, self.max_len)
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
