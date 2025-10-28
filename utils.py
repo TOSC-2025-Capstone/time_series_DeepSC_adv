@@ -115,8 +115,9 @@ class NoamOpt:
 def power_normalize(x):
     x_square = torch.mul(x, x)
     power = torch.mean(x_square).sqrt()
-    if power > 1:
-        x = torch.div(x, power)
+    # if power > 1:
+        # x = torch.div(x, power)
+    x = torch.div(x, power)
 
     return x
 

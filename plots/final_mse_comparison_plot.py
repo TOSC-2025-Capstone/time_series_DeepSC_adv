@@ -97,10 +97,27 @@ def load_and_preprocess_data(file_paths, selected_metric):
             print(f"Error processing {path}: {e}. Skipping.")
     return pd.DataFrame(results)
 
-def plot_comparison(df, selected_metric, model_names_ordered):
-    """통합된 데이터를 사용하여 꺾은선 그래프를 생성함."""
-    plt.style.use('default') # 기본 스타일로 초기화함.
-    fig, ax = plt.subplots(figsize=(10, 6))
+# --- plot_comparison 함수 (수정됨) ---
+def plot_comparison(df, selected_metric, model_names_ordered, baseline_model='LSTM'):
+    """
+    통합된 데이터를 사용하여 모델별 상대적 성능 꺾은선 그래프를 생성함.
+    지정된 baseline_model 대비 비율로 값을 정규화함.
+    """
+    plt.style.use('default')
+    fig, ax = plt.subplots(figsize=(12, 7)) # Figure 크기 조정
+
+    # --- 데이터 정규화 로직 추가 ---
+    df_normalized = df.copy()
+    baseline_values = df_normalized[df_normalized['Model'] == baseline_model].set_index('SNR')[selected_metric]
+
+    # 각 모델, 각 SNR에 대해 baseline 값으로 나눔
+    df_normalized[f'Relative_{selected_metric}'] = df_normalized.apply(
+        lambda row: row[selected_metric] / baseline_values.get(row['SNR'], np.nan)
+                    if row['SNR'] in baseline_values and not np.isnan(baseline_values.get(row['SNR'])) and baseline_values.get(row['SNR']) != 0
+                    else np.nan,
+        axis=1
+    )
+    # -----------------------------
 
     # 논문용 회색조 스타일 및 마커/선 스타일을 정의함.
     cmap = cm.get_cmap('Greys')
@@ -111,44 +128,54 @@ def plot_comparison(df, selected_metric, model_names_ordered):
     style_map = {
         model: {
             'color': grayscale_colors[i],
-            'marker': markers[i],
-            'linestyle': linestyles[i]
+            'marker': markers[i % len(markers)], # 마커 순환
+            'linestyle': linestyles[i % len(linestyles)] # 라인스타일 순환
         }
         for i, model in enumerate(model_names_ordered)
     }
 
-    # 꺾은선 그래프를 그림.
+    # 꺾은선 그래프를 그림 (정규화된 값 사용).
+    plot_metric_col = f'Relative_{selected_metric}' # 사용할 컬럼 이름
     for model in model_names_ordered:
-        subset = df[df['Model'] == model].sort_values(by='SNR')
-        if subset.empty:
-            continue
+        subset = df_normalized[df_normalized['Model'] == model].sort_values(by='SNR')
+        if subset.empty or subset[plot_metric_col].isnull().all(): # 데이터가 없거나 모두 NaN이면 건너뜀
+             print(f"Skipping plot for {model} due to missing or all NaN relative values.")
+             continue
         style = style_map.get(model)
 
         ax.plot(
             subset['SNR'],
-            subset[selected_metric],
+            subset[plot_metric_col], # 정규화된 값 사용
             color=style['color'],
             marker=style['marker'],
             linestyle=style['linestyle'],
             label=model,
-            linewidth=2.0,
-            markersize=7.0
+            linewidth=2.5, # 선 굵기 증가
+            markersize=8.0 # 마커 크기 증가
         )
 
-    # 그래프 제목 및 축 레이블을 설정함.
-    ax.set_title(f'Model Performance vs. SNR (Metric: Average {selected_metric})', fontsize=16, fontweight='bold')
+    # 그래프 제목 및 축 레이블을 설정함 (상대적 성능임을 명시).
+    ax.set_title(f'Relative Model Performance vs. SNR (vs. {baseline_model}, Metric: Avg {selected_metric})', fontsize=16, fontweight='bold')
     ax.set_xlabel('SNR (dB)', fontsize=14)
-    ax.set_ylabel(f'Average {selected_metric} Across All Features', fontsize=14)
+    # Y축 레이블 수정
+    ax.set_ylabel(f'Relative Avg {selected_metric} (Ratio to {baseline_model})', fontsize=14)
 
     # x축 눈금을 설정함.
     ax.set_xticks(SNRS)
+    # y축 눈금 라벨 포맷 지정 (소수점 표시)
+    ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
+
+
+    # 기준선 (1.0) 추가
+    ax.axhline(1.0, color='black', linestyle='--', linewidth=1.5, label=f'{baseline_model} Baseline (Ratio=1.0)')
 
     # 범례 및 격자를 추가함.
-    ax.legend(title='Model', loc='best', frameon=True)
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.legend(title='Model', loc='best', frameon=True, fontsize=12) # 범례 폰트 크기 조정
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='gray', alpha=0.7) # 격자 스타일 변경
 
-    # y축 로그 스케일 적용 (필요 시 주석을 해제함).
-    # ax.set_yscale('log')
+    # Y축 범위 조정 (선택 사항, 데이터 분포에 따라 조절)
+    # ax.set_ylim(bottom=0) # 최소값을 0으로 설정하거나
+    # ax.set_ylim(0, df_normalized[plot_metric_col].max() * 1.1) # 최대값에 약간의 여유를 둠
 
     plt.tight_layout()
 
@@ -156,14 +183,14 @@ def plot_comparison(df, selected_metric, model_names_ordered):
     if not os.path.exists('plots'):
         os.makedirs('plots')
 
-    # 그래프를 저장함.
-    filename = f'plots/model_comparison_{selected_metric}.png'
+    # 그래프를 저장함 (파일명에 'relative' 추가).
+    filename = f'plots/model_comparison_relative_{selected_metric}.png'
     plt.savefig(filename, dpi=300)
-    print(f"\nGraph saved as '{filename}'")
+    print(f"\nRelative performance graph saved as '{filename}'")
     print("---------------------------------------------------------")
-    print("\nProcessed Data Summary:")
+    print("\nProcessed Data Summary (with Relative Values):")
     # 보기 좋게 정렬하여 출력함.
-    print(df.sort_values(['SNR', 'Model']).reset_index(drop=True))
+    print(df_normalized.sort_values(['SNR', 'Model']).reset_index(drop=True))
 
 
 # --- 4. 메인 실행 ---
@@ -175,22 +202,29 @@ if __name__ == "__main__":
     df_results = load_and_preprocess_data(FILE_PATHS, SELECTED_METRIC)
 
     if df_results.empty:
-        print("\n[경고] 유효한 파일 경로 데이터를 찾을 수 없음. 시연을 위해 더미 데이터를 사용함.")
+        print("\n[Warning] No valid data found from file paths. Using dummy data for demonstration.")
 
         # 확장된 SNR 리스트에 맞는 더미 데이터를 생성함.
         dummy_data_list = []
         model_names_cycle = list(MODEL_CONFIG.keys())
+        # LSTM을 기준으로 삼기 위해 순서를 조정할 수 있음
+        if 'LSTM' in model_names_cycle:
+             model_names_cycle.insert(0, model_names_cycle.pop(model_names_cycle.index('LSTM')))
+
         for snr in SNRS:
             for model in model_names_cycle:
                 # SNR이 증가할수록 에러가 감소하는 경향을 보이는 더미 값을 생성함.
-                base_error = 1.0 / (snr + 1)
-                model_factor = {'LSTM': 1.2, 'GRU': 1.5, 'Transformer': 1.0, 'Inverted-Transformer': 0.8}.get(model, 1)
-                error_value = base_error * model_factor * (1 + (np.random.rand() - 0.5) * 0.2)
-                dummy_data_list.append({'SNR': snr, 'Model': model, SELECTED_METRIC: error_value})
+                base_error = 1.0 / (snr + 1) # 기본 에러 (SNR 높을수록 작아짐)
+                # 모델별 성능 차이를 위한 임의 계수
+                model_factor = {'LSTM': 1.0, 'GRU': 1.1, 'Transformer': 0.9, 'Inverted-Transformer': 0.8}.get(model, 1)
+                error_value = base_error * model_factor * (1 + (np.random.rand() - 0.5) * 0.1) # 약간의 노이즈 추가
+                dummy_data_list.append({'SNR': snr, 'Model': model, SELECTED_METRIC: max(error_value, 0.001)}) # 에러가 0이 되지 않도록
 
         df_results = pd.DataFrame(dummy_data_list)
 
     if not df_results.empty:
-        plot_comparison(df_results, SELECTED_METRIC, list(MODEL_CONFIG.keys()))
+        # 모델 순서 지정 (LSTM이 맨 앞에 오도록)
+        ordered_models = ['LSTM'] + [m for m in MODEL_CONFIG.keys() if m != 'LSTM']
+        plot_comparison(df_results, SELECTED_METRIC, ordered_models, baseline_model='LSTM')
     else:
         print("No data available to generate a plot.")

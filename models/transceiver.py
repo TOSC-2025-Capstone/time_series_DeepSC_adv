@@ -753,23 +753,18 @@ class iTransformerDecoder(nn.Module):
         self.num_features = num_features
         self.seq_len = seq_len # max_len에 해당
 
-        # 변경 1: feature_queries를 compressed_len 대신 seq_len 기준으로 생성
         self.feature_queries = nn.Parameter(torch.randn(num_features, seq_len) * 0.1)
 
         # Feature-wise positional encoding
         self.feature_pos_embedding = nn.Parameter(torch.randn(1, 1, num_features) * 0.1)
-
-        # 변경 2: time_pos_embedding을 compressed_len 대신 seq_len 기준으로 생성
         self.time_pos_embedding = nn.Parameter(torch.randn(1, seq_len, 1) * 0.1)
         self.dropout = nn.Dropout(dropout)
 
-        # 변경 3: InvertedDecoderLayer를 compressed_len 대신 seq_len 기준으로 생성
         self.decoder_layers = nn.ModuleList([
             InvertedDecoderLayer(seq_len, num_features, num_heads, d_ff, dropout)
             for _ in range(num_layers)
         ])
 
-        # 변경 4: 시퀀스 길이 복원 기능이 불필요하므로 output_projection 삭제
         # self.output_projection = nn.Linear(compressed_len, seq_len)
 
     def forward(self, memory, target_len=None, use_mask=False):

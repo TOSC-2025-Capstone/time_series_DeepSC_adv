@@ -60,9 +60,20 @@ def count_parameters(model):
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total, trainable
 
+snr_list = [3, 6, 9, 12, 15, 18, 21]
+seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+model_type_list = ["deepsc", "lstm"]
+
 if __name__ == "__main__":
-    print(f"========================== case_{case_index} start ==========================\n")
+    # for model_type in model_type_list:
+    #     p.model_type = model_type
+    # for snr in snr_list:
+    #     model_params["snr_db"] = snr
+    #     p.case_index = f"50.2.{int(1+snr/3)}"  # case index 설정
+
+    print(f"========================== case_{p.case_index} start ==========================\n")
     setup_seed(42)
+    # setup_seed(6)
 
     print("========================== preprocess ==========================\n")
     if is_preprocessed == False:

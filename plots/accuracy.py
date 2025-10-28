@@ -296,11 +296,11 @@ if __name__ == "__main__":
     save_path = f"./final_comparison_plots/accuracy_methods_comparison/case{case_index.split('.')[0]}/3모델압축률15%_노이즈5db/"
 
     # 1단계: feature_statistics.json 생성 (한 번만 실행)
-    print("🔄 1단계: 피처 통계 정보 생성")
+    print(" 1단계: 피처 통계 정보 생성")
     print("   generate_feature_statistics.py를 먼저 실행하세요!\n")
 
     # 2단계: 정확도 계산 및 비교
-    print("🔄 2단계: 정확도 계산 및 시각화")
+    print(" 2단계: 정확도 계산 및 시각화")
 
     # 모든 방법으로 비교
     results = compare_all_methods(
