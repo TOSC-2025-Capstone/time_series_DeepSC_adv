@@ -326,32 +326,25 @@ if __name__ == "__main__":
         # "results/performance_test/case46.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case46.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
-        # "results/performance_test/case55.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case55.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case55.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case55.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case55.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case55.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-
-        "results/performance_test/case56.1.4/Rayleigh_deepsc_MAE/performance_statistics.csv",
-        "results/performance_test/case56.1.5/Rayleigh_deepsc_Huber/performance_statistics.csv",
-        "results/performance_test/case56.1.6/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case56.1.7/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case56.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case50.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case50.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
         "results/performance_test/case56.1.9/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case57.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case57.1.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     filename = "01291.csv"
     # filename = "02619.csv"
     metric_type = "MSE"
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251028/{metric_type}/{filename}/"
+        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251029/{metric_type}/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = [ "Inverted-Transformer_k7" , "Inverted-Transformer_k3", "Inverted-Transformer_k5"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
     # case_labels = [ "Inverted-Transformer", "LSTM", "Inverted-Transformer-21", "LSTM-21"]
-    case_labels = [ "4", "5", "6", "7", "8", "9"]
+    # case_labels = [ "4", "5", "6", "7", "8", "9"]
+    case_labels = ["","","","","" ]
     # case_labels = [ "no-compress_lstm", "layer 1", "layer 2", "layer 4", "layer 1", "layer 2", "layer 4"]
 
     # 1. 기본 라벨 정의
