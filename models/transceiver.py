@@ -382,7 +382,6 @@ class Encoder(nn.Module):
         ])
 
     def forward(self, x, src_mask):
-        x = self.input_projection(x)
         x = self.pos_encoding(x)
 
         for enc_layer in self.enc_layers:
@@ -668,8 +667,6 @@ class iTransformerEncoder(nn.Module):
         self.input_dim = input_dim
         self.max_len = max_len
 
-        self.input_projection = nn.Linear(input_dim, d_model) # case 45
-
         # Feature-wise positional encoding 추가
         self.feature_pos_embedding = nn.Parameter(
             torch.randn(1, 1, d_model) * 0.1
@@ -677,6 +674,7 @@ class iTransformerEncoder(nn.Module):
 
         # Time-wise positional encoding
         self.time_pos_embedding = nn.Parameter(
+            # torch.randn(1, max_len, 1) * 0.1
             torch.randn(1, max_len, 1) * 0.1
         )
 
@@ -693,8 +691,9 @@ class iTransformerEncoder(nn.Module):
 
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
-        x = self.input_projection(x)
         x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # x = x + self.feature_pos_embedding
+        # x = x + self.time_pos_embedding
 
         x = self.dropout(x)
 
@@ -757,6 +756,7 @@ class iTransformerDecoder(nn.Module):
 
         # Feature-wise positional encoding
         self.feature_pos_embedding = nn.Parameter(torch.randn(1, 1, num_features) * 0.1)
+        # self.time_pos_embedding = nn.Parameter(torch.randn(1, seq_len, 1) * 0.1)
         self.time_pos_embedding = nn.Parameter(torch.randn(1, seq_len, 1) * 0.1)
         self.dropout = nn.Dropout(dropout)
 
@@ -779,6 +779,8 @@ class iTransformerDecoder(nn.Module):
 
         # Positional Encoding 적용
         x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # x = x + self.feature_pos_embedding
+        # x = x + self.time_pos_embedding
         x = self.dropout(x)
 
         # 각 디코더 레이어 통과
@@ -847,7 +849,6 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.encoder = nn.Sequential(
-                nn.Linear(self.input_dim, self.hidden_dim),
                 nn.GRU(
                     input_size=self.hidden_dim,
                     hidden_size=self.hidden_dim,
@@ -858,7 +859,6 @@ class DeepSC(nn.Module):
             )
         elif self.model_type == 'lstm':
             self.encoder = nn.Sequential(
-                nn.Linear(self.input_dim, self.hidden_dim),
                 nn.LSTM(
                     input_size=self.hidden_dim,
                     hidden_size=self.hidden_dim,
@@ -930,6 +930,8 @@ class DeepSC(nn.Module):
         # self.channel_decoder = nn.Linear(self.d_comp, self.input_dim)
 
         # 자연어 디코더 대신 시계열 출력 레이어 사용
+        self.input_projection = nn.Linear(self.input_dim, self.d_model)
+        # 자연어 디코더 대신 시계열 출력 레이어 사용
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
 
         # 시계열 길이 복원
@@ -938,6 +940,8 @@ class DeepSC(nn.Module):
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
+        x = self.input_projection(x)
+
         # 1단계: 의미 인코더
         # (batch, max_len, input_dim->d_model)
         if self.model_type == 'deepsc' :
@@ -975,8 +979,10 @@ class DeepSC(nn.Module):
         # 7단계 : 의미 디코더
         if self.model_type == 'deepsc' :
             output = self.decoder(decompressed, use_mask=True)
+            # output = self.encoder(decompressed, None)
         else:  # GRU/LSTM 인코더
             output, _ = self.decoder(decompressed)
+            # output, _ = self.encoder(decompressed)
         # output, _ = self.decoder(decompressed)
         # output = decompressed
 
