@@ -382,6 +382,7 @@ class Encoder(nn.Module):
         ])
 
     def forward(self, x, src_mask):
+        x = self.input_projection(x)
         x = self.pos_encoding(x)
 
         for enc_layer in self.enc_layers:
@@ -634,61 +635,6 @@ class InvertedFeedForward(nn.Module):
         x = x.transpose(1, 2)  # [batch, seq_len, features]
         return x
 
-class iTransformerLayer(nn.Module):
-    """
-    Unified Layer for both iTransformer Encoder and Decoder.
-    Uses self-attention for encoder, and self-attention + cross-attention for decoder.
-    """
-    def __init__(self, seq_len, num_features, num_heads, d_ff, dropout=0.1, is_encoder=True):
-        super().__init__()
-        self.is_encoder = is_encoder
-
-        # --- Shared Components ---
-        # Use self_attn name for clarity, it acts as the only attention in encoder
-        self.self_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-        # Use Conv1d FFN as in the original encoder/decoder layers
-        self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size", 3)) # Added default kernel_size
-        self.norm1 = nn.LayerNorm(num_features)
-        self.norm2 = nn.LayerNorm(num_features)
-        self.dropout = nn.Dropout(dropout) # Add dropout for residual connections
-
-        # --- Decoder Specific Components ---
-        if not self.is_encoder:
-            self.cross_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-            self.norm3 = nn.LayerNorm(num_features)
-
-    def forward(self, x, memory=None, src_mask=None, tgt_mask=None): # Added masks for potential future use
-        # --- Self-Attention Block (Common for Encoder and Decoder) ---
-        # Using Pre-LN structure based on previous discussion for stability
-        x_norm1 = self.norm1(x)
-        self_attn_output = self.self_attn(x_norm1, x_norm1, x_norm1)
-        x = x + self.dropout(self_attn_output) # Residual connection
-
-        # --- Encoder Path ---
-        if self.is_encoder:
-            # FFN Block
-            x_norm2 = self.norm2(x)
-            ffn_output = self.ffn(x_norm2)
-            x = x + self.dropout(ffn_output) # Residual connection
-        # --- Decoder Path ---
-        else:
-            if memory is None:
-                raise ValueError("Decoder layer requires 'memory' input for cross-attention.")
-
-            # Cross-Attention Block
-            x_norm2 = self.norm2(x)
-            # Query is from the decoder path (x_norm2), Key/Value are from encoder output (memory)
-            cross_attn_output = self.cross_attn(x_norm2, memory, memory)
-            x = x + self.dropout(cross_attn_output) # Residual connection
-
-            # FFN Block
-            x_norm3 = self.norm3(x)
-            ffn_output = self.ffn(x_norm3)
-            x = x + self.dropout(ffn_output) # Residual connection
-
-        return x
-
-
 class iTransformerEncoderLayer(nn.Module):
     def __init__(self, seq_len, num_features, num_heads, d_ff, window_size=None, dropout=0.1):
         """
@@ -722,6 +668,8 @@ class iTransformerEncoder(nn.Module):
         self.input_dim = input_dim
         self.max_len = max_len
 
+        self.input_projection = nn.Linear(input_dim, d_model) # case 45
+
         # Feature-wise positional encoding 추가
         self.feature_pos_embedding = nn.Parameter(
             torch.randn(1, 1, d_model) * 0.1
@@ -729,22 +677,14 @@ class iTransformerEncoder(nn.Module):
 
         # Time-wise positional encoding
         self.time_pos_embedding = nn.Parameter(
-            # torch.randn(1, max_len, 1) * 0.1
             torch.randn(1, max_len, 1) * 0.1
         )
 
-        self.is_encoder = True
-
         # self.layernorm_before_pe = nn.LayerNorm(input_dim, eps=1e-6)
 
-        # case 58
-        # self.enc_layers = nn.ModuleList([
-        #     # iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
-        #     iTransformerEncoderLayer(max_len, d_model, num_heads, dff, window_size, dropout) # case 45
-        #     for _ in range(num_layers)
-        # ])
         self.enc_layers = nn.ModuleList([
-            iTransformerLayer(max_len, d_model, num_heads, dff, dropout, self.is_encoder)
+            # iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
+            iTransformerEncoderLayer(max_len, d_model, num_heads, dff, window_size, dropout) # case 45
             for _ in range(num_layers)
         ])
 
@@ -753,9 +693,8 @@ class iTransformerEncoder(nn.Module):
 
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
+        x = self.input_projection(x)
         x = x + self.time_pos_embedding + self.feature_pos_embedding
-        # x = x + self.feature_pos_embedding
-        # x = x + self.time_pos_embedding
 
         x = self.dropout(x)
 
@@ -818,7 +757,6 @@ class iTransformerDecoder(nn.Module):
 
         # Feature-wise positional encoding
         self.feature_pos_embedding = nn.Parameter(torch.randn(1, 1, num_features) * 0.1)
-        # self.time_pos_embedding = nn.Parameter(torch.randn(1, seq_len, 1) * 0.1)
         self.time_pos_embedding = nn.Parameter(torch.randn(1, seq_len, 1) * 0.1)
         self.dropout = nn.Dropout(dropout)
 
@@ -841,8 +779,6 @@ class iTransformerDecoder(nn.Module):
 
         # Positional Encoding 적용
         x = x + self.time_pos_embedding + self.feature_pos_embedding
-        # x = x + self.feature_pos_embedding
-        # x = x + self.time_pos_embedding
         x = self.dropout(x)
 
         # 각 디코더 레이어 통과
@@ -893,16 +829,15 @@ class DeepSC(nn.Module):
 
         self.feat_expander = nn.Linear(self.input_dim, self.d_model)
 
-        self.base_model = iTransformerEncoder(
-                    self.num_layers, self.input_dim, self.max_len,
-                    self.d_model, self.num_heads, self.dff,
-                    window_size=self.window_size,
-                    dropout=self.dropout,
-                )
         # 의미 인코더 = encoder + time_compressor
         if self.model_type == 'deepsc':
             if self.use_itransformer:
-                self.encoder = self.base_model
+                self.encoder = iTransformerEncoder(
+                    self.num_layers, self.input_dim, self.max_len,
+                    self.d_model, self.num_heads, self.dff,
+                    window_size=self.window_size,
+                    dropout=self.dropout
+                )
             else:
                 self.encoder = Encoder(
                     self.num_layers, self.input_dim, self.max_len,
@@ -912,6 +847,7 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.encoder = nn.Sequential(
+                nn.Linear(self.input_dim, self.hidden_dim),
                 nn.GRU(
                     input_size=self.hidden_dim,
                     hidden_size=self.hidden_dim,
@@ -922,6 +858,7 @@ class DeepSC(nn.Module):
             )
         elif self.model_type == 'lstm':
             self.encoder = nn.Sequential(
+                nn.Linear(self.input_dim, self.hidden_dim),
                 nn.LSTM(
                     input_size=self.hidden_dim,
                     hidden_size=self.hidden_dim,
@@ -947,21 +884,17 @@ class DeepSC(nn.Module):
             nn.Dropout(0.1),
             nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
         )
-        # self.channel_encoder = nn.Linear(self.input_dim, self.d_comp)
-
         self.channels = Channels()
 
         if self.model_type == 'deepsc':
             if self.use_itransformer:
-                # self.decoder = iTransformerDecoder(
-                #     num_layers=self.num_layers,
-                #     compressed_len=self.compressed_len,
-                #     seq_len=self.max_len,
-                #     num_features=self.d_model,
-                #     num_heads=self.num_heads,
-                #     d_ff=self.dff)
-                self.base_model.is_encoder = False
-                self.decoder = self.base_model
+                self.decoder = iTransformerDecoder(
+                    num_layers=self.num_layers,
+                    compressed_len=self.compressed_len,
+                    seq_len=self.max_len,
+                    num_features=self.d_model,
+                    num_heads=self.num_heads,
+                    d_ff=self.dff)
             else:
                 self.decoder = Decoder(
                     num_layers=self.num_layers,
@@ -974,27 +907,27 @@ class DeepSC(nn.Module):
                 )
         elif self.model_type == 'gru':
             self.decoder = nn.GRU(
-                input_size=self.d_model,
-                hidden_size=self.d_model,
+                input_size=self.hidden_dim,
+                hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
                 dropout=self.dropout,
                 batch_first=True,
             )
         elif self.model_type == 'lstm':
             self.decoder = nn.LSTM(
-                input_size=self.d_model,
-                hidden_size=self.d_model,
+                input_size=self.hidden_dim,
+                hidden_size=self.hidden_dim,
                 num_layers=self.num_layers,
                 dropout=self.dropout,
                 batch_first=True,
             )
 
         self.sequence_model = nn.LSTM(
-            input_size=self.d_model,
-            hidden_size=self.d_model,
-            num_layers=1,
+            input_size=self.hidden_dim,
+            hidden_size=self.hidden_dim,
+            num_layers=self.num_layers,
+            dropout=self.dropout,
             batch_first=True,
-            bidirectional=True
         )
 
         self.channel_decoder = ResidualChannelDecoder(
@@ -1002,8 +935,6 @@ class DeepSC(nn.Module):
         )
         # self.channel_decoder = nn.Linear(self.d_comp, self.input_dim)
 
-        # 자연어 디코더 대신 시계열 출력 레이어 사용
-        self.input_projection = nn.Linear(self.input_dim, self.d_model)
         # 자연어 디코더 대신 시계열 출력 레이어 사용
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
 
@@ -1013,8 +944,6 @@ class DeepSC(nn.Module):
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
-        x = self.input_projection(x)
-
         # 1단계: 의미 인코더
         # (batch, max_len, input_dim->d_model)
         if self.model_type == 'deepsc' :
@@ -1051,13 +980,13 @@ class DeepSC(nn.Module):
 
         # 7단계 : 의미 디코더
         if self.model_type == 'deepsc' :
-            # output = self.decoder(decompressed, use_mask=True)
-            output = self.decoder(decompressed, None)
+            output = self.decoder(decompressed, use_mask=True)
         else:  # GRU/LSTM 인코더
             output, _ = self.decoder(decompressed)
-            # output, _ = self.encoder(decompressed)
         # output, _ = self.decoder(decompressed)
         # output = decompressed
+
+        # output, _ = self.sequence_model(output)
 
         # 8단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)

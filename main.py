@@ -33,12 +33,6 @@ from models.mutual_info import Mine
 
 from utils import train_mi
 
-# 파라미터 클래스 가져오기
-preprocess_params = PreprocessParams()
-train_params = TrainParams()
-test_params = TestParams()
-recons_params = ReconstructParams()
-
 parser = argparse.ArgumentParser()
 # parser.add_argument('--data-dir', default='data/train_data.pkl', type=str)
 
@@ -68,12 +62,19 @@ if __name__ == "__main__":
     # for model_type in model_type_list:
     #     p.model_type = model_type
     # for snr in snr_list:
-    #     model_params["snr_db"] = snr
-    #     p.case_index = f"50.2.{int(1+snr/3)}"  # case index 설정
+    # for seed in seed_list:
+    #     # model_params["snr_db"] = snr
+    #     # p.case_index = f"50.2.{int(1+snr/3)}"  # case index 설정
+    #     p.case_index = f"{int(59 + seed)}.1.1"  # case index 설정
+
+    # 파라미터 클래스 가져오기
+    preprocess_params = PreprocessParams()
+    train_params = TrainParams()
+    test_params = TestParams()
+    recons_params = ReconstructParams()
 
     print(f"========================== case_{p.case_index} start ==========================\n")
     setup_seed(42)
-    # setup_seed(6)
 
     print("========================== preprocess ==========================\n")
     if is_preprocessed == False:
