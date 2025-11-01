@@ -11,6 +11,7 @@ from torch.utils.data import TensorDataset
 from tqdm import tqdm
 
 from parameters.parameters import PreprocessParams,case_index
+import parameters.parameters as p
 
 from .cycle_reshape import resample_to_fixed_length
 from .methods import *
@@ -76,11 +77,11 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     # 0909 정규화 전후 분포 비교
     feature_names = [col for col in df_cleaned.columns if col != "file_index"]
 
-    os.makedirs(f"cycle_preprocess/analysis/normalize_comparison/case_{case_index}", exist_ok=True)
+    os.makedirs(f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}", exist_ok=True)
     visualize_data_comparison(scaled_df,
                                 scaled_df,
                                 feature_names=feature_names,
-                                output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{case_index}",
+                                output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}",
                             )
 
     # 다시 scaled_df에 저장했던 file_index 컬럼 복원

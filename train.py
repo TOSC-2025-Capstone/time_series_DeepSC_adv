@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-from parameters.parameters import TrainParams, save_fig_dir, LossType, channel_type
+from parameters.parameters import TrainParams, LossType, channel_type
 import csv
 import time
 from utils import log_epoch_stats_csv, plot_training_logs, train_mi, Channels, PowerNormalize
@@ -30,7 +30,7 @@ from models.mutual_info import sample_batch, mutual_information
 # 기본값으로 train parameter 셋을 그대로 입력함 , model, device만 전달
 def train_model(
     model=None,
-    params: TrainParams = None,
+    params:TrainParams= None,
     device=None,
     mi_net=None,
 ):
@@ -53,6 +53,7 @@ def train_model(
     num_epochs = params.num_epochs
     batch_size = params.batch_size
     lr = params.lr
+    save_fig_dir = params.save_fig_dir
 
     # 1. 데이터 로드 (절대 경로로 변환)
     current_dir = os.path.dirname(os.path.abspath(__file__))

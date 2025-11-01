@@ -14,6 +14,7 @@ from parameters.parameters import (
     is_skip_0_in_voltage,
     is_skip_outlier_eliminate,
 )
+import parameters.parameters as p
 
 from .methods import *
 
@@ -386,7 +387,7 @@ def process_and_save_hybrid_outlier_data(
     if outlier_report is not None:
         os.makedirs("./analysis/outlier_reports", exist_ok=True)
         outlier_report.to_csv(
-            f"./analysis/outlier_reports/hybrid_outlier_report_z={outlier_threshold}_case_{case_index}.csv",
+            f"./analysis/outlier_reports/hybrid_outlier_report_z={outlier_threshold}_case_{p.case_index}.csv",
             index=False,
         )
         print(f"Hybrid outlier report saved")
