@@ -778,6 +778,9 @@ case 69.1.1 : case 50 + seed list 순회 테스트, 21db, seed 10
 case 60.2.1 : case 50 + seed list 순회 테스트, 21db, seed 1
 case 60.2.1 : case 50 + seed list 순회 테스트, 21db, seed 10
 
+case 60.2.2~8 : case 60.2.1 의 snr 3~21 테스트만 진행
+이 구조로 60.2.1 ~ 60.2.8 ~ 69.2.1 ~ 69.2.8 까지 존재함
+
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781
     (Pdb) math.sqrt(n_var)

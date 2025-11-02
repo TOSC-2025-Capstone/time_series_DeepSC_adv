@@ -61,97 +61,100 @@ model_type_list = ["deepsc", "lstm"]
 if __name__ == "__main__":
     # for model_type in model_type_list:
     #     p.model_type = model_type
-    # for snr in snr_list:
     for seed in seed_list:
-        # model_params["snr_db"] = snr
-        # p.case_index = f"50.2.{int(1+snr/3)}"  # case index 설정
-        p.case_index = f"{int(59 + seed)}.2.1"  # case index 설정
+        # case index와 달리 모델 체크포인트는 snr loop에서는 고정값으로 설정
+        checkpoint_index = f"{int(59 + seed)}.1.1"
+        test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 
-        # 파라미터 클래스 가져오기
-        preprocess_params = PreprocessParams()
-        train_params = TrainParams()
-        test_params = TestParams()
-        recons_params = ReconstructParams()
+        for idx, snr in enumerate(snr_list):
+            model_params["snr_db"] = snr
+            # p.case_index = f"50.2.{int(1+snr/3)}"  # case index 설정
+            p.case_index = f"{int(59 + seed)}.1.{idx+2}"  # case index 설정
 
-        print(f"========================== case_{p.case_index} start ==========================\n")
-        setup_seed(seed)
-        print(f"seed: {seed}, caseindex: {p.case_index}, trainparam: {train_params} 으로 설정되었습니다.")
-        # setup_seed(6)
+            # 파라미터 클래스 가져오기
+            preprocess_params = PreprocessParams()
+            train_params = TrainParams()
+            test_params = TestParams()
+            recons_params = ReconstructParams()
 
-        print("========================== preprocess ==========================\n")
-        if is_preprocessed == False:
-            cycle_preprocess(preprocess_params=preprocess_params)
-            print("사이클 전처리가 완료되었습니다.")
-        else:
-            print("사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.")
+            print(f"========================== case_{p.case_index} start ==========================\n")
+            setup_seed(seed)
+            print(f"seed: {seed}, caseindex: {p.case_index}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
 
-        # model create
-        print("========================== model_select ==========================\n")
-        model = None
-        expert_model = None
-        mi_net = None
-        if model_type == "deepsc":
-            model = DeepSC(params=model_params, model_type=model_type).to(device)
-            print("Transformer 모델이 선택되었습니다.")
-            if is_learning_minet == True and channel_type != "no_channel":
-                mi_net = Mine().to(device)
-        elif model_type == "lstm":
-            model = DeepSC(params=model_params, model_type=model_type).to(device)
-            print("LSTM_SC 모델이 선택되었습니다.")
-        elif model_type == "gru":
-            model = DeepSC(params=model_params, model_type=model_type).to(device)
-            print("GRU_SC 모델이 선택되었습니다.")
-
-        total, trainable = count_parameters(model)
-        print(f"Total params: {total:,}")
-        print(f"Trainable params: {trainable:,}")
-
-        # train
-        if is_trained == False:
-            print("========================== train ==========================\n")
-            model.train()
-            if model.training:
-                print("현재 모델은 training 모드입니다.")
-                # train_model(params=train_params, model=model, expert_model=expert_model, device=device, mi_net=mi_net)
-                train_model(params=train_params, model=model, device=device, mi_net=mi_net)
+            print("========================== preprocess ==========================\n")
+            if is_preprocessed == False:
+                cycle_preprocess(preprocess_params=preprocess_params)
+                print("사이클 전처리가 완료되었습니다.")
             else:
-                print("현재 모델은 evaluation (eval) 모드입니다. 다시 실행하여 주세요")
-                exit(1)
+                print("사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.")
 
-        print(
-            "========================== best checkpoint load ==========================\n"
-        )
-        if model_type != "only_channel":
-            try:
-                if os.path.exists(p.get_model_checkpoint_path()):
-                    model.load_state_dict(
-                        torch.load(f"{p.get_model_checkpoint_path()}best.pth", map_location=device)
-                    )
-                    print("모델이 성공적으로 로드되었습니다.")
-            except Exception as e:
-                print(f"모델 로드 실패: {e}")
+            # model create
+            print("========================== model_select ==========================\n")
+            model = None
+            expert_model = None
+            mi_net = None
+            if model_type == "deepsc":
+                model = DeepSC(params=model_params, model_type=model_type).to(device)
+                print("Transformer 모델이 선택되었습니다.")
+                if is_learning_minet == True and channel_type != "no_channel":
+                    mi_net = Mine().to(device)
+            elif model_type == "lstm":
+                model = DeepSC(params=model_params, model_type=model_type).to(device)
+                print("LSTM_SC 모델이 선택되었습니다.")
+            elif model_type == "gru":
+                model = DeepSC(params=model_params, model_type=model_type).to(device)
+                print("GRU_SC 모델이 선택되었습니다.")
 
-        # performance + result figuring
-        print("========================== performance ==========================\n")
-        p.is_train_phase = False
-        if is_skip_performance == False:
-            model.eval()
-            if model.training:
-                print("현재 모델은 training 모드입니다.")
-            else:
-                print("현재 모델은 evaluation (eval) 모드입니다.")
-            performance_cycle(params=test_params, model=model, device=device, is_full_reconstruct=False)
+            total, trainable = count_parameters(model)
+            print(f"Total params: {total:,}")
+            print(f"Trainable params: {trainable:,}")
 
-        print("========================== full reconstruction ==========================\n")
+            # train
+            if is_trained == False:
+                print("========================== train ==========================\n")
+                model.train()
+                if model.training:
+                    print("현재 모델은 training 모드입니다.")
+                    # train_model(params=train_params, model=model, expert_model=expert_model, device=device, mi_net=mi_net)
+                    train_model(params=train_params, model=model, device=device, mi_net=mi_net)
+                else:
+                    print("현재 모델은 evaluation (eval) 모드입니다. 다시 실행하여 주세요")
+                    exit(1)
 
-        gc.collect()
-        torch.cuda.empty_cache()
-        if is_skip_full_reconstruct == False :
-            model.eval()
-            if model.training:
-                print("현재 모델은 training 모드입니다.")
-            else:
-                print("현재 모델은 evaluation (eval) 모드입니다.")
-            performance_cycle(
-                params=recons_params, model=model, device=device, is_full_reconstruct=True
+            print(
+                "========================== best checkpoint load ==========================\n"
             )
+            if model_type != "only_channel":
+                try:
+                    if os.path.exists(test_model_checkpoint_path):
+                        model.load_state_dict(
+                            torch.load(f"{test_model_checkpoint_path}best.pth", map_location=device)
+                        )
+                        print("모델이 성공적으로 로드되었습니다.")
+                except Exception as e:
+                    print(f"모델 로드 실패: {e}")
+
+            # performance + result figuring
+            print("========================== performance ==========================\n")
+            p.is_train_phase = False
+            if is_skip_performance == False:
+                model.eval()
+                if model.training:
+                    print("현재 모델은 training 모드입니다.")
+                else:
+                    print("현재 모델은 evaluation (eval) 모드입니다.")
+                performance_cycle(params=test_params, model=model, device=device, is_full_reconstruct=False)
+
+            print("========================== full reconstruction ==========================\n")
+
+            gc.collect()
+            torch.cuda.empty_cache()
+            if is_skip_full_reconstruct == False :
+                model.eval()
+                if model.training:
+                    print("현재 모델은 training 모드입니다.")
+                else:
+                    print("현재 모델은 evaluation (eval) 모드입니다.")
+                performance_cycle(
+                    params=recons_params, model=model, device=device, is_full_reconstruct=True
+                )
