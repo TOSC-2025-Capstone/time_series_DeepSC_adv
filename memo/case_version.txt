@@ -712,7 +712,7 @@ case 48.2.5 : case 48.2.3 + 20db
 
 case 50.1.1 : case 46 + 전력 정규화 power < 1이어도 진행하도록 수정, 5db
 case 50.1.2 : case 46 + 전력 정규화 power < 1이어도 진행하도록 수정, 20db
-case 50.2.1 : case 46 + 전력 정규화 power < 1이어도 진행하도록 수정, 20db
+case 50.2.1 : case 46 + 전력 정규화 power < 1이어도 진행하도록 수정, 5db
 
 case 50.1.3 : case 46 + 입출력 프로젝션 로직 약화 (d_model 20)
 

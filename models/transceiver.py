@@ -986,8 +986,6 @@ class DeepSC(nn.Module):
         # output, _ = self.decoder(decompressed)
         # output = decompressed
 
-        # output, _ = self.sequence_model(output)
-
         # 8단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
         final_output = self.output_projection(output)

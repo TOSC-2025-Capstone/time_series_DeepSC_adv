@@ -13,23 +13,37 @@ SELECTED_METRIC = 'MSE'
 MODEL_CONFIG = {
     'Inverted-Transformer': 1,
     'LSTM': 2,
-    'GRU': 3,
-    'Transformer': 4,
+    # 'GRU': 3,
+    # 'Transformer': 4,
 }
-BASE_PATH_TEMPLATE = "results/performance_test/case46.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
+# BASE_PATH_TEMPLATE = "results/performance_test/case{case_idx}.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
+BASE_PATH_TEMPLATE = "results/performance_test/case60.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
 
 # 비교할 SNR 리스트를 정의함.
 SNRS = [3, 6, 9, 12, 15, 18, 21]
 
 # SNR 값과 경로의 snr_idx를 매핑함.
 SNR_TO_INDEX_MAP = {
-    3: 5,
-    6: 6,
-    9: 7,
-    12: 8,
-    15: 3,
-    18: 9,
-    21: 10,
+    3: 2,
+    6: 3,
+    9: 4,
+    12: 5,
+    15: 6,
+    18: 7,
+    21: 8,
+}
+
+CASE_TO_INDEX_MAP = {
+    60: 1,
+    61: 2,
+    62: 3,
+    63: 4,
+    64: 5,
+    65: 6,
+    66: 7,
+    67: 8,
+    68: 9,
+    69: 10,
 }
 
 # 각 모델의 하위 디렉토리 이름 (경로에 따라 수정 필요함).
@@ -200,27 +214,6 @@ if __name__ == "__main__":
     print("---------------------------------------------------------")
 
     df_results = load_and_preprocess_data(FILE_PATHS, SELECTED_METRIC)
-
-    if df_results.empty:
-        print("\n[Warning] No valid data found from file paths. Using dummy data for demonstration.")
-
-        # 확장된 SNR 리스트에 맞는 더미 데이터를 생성함.
-        dummy_data_list = []
-        model_names_cycle = list(MODEL_CONFIG.keys())
-        # LSTM을 기준으로 삼기 위해 순서를 조정할 수 있음
-        if 'LSTM' in model_names_cycle:
-             model_names_cycle.insert(0, model_names_cycle.pop(model_names_cycle.index('LSTM')))
-
-        for snr in SNRS:
-            for model in model_names_cycle:
-                # SNR이 증가할수록 에러가 감소하는 경향을 보이는 더미 값을 생성함.
-                base_error = 1.0 / (snr + 1) # 기본 에러 (SNR 높을수록 작아짐)
-                # 모델별 성능 차이를 위한 임의 계수
-                model_factor = {'LSTM': 1.0, 'GRU': 1.1, 'Transformer': 0.9, 'Inverted-Transformer': 0.8}.get(model, 1)
-                error_value = base_error * model_factor * (1 + (np.random.rand() - 0.5) * 0.1) # 약간의 노이즈 추가
-                dummy_data_list.append({'SNR': snr, 'Model': model, SELECTED_METRIC: max(error_value, 0.001)}) # 에러가 0이 되지 않도록
-
-        df_results = pd.DataFrame(dummy_data_list)
 
     if not df_results.empty:
         # 모델 순서 지정 (LSTM이 맨 앞에 오도록)
