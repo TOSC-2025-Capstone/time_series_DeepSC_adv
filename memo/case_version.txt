@@ -781,6 +781,56 @@ case 60.2.1 : case 50 + seed list 순회 테스트, 21db, seed 10
 case 60.2.2~8 : case 60.2.1 의 snr 3~21 테스트만 진행
 이 구조로 60.2.1 ~ 60.2.8 ~ 69.2.1 ~ 69.2.8 까지 존재함
 
+case x.y.2 : 3db,
+~
+case x.y.8 : 21db
+
+case 10000.1.1 : case 60.1.2 와 비교 (시드 1, 3db)
+(Pdb) train_params
+TrainParams(
+    train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//train_data.pt',
+    validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//val_data.pt',
+    scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//scaler.pkl', model_save_path='./checkpoints/case_10000.1.1/MSE/deepsc/deepsc_battery_epoch',
+    save_fig_dir='results/case10000.1.1/rayleigh_deepsc_MSE', num_epochs=120,
+    batch_size=1, lr=1e-05, loss_type='MSE', lambda_feat=3)
+
+(DeepSC) PS C:\Users\ksshin\Desktop\ChanminLee\time_series_DeepSC_adv> python main.py
+1.12.1+cu116
+11.6
+cuda:0 현재 사용중인 디바이스
+========================== case_10001.1.1 start ==========================
+
+seed: 1, caseindex: 10001.1.1, batch_size=2, test_path=./checkpoints/case_10001.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(64)<module>()
+-> for batch_idx, batch_size in enumerate(batch_size_list):
+(Pdb) train_params.batch_size
+2
+(Pdb) c
+========================== case_10002.1.1 start ==========================
+
+seed: 1, caseindex: 10002.1.1, batch_size=4, test_path=./checkpoints/case_10002.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(64)<module>()
+-> for batch_idx, batch_size in enumerate(batch_size_list):
+(Pdb) train_params.batch_size
+4
+(Pdb) c
+========================== case_10003.1.1 start ==========================
+
+seed: 1, caseindex: 10003.1.1, batch_size=8, test_path=./checkpoints/case_10003.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(64)<module>()
+-> for batch_idx, batch_size in enumerate(batch_size_list):
+(Pdb) train_params.batch_size
+8
+(Pdb) c
+========================== case_10004.1.1 start ==========================
+
+seed: 1, caseindex: 10004.1.1, batch_size=16, test_path=./checkpoints/case_10004.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(64)<module>()
+-> for batch_idx, batch_size in enumerate(batch_size_list):
+(Pdb) train_params.batch_size
+
+
+
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781
     (Pdb) math.sqrt(n_var)

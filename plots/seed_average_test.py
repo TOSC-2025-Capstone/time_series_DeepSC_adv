@@ -166,7 +166,7 @@ def plot_snr_vs_mse_by_feature(csv_path, metric='MSE'):
         # 축 설정
         ax.set_title(title, fontsize=14)
         ax.set_xlabel('SNR (dB)', fontsize=12)
-        ax.set_ylabel(f'Mean Squared Error ({metric}) - Log Scale', fontsize=12)
+        ax.set_ylabel(f'Mean Squared Error ({metric})', fontsize=12)
         # ax.set_yscale('log') # 로그 스케일 적용
 
         ax.grid(True, which="both", ls='--', alpha=0.6)

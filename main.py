@@ -57,20 +57,25 @@ def count_parameters(model):
 snr_list = [3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 model_type_list = ["deepsc", "lstm"]
+batch_size_list = [2, 4, 8, 16]
+base_case_number = 10000
 
 if __name__ == "__main__":
-    # for model_type in model_type_list:
-    #     p.model_type = model_type
-    for seed in seed_list:
-        # case index와 달리 모델 체크포인트는 snr loop에서는 고정값으로 설정
-        checkpoint_index = f"{int(69 + seed)}.1.1"
+    for batch_idx, batch_size in enumerate(batch_size_list):
+    # for seed in seed_list:
+    #     # case index와 달리 모델 체크포인트는 snr loop에서는 고정값으로 설정
+        case_number = int(base_case_number + batch_idx+1)
+        p.train_batch_size = batch_size
+        checkpoint_index = f"{case_number}.1.1"
         test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 
-        for idx, snr in enumerate(snr_list):
+        # p.case_index = f"{int(case_number)}.1.1"  # case index 설정
+        for snr_idx, snr in enumerate(snr_list):
             model_params["snr_db"] = snr
-            # p.case_index = f"50.2.{int(1+snr/3)}"  # case index 설정
-            p.case_index = f"{int(59 + seed)}.1.{idx+2}"  # case index 설정
+            p.case_index = f"{int(case_number)}.1.{snr_idx+2}"  # case index 설정
+            # p.case_index = f"{int(case_number + seed)}.1.1"  # case index 설정
 
+            seed = 1
             # 파라미터 클래스 가져오기
             preprocess_params = PreprocessParams()
             train_params = TrainParams()
@@ -79,14 +84,15 @@ if __name__ == "__main__":
 
             print(f"========================== case_{p.case_index} start ==========================\n")
             setup_seed(seed)
-            print(f"seed: {seed}, caseindex: {p.case_index}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+            print(f"seed: {seed}, caseindex: {p.case_index}, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+            pdb.set_trace()
 
-            print("========================== preprocess ==========================\n")
-            if is_preprocessed == False:
-                cycle_preprocess(preprocess_params=preprocess_params)
-                print("사이클 전처리가 완료되었습니다.")
-            else:
-                print("사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.")
+            # print("========================== preprocess ==========================\n")
+            # if is_preprocessed == False:
+            #     cycle_preprocess(preprocess_params=preprocess_params)
+            #     print("사이클 전처리가 완료되었습니다.")
+            # else:
+            #     print("사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.")
 
             # # model create
             # print("========================== model_select ==========================\n")

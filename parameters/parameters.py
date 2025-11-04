@@ -71,7 +71,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "59.1.1"
+case_index = "10000.1.1"
 
 # 모델 종류
 class ModelType(Enum):
@@ -228,12 +228,13 @@ get_save_performance_dir = lambda: (
 # epochs
 train_epochs = 120
 # batch size
-train_batch_size = 32
+train_batch_size = 1
 # learning rate
 train_lr = 1e-5
 # input dimension
 input_dim = 5
 
+get_train_batch_size = lambda: train_batch_size
 
 """ ========================= 각 기능 모듈별 파라미터 정리 ========================= """
 # # preprocess
@@ -323,7 +324,7 @@ class TrainParams:
 
     # (단순 변수 -> field(default_factory=...)로 변경)
     num_epochs: int = field(default=train_epochs) # (이 변수들은 루프에서 안바뀌면 default= 그대로 둬도 됨)
-    batch_size: int = field(default=train_batch_size)
+    batch_size: int = field(default_factory=get_train_batch_size)
     lr: float = field(default=train_lr)
     loss_type: str = field(default_factory=lambda: loss_type)
     lambda_feat: float = 3  # (정적 값이면 그대로 둠)
