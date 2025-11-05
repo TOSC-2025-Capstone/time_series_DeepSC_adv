@@ -9,10 +9,12 @@ import os
 # 비교할 지표를 선택함 ('MSE', 'MAE', 'RMSE' 중 하나).
 SELECTED_METRIC = 'MSE'
 
+date = "251105"  # 그래프 저장용 날짜 디렉토리 이름
+
 # 모델별 인덱스와 기본 경로 템플릿을 설정함.
 MODEL_CONFIG = {
     'Inverted-Transformer': 1,
-    'LSTM': 2,
+    # 'LSTM': 2,
     # 'GRU': 3,
     # 'Transformer': 4,
 }
@@ -198,7 +200,8 @@ def plot_comparison(df, selected_metric, model_names_ordered, baseline_model='LS
         os.makedirs('plots')
 
     # 그래프를 저장함 (파일명에 'relative' 추가).
-    filename = f'plots/model_comparison_relative_{selected_metric}.png'
+    os.makedirs(f'plots/{date}/', exist_ok=True)
+    filename = f'plots/{date}/model_comparison_relative_{selected_metric}.png'
     plt.savefig(filename, dpi=300)
     print(f"\nRelative performance graph saved as '{filename}'")
     print("---------------------------------------------------------")
@@ -217,7 +220,9 @@ if __name__ == "__main__":
 
     if not df_results.empty:
         # 모델 순서 지정 (LSTM이 맨 앞에 오도록)
-        ordered_models = ['LSTM'] + [m for m in MODEL_CONFIG.keys() if m != 'LSTM']
-        plot_comparison(df_results, SELECTED_METRIC, ordered_models, baseline_model='LSTM')
+        # ordered_models = ['LSTM'] + [m for m in MODEL_CONFIG.keys() if m != 'LSTM']
+        # plot_comparison(df_results, SELECTED_METRIC, ordered_models, baseline_model='LSTM')
+        # ordered_models = ['LSTM'] + [m for m in MODEL_CONFIG.keys() if m != 'LSTM']
+        plot_comparison(df_results, SELECTED_METRIC, MODEL_CONFIG.keys(), baseline_model='Inverted-Transformer')
     else:
         print("No data available to generate a plot.")

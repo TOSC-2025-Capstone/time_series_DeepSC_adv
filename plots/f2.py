@@ -71,7 +71,9 @@ def plot_bars_single_column(csv_paths, case_labels=None, save_path=None, metric_
     for metric in metrics:
         # --- Figure 크기 변경 ---
         fig, ax = plt.subplots(figsize=(8, 6)) # 싱글 컬럼용 (가로 7, 세로 6 인치)
-        bar_width = 0.18 # 막대 너비
+        # fig, ax = plt.subplots(figsize=(12, 6)) # 싱글 컬럼용 (가로 7, 세로 6 인치)
+        # bar_width = 0.18 # 막대 너비
+        bar_width = 0.12 # 막대 너비
         num_cases = len(dfs)
         x = np.arange(len(features)) # X축 위치 (피처 중앙)
 
@@ -316,36 +318,45 @@ if __name__ == "__main__":
     # 예시 사용법 (로컬에 존재하는 case20.* 경로로 업데이트)
     csv_paths = [
         # 항상 LSTM 먼저 배치
-        # "results/performance_test/case39.2.3/Rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case39.3.5/Rayleigh_gru_MSE/performance_statistics.csv",
-        # "results/performance_test/case39.4.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case39.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
         # "results/performance_test/case46.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
         # "results/performance_test/case46.3.1/Rayleigh_gru_MSE/performance_statistics.csv",
         # "results/performance_test/case46.4.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case46.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
-        "results/performance_test/case50.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case50.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case56.1.9/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case57.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case57.1.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case50.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case50.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case56.1.9/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case57.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case57.1.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
+
+        "results/performance_test/case10000.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10001.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10002.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10003.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+
+        # "results/performance_test/case60.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case60.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10002.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case60.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case60.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10002.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
-    filename = "01291.csv"
-    # filename = "02619.csv"
+    # filename = "01291.csv"
+    filename = "01319.csv"
     metric_type = "MSE"
+    case_index_prefix = "batch"
+    date = "251105"  # 그래프 저장용 날짜 디렉토리 이름
     save_path = (
-        f"./final_comparison_plots/case{str(case_index).split('.')[0]}_251029/{metric_type}/{filename}/"
+        f"./final_comparison_plots/{date}/case{case_index_prefix}/{metric_type}/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
-    # case_labels = [ "Inverted-Transformer_k7" , "Inverted-Transformer_k3", "Inverted-Transformer_k5"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
-    # case_labels = [ "Inverted-Transformer", "LSTM", "Inverted-Transformer-21", "LSTM-21"]
-    # case_labels = [ "4", "5", "6", "7", "8", "9"]
-    case_labels = ["","","","","" ]
-    # case_labels = [ "no-compress_lstm", "layer 1", "layer 2", "layer 4", "layer 1", "layer 2", "layer 4"]
+    case_labels = [ "60-iT-3db","60-lstm-3db", "10002-3db", "60-iT-21db", "60-lstm-21db", "10002-21db"]
+    # case_labels = ["batch-1","batch-2","batch-4","batch-8","batch-16" ]
+    # case_labels = ["snr 3", "snr 6", "snr 9", "snr 12", "snr 15", "snr 18", "snr 21"]
 
     # 1. 기본 라벨 정의
     # base_labels = ["no-compress",  "feature 3/5",  "feature 1/5"]
