@@ -830,6 +830,26 @@ seed: 1, caseindex: 10004.1.1, batch_size=16, test_path=./checkpoints/case_10004
 (Pdb) train_params.batch_size
 
 
+========================== case_10001.1.2 start ==========================
+
+snr: 3, caseindex: 10001.1.2, batch_size=2, test_path=./checkpoints/case_10001.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(72)<module>()
+-> for snr_idx, snr in enumerate(snr_list):
+(Pdb) c
+========================== case_10001.1.3 start ==========================
+
+snr: 6, caseindex: 10001.1.3, batch_size=2, test_path=./checkpoints/case_10001.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(72)<module>()
+-> for snr_idx, snr in enumerate(snr_list):
+(Pdb) c
+========================== case_10001.1.4 start ==========================
+
+snr: 9, caseindex: 10001.1.4, batch_size=2, test_path=./checkpoints/case_10001.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+> c:\users\ksshin\desktop\chanminlee\time_series_deepsc_adv\main.py(72)<module>()
+-> for snr_idx, snr in enumerate(snr_list):
+(Pdb) model_params["snr_db"]
+9
+
 
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781
