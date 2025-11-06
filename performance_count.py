@@ -353,13 +353,13 @@ class CycleDataComparator:
 
 
 def main():
-    case_number = "46.1.10"
+    case_number = "10002.1.8"
     model_type = "deepsc"
     threshold_percent = 15
 
-    # comparison_method = "mean"
+    comparison_method = "mean"
     # comparison_method = "range_center"
-    comparison_method = "point_wise"
+    # comparison_method = "point_wise"
 
     min_abs_thresh = 1e-6 # 예시 값, 필요시 조정
 
