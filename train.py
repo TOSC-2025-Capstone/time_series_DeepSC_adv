@@ -207,8 +207,8 @@ def train_model(
 
         # === 정규화된 입력과 output 비교 plot (3개 배치만) ===
         # 0, 40, 80
-        # if (epoch + 1) % 40 == 0:
-        if 1 == 2:
+        if (epoch + 1) % 40 == 0:
+        # if 1 == 2:
             os.makedirs(save_fig_dir, exist_ok=True)
             # batch: [batch_size, window, feature]
             sample_output = model(fixed_batch)

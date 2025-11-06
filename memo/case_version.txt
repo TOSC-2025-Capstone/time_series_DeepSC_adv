@@ -786,6 +786,15 @@ case x.y.2 : 3db,
 case x.y.8 : 21db
 
 case 10000.1.1 : case 60.1.2 와 비교 (시드 1, 3db)
+
+case 10005.1.1 :
+case 10006.1.1 : PE 제거
+case 10007.1.1 : 10006 + ffn conv대신 mlp 사용
+case 10008.1.1 : 10005 + time PE만 진행
+
+case 10009.1.1 : batch_size 4, layer 2, PE 제거, 3db, 15%, dropout 0.1
+
+
 (Pdb) train_params
 TrainParams(
     train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//train_data.pt',

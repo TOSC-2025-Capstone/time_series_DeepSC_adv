@@ -694,7 +694,8 @@ class iTransformerEncoder(nn.Module):
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
         x = self.input_projection(x)
-        x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # x = x + self.time_pos_embedding
 
         x = self.dropout(x)
 
@@ -778,7 +779,8 @@ class iTransformerDecoder(nn.Module):
         x = query_embed.transpose(1, 2) # [B, T(max_len), F]
 
         # Positional Encoding 적용
-        x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # x = x + self.time_pos_embedding + self.feature_pos_embedding
+        # x = x + self.time_pos_embedding
         x = self.dropout(x)
 
         # 각 디코더 레이어 통과
