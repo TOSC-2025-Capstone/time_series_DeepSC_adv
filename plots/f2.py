@@ -330,33 +330,34 @@ if __name__ == "__main__":
         # "results/performance_test/case57.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case57.1.3/Rayleigh_deepsc_MSE/performance_statistics.csv",
 
-        "results/performance_test/case10000.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10001.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10002.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10003.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10004.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10000.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10001.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10002.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10003.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10004.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
 
-        # "results/performance_test/case60.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case60.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case10002.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case60.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        # "results/performance_test/case60.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
-        # "results/performance_test/case10002.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10004.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     # filename = "01291.csv"
     filename = "01319.csv"
     metric_type = "MSE"
-    case_index_prefix = "batch"
+    case_index_prefix = "10004"
     date = "251105"  # 그래프 저장용 날짜 디렉토리 이름
     save_path = (
         f"./final_comparison_plots/{date}/case{case_index_prefix}/{metric_type}/{filename}/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
-    case_labels = [ "60-iT-3db","60-lstm-3db", "10002-3db", "60-iT-21db", "60-lstm-21db", "10002-21db"]
+    # case_labels = [ "60-iT-3db","60-lstm-3db", "10002-3db", "60-iT-21db", "60-lstm-21db", "10002-21db"]
     # case_labels = ["batch-1","batch-2","batch-4","batch-8","batch-16" ]
     # case_labels = ["snr 3", "snr 6", "snr 9", "snr 12", "snr 15", "snr 18", "snr 21"]
+    case_labels = [ "lstm-snr 3", "lstm-snr 12", "lstm-snr 21", "iT-snr 3", "iT-snr 12",  "iT-snr 21",]
 
     # 1. 기본 라벨 정의
     # base_labels = ["no-compress",  "feature 3/5",  "feature 1/5"]

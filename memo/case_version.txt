@@ -851,6 +851,17 @@ snr: 9, caseindex: 10001.1.4, batch_size=2, test_path=./checkpoints/case_10001.1
 9
 
 
+========================== case_10000.2.2 start ==========================
+
+snr: 3, caseindex: 10000.2.2, batch_size=1, test_path=./checkpoints/case_10000.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+========================== case_10000.2.3 start ==========================
+
+snr: 6, caseindex: 10000.2.3, batch_size=1, test_path=./checkpoints/case_10000.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+========================== case_10000.2.4 start ==========================
+
+snr: 9, caseindex: 10000.2.4, batch_size=1, test_path=./checkpoints/case_10000.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+========================== case_10000.2.5 start ==========================
+
     (Pdb) n_var = signal_power/snr_linear
     0.2070829419707781
     (Pdb) math.sqrt(n_var)
