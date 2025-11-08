@@ -36,11 +36,6 @@ from utils import train_mi
 parser = argparse.ArgumentParser()
 # parser.add_argument('--data-dir', default='data/train_data.pkl', type=str)
 
-print(torch.__version__)  # PyTorch 버전 확인
-print(torch.version.cuda)  # PyTorch에서 사용하는 CUDA 버전 확인
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device, "현재 사용중인 디바이스")
-
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -58,18 +53,24 @@ snr_list = [3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 model_type_list = ["deepsc", "lstm"]
 batch_size_list = [1, 2, 4, 8, 16]
-base_case_number = 10000
-model_type_index = 1 if model_type == "DeepSC" else 2
+base_case_number = 10011
+model_type_index = 1 if model_type == "deepsc" else 2
 
 if __name__ == "__main__":
+    print(torch.__version__)  # PyTorch 버전 확인
+    print(torch.version.cuda)  # PyTorch에서 사용하는 CUDA 버전 확인
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device, "현재 사용중인 디바이스")
+
     seed = 1
     setup_seed(seed)
     # for batch_idx, batch_size in enumerate(batch_size_list):
-        # case_number = int(base_case_number + batch_idx)
-        # p.train_batch_size = batch_size
-        # checkpoint_index = f"{case_number}.{model_type_index}.1"
-    test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
-    # test_model_checkpoint_path = f"./checkpoints/{checkpoint_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
+    # case_number = int(base_case_number + batch_idx)
+    # p.train_batch_size = batch_size
+    # checkpoint_index = f"{case_number}.{model_type_index}.1"
+    checkpoint_index = f"{base_case_number}.{model_type_index}.1"
+    # test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
+    test_model_checkpoint_path = f"./checkpoints/{checkpoint_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
 
         # p.case_index = f"{int(case_number)}.{model_type_index}.1"  # case index 설정
         # for snr_idx, snr in enumerate(snr_list):

@@ -2,7 +2,8 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
+# [수정] Dataset 클래스를 사용하기 위해 import
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 import joblib
 from models.transceiver import DeepSC
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -21,10 +22,67 @@ import time
 from utils import log_epoch_stats_csv, plot_training_logs, train_mi, Channels, PowerNormalize
 from models.mutual_info import sample_batch, mutual_information
 
+# [수정] random import (랜덤 크롭을 위해)
+import random
+
 """
-# train_model
+# [신규] CycleSegmentDataset
+
+논의한 2번 방식(동적 분할)을 구현하는 커스텀 Dataset 클래스입니다.
+- __init__: (사이클 수, target_length, 5) 텐서와 분할할 길이 n을 받습니다.
+- __len__: 총 사이클 수를 반환합니다.
+- __getitem__:
+    - (학습 시) 사이클 내에서 n 길이의 랜덤한 세그먼트를 반환합니다.
+    - (검증 시) 사이클 내에서 n 길이의 고정된 첫 세그먼트를 반환합니다.
+"""
+class CycleSegmentDataset(Dataset):
+    def __init__(self, full_cycles_tensor, segment_length_n, is_train=True):
+        """
+        Args:
+            full_cycles_tensor (torch.Tensor): (num_cycles, target_length, num_features)
+            segment_length_n (int): 분할할 시퀀스 길이 (n)
+            is_train (bool): True이면 랜덤 크롭, False이면 고정 크롭
+        """
+        self.data = full_cycles_tensor
+        self.n = segment_length_n
+        self.is_train = is_train
+
+        # 원본 사이클의 전체 길이
+        self.target_length = self.data.shape[1]
+
+        if self.target_length < self.n:
+            # 이 경우 패딩이 필요하지만, 전처리에서 target_length를 고정했으므로
+            # n이 target_length보다 크지 않다고 가정합니다.
+            raise ValueError(f"segment_length_n(n={self.n})이 "
+                             f"원본 시퀀스 길이(target_length={self.target_length})보다 큽니다.")
+
+    def __len__(self):
+        # 데이터셋의 크기 = 총 사이클의 수
+        return self.data.shape[0]
+
+    def __getitem__(self, idx):
+        # idx에 해당하는 전체 사이클 데이터를 가져옴
+        # shape: (target_length, num_features)
+        full_cycle = self.data[idx]
+
+        if self.is_train:
+            # [학습] 랜덤 크롭: 0 ~ (전체길이 - n) 사이에서 랜덤 시작점 선택
+            start_index = random.randint(0, self.target_length - self.n)
+        else:
+            # [검증] 고정 크롭: 항상 맨 앞부터 n개 선택
+            start_index = 0
+
+        # [n, num_features] 형태의 세그먼트 반환
+        segment = full_cycle[start_index : start_index + self.n]
+
+        return segment
+
+
+"""
+# train_model현재 사용중인 디바이스
 
 모델과 파라미터를 입력받아 학습을 진행하는 함수
+(DataLoader 부분이 CycleSegmentDataset을 사용하도록 수정됨)
 """
 
 # 기본값으로 train parameter 셋을 그대로 입력함 , model, device만 전달
@@ -55,6 +113,13 @@ def train_model(
     lr = params.lr
     save_fig_dir = params.save_fig_dir
 
+    # [수정] segment_length_n (n값) 파라미터 로드
+    try:
+        segment_length_n = params.segment_length_n
+    except AttributeError:
+        print("경고: TrainParams에 'segment_length_n'이 없습니다. 기본값 5를 사용합니다.")
+        segment_length_n = 8 # n의 기본값
+
     # 1. 데이터 로드 (절대 경로로 변환)
     current_dir = os.path.dirname(os.path.abspath(__file__))
     train_pt = os.path.join(current_dir, train_pt.lstrip("./"))
@@ -64,18 +129,49 @@ def train_model(
     print(f"Loading from: {train_pt}")
     train_data = torch.load(train_pt)
     val_data = torch.load(validate_pt)
+
+    # .pt 파일에 저장된 (N_cycles, target_length, N_features) 텐서 추출
     train_tensor = train_data.tensors[0]
     val_tensor = val_data.tensors[0]
     scaler = joblib.load(scaler_path)
 
-    # 2. DataLoader
-    train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
-    # 2-1. sample data fix
-    fixed_batch = train_tensor[:6].to(device)
+    print(f"Train tensor shape: {train_tensor.shape}") # (Cycles, TargetLength, Features)
+    print(f"Val tensor shape: {val_tensor.shape}")   # (Cycles, TargetLength, Features)
+
+    # [수정] 2. Dataset 및 DataLoader (CycleSegmentDataset 사용)
+    train_dataset = CycleSegmentDataset(
+        train_tensor,
+        segment_length_n,
+        is_train=False
+    )
+    val_dataset = CycleSegmentDataset(
+        val_tensor,
+        segment_length_n,
+        is_train=False # 검증 시에는 랜덤 크롭 X
+    )
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4 # 데이터 로딩 속도 향상 (선택 사항)
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4
+    )
+
+    # [수정] 2-1. sample data fix (검증 데이터셋에서 6개 샘플 고정)
+    # val_dataset은 항상 0번 인덱스부터 n개만큼 자르므로 결과가 고정됨
+    num_fixed_samples = min(6, len(val_dataset))
+    fixed_batch_list = [val_dataset[i] for i in range(num_fixed_samples)]
+    fixed_batch = torch.stack(fixed_batch_list).to(device)
+    # fixed_batch shape: (6, n, num_features)
 
     # 3. 모델 초기화
-    input_dim = train_tensor.shape[2]
+    input_dim = train_tensor.shape[2] # 피쳐 수는 동일
     # model = return_model("deepsc") # 파라미터에서 가져온 모델
 
     # 4. 손실함수 및 옵티마이저
@@ -111,7 +207,7 @@ def train_model(
     with open(csv_file, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["Epoch", "Time(sec)", "AvgTime(sec)",
-                            "TrainLoss", "ValLoss", "BestValLoss", "LR"])
+                         "TrainLoss", "ValLoss", "BestValLoss", "LR"])
 
     for epoch in range(num_epochs):
         start_time = time.time()  # 시작 시각 기록
@@ -122,8 +218,10 @@ def train_model(
         total_loss = 0
 
         # 학습 루프
+        # 이제 train_loader는 (batch_size, n, num_features) 형태의 배치를 반환
         train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
         for batch in train_pbar:
+            # batch shape: [batch_size, segment_length_n, num_features]
             batch = batch.to(device)
 
             # mi_net이 있다면 먼저 학습시키고
@@ -169,6 +267,10 @@ def train_model(
             total_loss += loss.item() * batch.size(0)
             train_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
 
+        # [수정] len(train_loader.dataset)은 이제 총 '사이클 수'입니다.
+        # 따라서 avg_train_loss 계산이 약간 달라질 수 있으나,
+        # CycleSegmentDataset이 1 사이클당 1 세그먼트(랜덤)를 반환하므로
+        # 1 에포크당 총 사이클 수만큼의 세그먼트를 보는 것은 동일합니다.
         avg_train_loss = total_loss / len(train_loader.dataset)
         print(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {avg_train_loss:.6f}")
 
@@ -176,12 +278,14 @@ def train_model(
         model.eval()
         val_loss = 0
         with torch.no_grad():
-            # batch [train_batch_size, target_length(reshaped cycle len), d_comp]
+            # val_loader는 (batch_size, n, num_features) 형태의 고정된 배치를 반환
             for batch in val_loader:
                 batch = batch.to(device)
                 output = model(batch)
                 loss = criterion(output, batch)
                 val_loss += loss.item() * batch.size(0)
+
+        # len(val_loader.dataset)은 총 '검증 사이클 수'
         avg_val_loss = val_loss / len(val_loader.dataset)
         print(f"[Epoch {epoch+1}/{num_epochs}] Val Loss: {avg_val_loss:.6f}")
 
@@ -211,14 +315,25 @@ def train_model(
         # if 1 == 2:
             os.makedirs(save_fig_dir, exist_ok=True)
             # batch: [batch_size, window, feature]
+            # fixed_batch는 이미 (6, n, 5) 형태이므로 바로 사용 가능
             sample_output = model(fixed_batch)
-            input_norm = fixed_batch[:3, :, :6].detach().cpu().numpy()  # [3, window, 6]
+
+            # fixed_batch의 shape[0] (샘플 수)가 3보다 작을 수 있으므로 min 사용
+            num_plot_samples = min(3, fixed_batch.shape[0])
+
+            # (num_plot_samples, n, num_features)
+            input_norm = fixed_batch[:num_plot_samples, :, :].detach().cpu().numpy()
             output_norm = (
-                sample_output[:3, :, :6].detach().cpu().numpy()
-            )  # [6, window, 6]
-            for sample_idx in range(3):
+                sample_output[:num_plot_samples, :, :].detach().cpu().numpy()
+            )
+
+            for sample_idx in range(num_plot_samples):
                 plt.figure(figsize=(15, 8))
-                for i in range(input_norm.shape[2]):
+
+                # 피쳐 수 (input_norm.shape[2]) 만큼 반복
+                num_features_to_plot = min(6, input_norm.shape[2]) # 최대 6개 피쳐만
+
+                for i in range(num_features_to_plot):
                     plt.subplot(2, 3, i + 1)
                     plt.plot(
                         input_norm[sample_idx, :, i],
@@ -243,6 +358,7 @@ def train_model(
                     f"{save_fig_dir}_epoch{epoch+1}_sample{sample_idx+1}.png", dpi=200
                 )
                 # plt.show()
+                plt.close() # 메모리 관리를 위해 플롯 닫기
 
         # 진행 상황 출력
         print(f"Epoch {epoch+1}/{num_epochs}:")
@@ -257,4 +373,11 @@ def train_model(
 
 
 # if __name__ == "__main__":
-#     train_model()
+#     # 이 파일을 직접 실행할 경우 TrainParams 객체를 생성하고
+#     # segment_length_n 값을 설정한 뒤 train_model을 호출해야 합니다.
+#     # 예:
+#     # my_params = TrainParams()
+#     # my_params.segment_length_n = 100
+#     # model = ... (모델 로드)
+#     # train_model(model=model, params=my_params)
+#     pass

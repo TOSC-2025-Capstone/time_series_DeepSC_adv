@@ -281,7 +281,7 @@ class Conv1dInvertedFeedForward(nn.Module):
         # x: [Batch, Seq_Len, Features]
         # 1. Conv1D 입력 형태 맞추기: [B, Seq_Len, Features] -> [B, Features, Seq_Len]
         # d_model 차원 대신, Seq_Len 차원이 Channel 역할을 하도록 이미 구현되어 있음 (Inverted Logic)
-        x = x.transpose(1, 2)
+        # x = x.transpose(1, 2)
 
         # 2. Conv 블록 통과
         x = self.conv_1(x)
@@ -291,7 +291,7 @@ class Conv1dInvertedFeedForward(nn.Module):
         x = self.conv_2(x)
 
         # 3. Transformer 출력 형태 맞추기: [Batch, Features, Seq_Len] -> [Batch, Seq_Len, Features]
-        x = x.transpose(1, 2)
+        # x = x.transpose(1, 2)
 
         return x
 
@@ -683,8 +683,8 @@ class iTransformerEncoder(nn.Module):
         # self.layernorm_before_pe = nn.LayerNorm(input_dim, eps=1e-6)
 
         self.enc_layers = nn.ModuleList([
-            # iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
-            iTransformerEncoderLayer(max_len, d_model, num_heads, dff, window_size, dropout) # case 45
+            iTransformerEncoderLayer(max_len, input_dim, num_heads, dff, window_size, dropout)
+            # iTransformerEncoderLayer(max_len, d_model, num_heads, dff, window_size, dropout) # case 45
             for _ in range(num_layers)
         ])
 
@@ -693,7 +693,7 @@ class iTransformerEncoder(nn.Module):
 
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
-        x = self.input_projection(x)
+        # x = self.input_projection(x)
         # x = x + self.time_pos_embedding + self.feature_pos_embedding
         # x = x + self.time_pos_embedding
 
@@ -829,8 +829,6 @@ class DeepSC(nn.Module):
         self.model_type = kwargs.get("model_type", "deepsc")  # 모델 타입 (gru/lstm)
         assert self.model_type in ["deepsc","gru", "lstm"], "model_type은 'deepsc', 'gru' 또는 'lstm'이어야 합니다."
 
-        self.feat_expander = nn.Linear(self.input_dim, self.d_model)
-
         # 의미 인코더 = encoder + time_compressor
         if self.model_type == 'deepsc':
             if self.use_itransformer:
@@ -872,19 +870,27 @@ class DeepSC(nn.Module):
 
         # 시계열 길이 압축 모듈 (선택)
         if self.compressed_len is not None:
-            self.time_compressor = LearnableTimeCompressor(self.d_model, self.compressed_len)
-            # self.time_compressor = LearnableTimeCompressor(self.input_dim, self.compressed_len)
+            # self.time_compressor = LearnableTimeCompressor(self.d_model, self.compressed_len)
+            self.time_compressor = LearnableTimeCompressor(self.input_dim, self.compressed_len)
         else:
             self.time_compressor = None
 
         # 점진적 압축으로 변경
+        # self.channel_encoder = nn.Sequential(
+        #     nn.Linear(self.d_model, self.d_model // 2),  # 128 → 64
+        #     nn.LayerNorm(self.d_model // 2),
+        #     # nn.ReLU(),
+        #     nn.GELU(),
+        #     nn.Dropout(0.1),
+        #     nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
+        # )
         self.channel_encoder = nn.Sequential(
-            nn.Linear(self.d_model, self.d_model // 2),  # 128 → 64
-            nn.LayerNorm(self.d_model // 2),
+            nn.Linear(self.input_dim, self.input_dim // 2),  # 128 → 64
+            nn.LayerNorm(self.input_dim // 2),
             # nn.ReLU(),
             nn.GELU(),
             nn.Dropout(0.1),
-            nn.Linear(self.d_model // 2, self.d_comp),  # 32 → 3
+            nn.Linear(self.input_dim // 2, self.d_comp),  # 32 → 3
         )
         self.channels = Channels()
 
@@ -894,13 +900,15 @@ class DeepSC(nn.Module):
                     num_layers=self.num_layers,
                     compressed_len=self.compressed_len,
                     seq_len=self.max_len,
-                    num_features=self.d_model,
+                    # num_features=self.d_model,
+                    num_features=self.input_dim,
                     num_heads=self.num_heads,
                     d_ff=self.dff)
             else:
                 self.decoder = Decoder(
                     num_layers=self.num_layers,
-                    d_model=self.d_model,
+                    # d_model=self.d_model,
+                    d_model=self.input_dim,
                     num_heads=self.num_heads,
                     dff=self.dff,
                     max_len=self.max_len,
@@ -933,7 +941,8 @@ class DeepSC(nn.Module):
         )
 
         self.channel_decoder = ResidualChannelDecoder(
-            self.d_comp, self.d_model
+            # self.d_comp, self.d_model
+            self.d_comp, self.input_dim
         )
         # self.channel_decoder = nn.Linear(self.d_comp, self.input_dim)
 
@@ -941,8 +950,8 @@ class DeepSC(nn.Module):
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
 
         # 시계열 길이 복원
-        # self.time_decompressor = LearnableTimeDecompressor(self.input_dim, self.max_len)
-        self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
+        self.time_decompressor = LearnableTimeDecompressor(self.input_dim, self.max_len)
+        # self.time_decompressor = LearnableTimeDecompressor(self.d_model, self.max_len)
 
     def forward(self, x, src_mask=None):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
@@ -990,7 +999,7 @@ class DeepSC(nn.Module):
 
         # 8단계: 출력 투영
         # (batch_size, max_len, d_model->input_dim => 원래 피쳐 차원으로 복원)
-        final_output = self.output_projection(output)
-        # final_output = output
+        # final_output = self.output_projection(output)
+        final_output = output
 
         return final_output
