@@ -502,7 +502,7 @@ def performance_cycle(
         segment_length_n = 8 # n의 기본값 (train.py와 일치시킴)
 
     # 추론 시 사용할 배치 크기 (params에 있으면 사용, 없으면 64)
-    batch_size = getattr(params, 'batch_size', 64)
+    batch_size = getattr(params, 'batch_size', 4)
 
     # 저장 경로 설정
     save_performance_dir = params.save_performance_dir

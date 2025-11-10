@@ -22,6 +22,7 @@ model_params = {
     "num_heads": 4,  # deepsc 모델 헤드 수
     # "d_model": 512,  # deepsc 모델 피쳐 확장 차원
     "d_model": 512,  # deepsc 모델 피쳐 확장 차원
+    "d_seq": 512,  # deepsc 모델 시간 확장 차원
     # "max_len": 512,  # deepsc 모델 출력 sequence length
     "max_len": 8,  # deepsc 모델 출력 sequence length
     "d_comp": 3,  # deepsc 압축 피쳐 수
@@ -31,7 +32,7 @@ model_params = {
     "use_itransformer" : True,  # True=iTransformer, False=Transformer
 
     # 10.12 snr_db parameter
-    "snr_db": 3,  # AWGN 채널 SNR 값
+    "snr_db": 21,  # AWGN 채널 SNR 값
     # "snr_db": 5,  # AWGN 채널 SNR 값, noise_type_1
     # "snr_db": 10,  # AWGN 채널 SNR 값, noise_type_2
     # "snr_db": 15,  # AWGN 채널 SNR 값, noise_type_3

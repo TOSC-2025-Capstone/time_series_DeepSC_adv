@@ -113,7 +113,6 @@ def train_model(
     lr = params.lr
     save_fig_dir = params.save_fig_dir
 
-    # [수정] segment_length_n (n값) 파라미터 로드
     try:
         segment_length_n = params.segment_length_n
     except AttributeError:
@@ -142,7 +141,7 @@ def train_model(
     train_dataset = CycleSegmentDataset(
         train_tensor,
         segment_length_n,
-        is_train=False
+        is_train=True
     )
     val_dataset = CycleSegmentDataset(
         val_tensor,
