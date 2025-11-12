@@ -356,7 +356,8 @@ def grouping_df(df):
     grouped_dfs = {}
     for file_index, group_df in df.groupby("file_index"):
         # file_index 컬럼 제외하고 데이터만 저장
-        grouped_dfs[file_index] = group_df.drop("file_index", axis=1)
+        # grouped_dfs[file_index] = group_df.drop("file_index", axis=1)
+        grouped_dfs[file_index] = group_df
 
     print(f"\n분리된 파일 수: {len(grouped_dfs)}")
 
@@ -370,7 +371,7 @@ def grouping_df(df):
 
 # P2.4
 def split_and_transform_data(
-    scaled_df, discharge_files, val_ratio=0.2, test_ratio=0.2, target_length=None
+    scaled_df, discharge_files, grouped_total_df_indices, val_ratio=0.2, test_ratio=0.2, target_length=None
 ):
     """
     데이터를 학습/검증/테스트 세트로 분할하고 텐서로 변환 (6:2:2 비율)
@@ -389,13 +390,17 @@ def split_and_transform_data(
         list: 검증 세트 파일 인덱스
         list: 테스트 세트 파일 인덱스
     """
+
+    # scaled_df 의 파일 인덱스, all_indices, ~~_file_index는 2694개 에서 0~2693의 서수 개념
+    # file_indices는 실제 파일명의 숫자만 가져온 리스트 1,5,7,9 ... 7564
+
     n_files = len(discharge_files)
     # target_length = 256 -> 가변으로 변함
     n_features = len(scaled_df.columns)
 
     # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
-    file_indices = discharge_files
-    all_indices = np.arange(n_files)
+    file_indices = discharge_files # 1 3 5 ... 7564
+    all_indices = np.arange(n_files) # 0 ~ 2693
 
     # 테스트 세트 선택
     n_test = int(n_files * test_ratio)
@@ -405,8 +410,10 @@ def split_and_transform_data(
     # 검증 세트 선택
     n_val = int(n_files * val_ratio)
     val_file_idx = np.random.choice(remaining_idx, size=n_val, replace=False)
+
     # 여기 (학습 비율 train 100%)
     train_file_idx = np.array([i for i in remaining_idx if i not in val_file_idx])
+
     # train_file_idx = all_indices
 
     # 각 세트의 파일 인덱스 추출
@@ -415,16 +422,38 @@ def split_and_transform_data(
     train_file_indices = [file_indices[i] for i in train_file_idx]
 
     # 데이터 인덱스로 변환
-    def create_data_indices(file_idx):
+    def create_data_indices(dataset_file_idx):
         indices = []
-        for idx in file_idx:
-            start_idx = idx * target_length
-            indices.extend(range(start_idx, start_idx + target_length))
+
+        # 'file_index'를 기준으로 DataFrame을 그룹화합니다.
+        # sort=False는 DataFrame의 원래 순서를 유지합니다.
+        # groups는 딕셔너리를 반환합니다.
+        # 예: { 1: [0, 1, 2, ...],  2: [500, 501, ...], ... , 7564: [..., 745602] }
+        #    여기서 [0, 1, 2...]는 scaled_df의 '병합된' 원본 인덱스입니다.
+        group_indices_dict = scaled_df.groupby('file_index', sort=False).groups
+
+        # 딕셔너리를 순회합니다.
+        for idx in dataset_file_idx:
+            # 딕셔너리에서 'idx' 키로 값을 직접 찾습니다. idx는 원래 파일명 인덱스임 (1~2694 아니고 1,3,5 ... 7564까지 있는거)
+            if idx in group_indices_dict:
+                # original_indices_list는 [500, 501, 502, ...] 같은
+                # '원본 인덱스 리스트'입니다.
+                original_indices_list = group_indices_dict[idx]
+
+                # 이 리스트를 'indices'에 통째로 추가합니다.
+                indices.extend(original_indices_list)
+            else:
+                print(f"경고: file_index {idx}를 scaled_df에서 찾을 수 없습니다.")
+                    # start_idx = idx * target_length
+                    # indices.extend(range(start_idx, start_idx + target_length))
         return indices
 
-    test_data_indices = create_data_indices(test_file_idx)
-    val_data_indices = create_data_indices(val_file_idx)
-    train_data_indices = create_data_indices(train_file_idx)
+    # test_data_indices = create_data_indices(test_file_idx)
+    # val_data_indices = create_data_indices(val_file_idx)
+    # train_data_indices = create_data_indices(train_file_idx)
+    test_data_indices = create_data_indices(test_file_indices)
+    val_data_indices = create_data_indices(val_file_indices)
+    train_data_indices = create_data_indices(train_file_indices)
 
     # 마스크 생성 및 데이터 분할
     def create_mask_and_transform(indices, total_length):
@@ -446,6 +475,42 @@ def split_and_transform_data(
     val_data = torch.FloatTensor(val_samples).view(-1, target_length, n_features)
     test_data = torch.FloatTensor(test_samples).view(-1, target_length, n_features)
 
+    # seperated_train_samples = {}
+    # seperated_val_samples = {}
+    # seperated_test_samples = {}
+
+    # for i, file_indices in enumerate([train_file_indices, val_file_indices, test_file_indices]) :
+    #     is_dataset = None
+    #     samples = None
+    #     if i == 0 :
+    #         is_dataset = is_train
+    #         samples = train_samples
+    #     elif i == 1 :
+    #         is_dataset = is_val
+    #         samples = val_samples
+    #     elif i == 2 :
+    #         is_dataset = is_test
+    #         samples = test_samples
+
+    #     # datas = pd.concat([scaled_df["file_index"], pd.DataFrame(is_dataset)], axis=1)
+    #     # data_samples = datas.groupby('file_index', sort=False).groups
+    #     start_idx = 0
+    #     seperated_samples = {}
+
+    #     for file_idx in file_indices :
+    #         # cycle_len = len(data_samples[file_idx])
+    #         cycle_len = grouped_total_df_indices[file_idx]
+
+    #         seperated_samples[file_idx] = samples[start_idx:start_idx+cycle_len]
+    #         start_idx += cycle_len
+
+    #     if i == 0 :
+    #         seperated_train_samples = seperated_samples
+    #     elif i == 1 :
+    #         seperated_val_samples = seperated_samples
+    #     elif i == 2 :
+    #         seperated_test_samples = seperated_samples
+
     return (
         train_data,
         val_data,
@@ -459,9 +524,9 @@ def split_and_transform_data(
 # P2.5
 def save_tensor_dataset(train_data, val_data, test_data, scaler, output_folder):
     print(f"\n데이터 shape 확인:")
-    print(f"train_data: {train_data.shape} (파일 수 x 256 x 특성 수)")
-    print(f"val_data: {val_data.shape} (파일 수 x 256 x 특성 수)")
-    print(f"test_data: {test_data.shape} (파일 수 x 256 x 특성 수)")
+    print(f"train_data: {train_data.shape} (파일 수 x 8 x 특성 수)")
+    print(f"val_data: {val_data.shape} (파일 수 x 8 x 특성 수)")
+    print(f"test_data: {test_data.shape} (파일 수 x 8 x 특성 수)")
 
     # scaler가 minmax인지 zscore인지 확인
     scaler_type = "minmax" if isinstance(scaler, MinMaxScaler) else "zscore"

@@ -53,7 +53,7 @@ snr_list = [3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 model_type_list = ["deepsc", "lstm"]
 batch_size_list = [1, 2, 4, 8, 16]
-base_case_number = 10012
+base_case_number = 10019
 model_type_index = 1 if model_type == "deepsc" else 2
 seq_len_list = [8, 16, 32, 64, 128, 256, 512]
 
@@ -121,6 +121,16 @@ if __name__ == "__main__":
         total, trainable = count_parameters(model)
         print(f"Total params: {total:,}")
         print(f"Trainable params: {trainable:,}")
+
+        if model_type != "only_channel":
+            try:
+                if os.path.exists(test_model_checkpoint_path):
+                    model.load_state_dict(
+                        torch.load(f"{test_model_checkpoint_path}best.pth", map_location=device)
+                    )
+                    print("모델이 성공적으로 로드되었습니다.")
+            except Exception as e:
+                print(f"모델 로드 실패: {e}")
 
         # train
         if p.is_trained == False:

@@ -19,7 +19,7 @@ class CycleDataComparator:
         threshold_method : str, optional
             임계값 계산 방식: "mean", "range_center", "point_wise" (default: "mean")
         min_absolute_threshold : float, optional
-            "point_wise" 방식에서 원본 값이 0에 가까울 때 사용할 최소 절대 임계값 (default: 1e-9)
+             "point_wise" 방식에서 원본 값이 0에 가까울 때 사용할 최소 절대 임계값 (default: 1e-9)
         """
         if threshold_method not in ["mean", "range_center", "point_wise"]:
             raise ValueError("threshold_method must be one of 'mean', 'range_center', or 'point_wise'")
@@ -117,7 +117,7 @@ class CycleDataComparator:
                     result_df['prediction_success'] = False # 전체 결과에도 영향
                     continue
 
-                # 임계값 계산 (방식별 분기)
+                # ✨ 임계값 계산 (방식별 분기) ✨
                 absolute_threshold = None # mean, range_center 용
                 if self.threshold_method in ["mean", "range_center"]:
                     reference_value = None
@@ -147,7 +147,7 @@ class CycleDataComparator:
                         diff = abs(original_value - reconstructed_value)
                         is_false = False
 
-                        # 실패 조건 판정 (방식별 분기)
+                        # ✨ 실패 조건 판정 (방식별 분기) ✨
                         if self.threshold_method == "point_wise":
                             # 원본 값이 0에 가까운 경우: 최소 절대 임계값 사용
                             if abs(original_value) < self.min_absolute_threshold:
@@ -226,7 +226,7 @@ class CycleDataComparator:
         return pd.DataFrame(feature_wise_data)
 
 
-    # 수정: 요약 출력 시 threshold_method 명시
+    # ✨ 수정: 요약 출력 시 threshold_method 명시
     def print_summary(self):
         """결과 요약 출력"""
         false_counts, total_false, total_rows = self.get_false_counts()
@@ -255,7 +255,7 @@ class CycleDataComparator:
 
         print("="*80)
 
-    # 수정: 요약 출력 시 threshold_method 명시
+    # ✨ 수정: 요약 출력 시 threshold_method 명시
     def print_feature_wise_summary(self, save_path=None):
         """피쳐별 False 개수 요약 출력 및 저장"""
         feature_df = self.get_feature_wise_false_counts()
@@ -353,13 +353,13 @@ class CycleDataComparator:
 
 
 def main():
-    case_number = "10002.1.8"
+    case_number = "46.1.10"
     model_type = "deepsc"
     threshold_percent = 15
 
-    comparison_method = "mean"
+    # comparison_method = "mean"
     # comparison_method = "range_center"
-    # comparison_method = "point_wise"
+    comparison_method = "point_wise"
 
     min_abs_thresh = 1e-6 # 예시 값, 필요시 조정
 

@@ -802,6 +802,13 @@ case 10013.1.1 : 0.016 BestValLoss
 
 case 10012 ~ 10018 : 4 8 16 32 64 128 256, 이렇게 세그먼트 길이 조정
 
+case 10019 : 전처리에서 8개 세그먼트로 나누는 로직으로 변경, 트레인 로더 셔플 안함
+[Epoch 39] Time: 510.75 sec | Avg: 527.63 sec | Train: 0.001399 | Val: 0.009983 | Best: 0.009983 | LR: 0.000010
+Epoch 39/120:
+  Train Loss: 0.001399
+  Val Loss: 0.009983
+  Best Val Loss: 0.009983
+
 (Pdb) train_params
 TrainParams(
     train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//train_data.pt',
