@@ -21,7 +21,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """ =========================== main.py 흐름 제어 변수 =========================== """
 
-is_train_phase = False # 나중에 변경
+is_train_phase = True # 나중에 변경
 
 # True면 mutual information model 도 같이 학습함
 # is_learning_minet = True
@@ -71,7 +71,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "10019.1.1"
+case_index = "10020.1.1"
 
 # 모델 종류
 class ModelType(Enum):
@@ -147,8 +147,6 @@ current_remove_groups = {
     "-4_group": (-3.95, -3.5),  # -4.0 < Current_measured < -3.5
     "-4_out_group" : (-4.05, -4.95)
 }
-
-segment_trimmed_dfs = {}
 
 """ =========================== EDA용 변수 설정 =========================== """
 # eda_readme_files = glob("./original_dataset/extra_infos/README_*.txt")
@@ -230,12 +228,12 @@ get_save_performance_dir = lambda: (
 # epochs
 train_epochs = 120
 # batch size
-train_batch_size = 8
+train_batch_size = 16
 # learning rate
 train_lr = 1e-5
 # input dimension
-input_dim = 5
-# input_dim = 6
+# input_dim = 5
+input_dim = 7
 segment_length_n = 8  # 입력 시퀀스 길이를 segment_length_n 등분하여 처리
 
 get_train_batch_size = lambda: train_batch_size

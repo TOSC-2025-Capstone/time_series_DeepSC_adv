@@ -371,7 +371,7 @@ def grouping_df(df):
 
 # P2.4
 def split_and_transform_data(
-    scaled_df, discharge_files, grouped_total_df_indices, val_ratio=0.2, test_ratio=0.2, target_length=None
+    scaled_df, discharge_files, grouped_total_df_indices, val_ratio=0.2, test_ratio=0.2, segment_target_len=None
 ):
     """
     데이터를 학습/검증/테스트 세트로 분할하고 텐서로 변환 (6:2:2 비율)
@@ -395,7 +395,7 @@ def split_and_transform_data(
     # file_indices는 실제 파일명의 숫자만 가져온 리스트 1,5,7,9 ... 7564
 
     n_files = len(discharge_files)
-    # target_length = 256 -> 가변으로 변함
+    # segment_target_len = 256 -> 가변으로 변함
     n_features = len(scaled_df.columns)
 
     # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
@@ -413,7 +413,6 @@ def split_and_transform_data(
 
     # 여기 (학습 비율 train 100%)
     train_file_idx = np.array([i for i in remaining_idx if i not in val_file_idx])
-
     # train_file_idx = all_indices
 
     # 각 세트의 파일 인덱스 추출
@@ -444,8 +443,6 @@ def split_and_transform_data(
                 indices.extend(original_indices_list)
             else:
                 print(f"경고: file_index {idx}를 scaled_df에서 찾을 수 없습니다.")
-                    # start_idx = idx * target_length
-                    # indices.extend(range(start_idx, start_idx + target_length))
         return indices
 
     # test_data_indices = create_data_indices(test_file_idx)
@@ -471,45 +468,13 @@ def split_and_transform_data(
     test_samples = scaled_df[is_test].values
 
     # 텐서로 변환
-    train_data = torch.FloatTensor(train_samples).view(-1, target_length, n_features)
-    val_data = torch.FloatTensor(val_samples).view(-1, target_length, n_features)
-    test_data = torch.FloatTensor(test_samples).view(-1, target_length, n_features)
+    train_data = torch.FloatTensor(train_samples).view(-1, segment_target_len, n_features)
+    val_data = torch.FloatTensor(val_samples).view(-1, segment_target_len, n_features)
+    test_data = torch.FloatTensor(test_samples).view(-1, segment_target_len, n_features)
 
-    # seperated_train_samples = {}
-    # seperated_val_samples = {}
-    # seperated_test_samples = {}
-
-    # for i, file_indices in enumerate([train_file_indices, val_file_indices, test_file_indices]) :
-    #     is_dataset = None
-    #     samples = None
-    #     if i == 0 :
-    #         is_dataset = is_train
-    #         samples = train_samples
-    #     elif i == 1 :
-    #         is_dataset = is_val
-    #         samples = val_samples
-    #     elif i == 2 :
-    #         is_dataset = is_test
-    #         samples = test_samples
-
-    #     # datas = pd.concat([scaled_df["file_index"], pd.DataFrame(is_dataset)], axis=1)
-    #     # data_samples = datas.groupby('file_index', sort=False).groups
-    #     start_idx = 0
-    #     seperated_samples = {}
-
-    #     for file_idx in file_indices :
-    #         # cycle_len = len(data_samples[file_idx])
-    #         cycle_len = grouped_total_df_indices[file_idx]
-
-    #         seperated_samples[file_idx] = samples[start_idx:start_idx+cycle_len]
-    #         start_idx += cycle_len
-
-    #     if i == 0 :
-    #         seperated_train_samples = seperated_samples
-    #     elif i == 1 :
-    #         seperated_val_samples = seperated_samples
-    #     elif i == 2 :
-    #         seperated_test_samples = seperated_samples
+    # final_train_data = add_segment_index(train_data)
+    # final_val_data = add_segment_index(val_data)
+    # final_test_data = add_segment_index(test_data)
 
     return (
         train_data,
@@ -520,6 +485,89 @@ def split_and_transform_data(
         sorted(test_file_indices),
     )
 
+# P2.4.1
+def add_cycle_index_for_battery_id(tensor_data):
+    print()
+
+# def add_segment_index(tensor_data):
+#     # N, L, C_in = 55718, 8, 7
+#     N = len(tensor_data)
+#     L = len(tensor_data[0])
+#     C_in = len(tensor_data[0][0])
+
+#     # 1. 각 세그먼트의 'file_index'를 대표하는 1D 텐서를 추출합니다.
+#     # (세그먼트 내 8개 행의 file_index는 모두 동일하므로, 0번째 행의 값만 사용)
+#     # file_indices shape: [55718]
+#     file_indices = tensor_data[:, 0, -1]
+
+#     # 2. 'file_index'가 변경되는 직전 지점을 찾습니다. (True/False 마스크)
+#     # (예: [5, 5, 7, 7, 9] -> [False, True, False, True])
+#     # key_changes shape: [55717]
+#     key_changes = file_indices[1:] != file_indices[:-1]
+
+#     # 3. 'is_new_group_mask' 마스크를 생성합니다.
+#     # 맨 첫 번째 세그먼트(True)와, file_index가 변경되는 지점(True)을 표시합니다.
+#     # (예: [True, False, True, False, True])
+#     # is_new_group_mask shape: [55718]
+#     is_new_group_mask = torch.cat(
+#         (torch.tensor([True], device=tensor_data.device), key_changes)
+#     )
+
+#     # 4. 'is_new_group_mask'가 True인 위치(인덱스)를 찾습니다.
+#     # 이는 각 그룹(동일한 file_index)이 시작되는 인덱스 리스트입니다.
+#     # (예: [0, 2, 4])
+#     # start_indices shape: [Number of groups]
+#     start_indices = is_new_group_mask.nonzero().flatten()
+
+#     # 5. 0부터 N-1까지의 전체 세그먼트 인덱스를 생성합니다.
+#     # full_range shape: [55718]
+#     full_range = torch.arange(N, device=tensor_data.device)
+
+#     # 6. 각 세그먼트(full_range)가 어떤 그룹(start_indices)에 속하는지 찾습니다.
+#     # torch.searchsorted는 'full_range'의 각 요소를 'start_indices'의 어디에
+#     # 삽입해야 정렬이 유지되는지 알려줍니다.
+#     # (예: group_indices [0, 0, 1, 1, 2])
+#     group_indices = torch.searchsorted(start_indices, full_range, right=True) - 1
+
+#     # 7. 각 세그먼트가 속한 그룹(사이클 파일)의 '세그먼트의 첫 행 인덱스'를 가져옵니다.
+#     # (예: start_indices_per_segment [0, 0, 2, 2, 4])
+#     start_indices_per_segment = start_indices[group_indices]
+
+#     # 8. (핵심) 전체 인덱스에서 그룹 시작 인덱스를 빼서 그룹 내 순서(0-based)를 계산합니다.
+#     # full_range:              [0, 1, 2, 3, 4]
+#     # start_indices_per_segment: [0, 0, 2, 2, 4]
+#     # 빼기 결과 (0-based):    [0, 1, 0, 1, 0]
+#     sequence_idx_zero_based = full_range - start_indices_per_segment
+
+#     # 9. 1을 더해 1-based 순서 인덱스로 만듭니다. (요청사항 반영)
+#     # (결과: [1, 2, 1, 2, 1])
+#     # sequence_idx_one_based shape: [55718]
+#     sequence_idx_one_based = (sequence_idx_zero_based + 1).to(tensor_data.dtype)
+
+#     # 10. 이 1D 텐서를 [N, L, 1] shape으로 확장(expand)합니다.
+#     # [55718] -> [55718, 1] -> [55718, 1, 1]
+#     new_feature_tensor = sequence_idx_one_based.unsqueeze(1).unsqueeze(2)
+#     # [55718, 1, 1] -> [55718, 8, 1] (8개 행 모두에 동일한 순서 인덱스 적용)
+#     new_feature_tensor_expanded = new_feature_tensor.expand(N, L, 1)
+
+#     # 11. 원본 텐서와 새 피처 텐서를 마지막 차원(dim=2) 기준으로 합칩니다.  [55718, 8, 8]
+#     final_tensor = torch.cat((tensor_data, new_feature_tensor_expanded), dim=2)
+
+#     # 기본 인덱스 리스트 생성
+#     # [0, 1, 2, 3, 4, 5, 6, 7]
+#     indices = list(range(C_in+1))
+
+#     # 마지막 두 인덱스의 자리를 바꿈
+#     indices[C_in-1], indices[C_in] = indices[C_in], indices[C_in-1]
+
+#     # 새로운 인덱스 순서 확인
+#     # [0, 1, 2, 3, 4, 6, 5]
+
+#     # 텐서의 마지막 차원(...)에 인덱스 리스트를 적용
+#     # PyTorch가 이 순서대로 텐서를 재정렬하여 '복사본'을 만듭니다.
+#     swapped_tensor = final_tensor[..., indices]
+
+#     return swapped_tensor
 
 # P2.5
 def save_tensor_dataset(train_data, val_data, test_data, scaler, output_folder):
@@ -557,5 +605,6 @@ def save_tensor_dataset(train_data, val_data, test_data, scaler, output_folder):
     # 처리된 데이터 통계 출력
     print("\n=== 처리 완료 ===")
     print(f"Train 데이터: {train_data.shape}")
+    print(f"Val 데이터: {val_data.shape}")
     print(f"Test 데이터: {test_data.shape}")
     print(f"결과가 {output_folder}에 저장되었습니다.")

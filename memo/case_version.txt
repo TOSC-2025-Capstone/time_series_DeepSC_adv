@@ -809,6 +809,9 @@ Epoch 39/120:
   Val Loss: 0.009983
   Best Val Loss: 0.009983
 
+case 10020 : 10019 + resampling 512 + time & cycle_sequence 추가, 트레인 로더 셔플 함
+[Epoch 40/120] Val Loss: 0.002937
+
 (Pdb) train_params
 TrainParams(
     train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//train_data.pt',

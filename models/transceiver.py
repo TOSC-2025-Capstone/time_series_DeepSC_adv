@@ -797,6 +797,7 @@ class DeepSC(nn.Module):
         self,
         num_layers=2,
         input_dim=6,
+        output_dim=6,
         max_len=128,
         d_model=128,
         num_heads=4,
@@ -812,6 +813,7 @@ class DeepSC(nn.Module):
         p = params if params is not None else {}
         self.num_layers = p.get("num_layers", num_layers)
         self.input_dim = p.get("input_dim", input_dim)
+        self.output_dim = p.get("output_dim", output_dim)
         self.max_len = p.get("max_len", max_len)
         self.seq_len = p.get("seq_len", 512)
         self.d_model = p.get("d_model", d_model)

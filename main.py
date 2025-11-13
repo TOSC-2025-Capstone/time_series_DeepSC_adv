@@ -53,7 +53,7 @@ snr_list = [3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 model_type_list = ["deepsc", "lstm"]
 batch_size_list = [1, 2, 4, 8, 16]
-base_case_number = 10019
+base_case_number = int(case_index.split(".")[0])
 model_type_index = 1 if model_type == "deepsc" else 2
 seq_len_list = [8, 16, 32, 64, 128, 256, 512]
 
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         model_params["compressed_len"] = v_seq_len // 4  # 압축 길이는 입력 길이의 1/4로 설정
         p.segment_length_n = v_seq_len
 
-        checkpoint_index = f"{case_number}.{model_type_index}.2"
+        checkpoint_index = f"{case_number}.{model_type_index}.1"
         # test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
         test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
         p.case_index = checkpoint_index

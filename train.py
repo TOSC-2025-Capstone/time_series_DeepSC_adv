@@ -69,12 +69,11 @@ def train_model(
     scaler = joblib.load(scaler_path)
 
     # 2. DataLoader
-    train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
     # train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
     # 2-1. sample data fix
-    fixed_batch = train_tensor[:53].to(device) # 5번 파일
-    pdb.set_trace()
+    fixed_batch = train_tensor[:192].to(device) # 파일 3개
 
     # 3. 모델 초기화
     input_dim = train_tensor.shape[2]
@@ -116,6 +115,9 @@ def train_model(
                             "TrainLoss", "ValLoss", "BestValLoss", "LR"])
 
     for epoch in range(num_epochs):
+        if epoch < 39:
+            continue # 현재 루프를 중단하고 다음 epoch(1, 2, 3...)로 넘어감
+
         start_time = time.time()  # 시작 시각 기록
         channels = Channels()
 
@@ -123,12 +125,12 @@ def train_model(
         model.train()
         total_loss = 0
 
-        # 학습 루프
+        # # 학습 루프
         # train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
         # for batch in train_pbar:
         #     batch = batch.to(device)
 
-        #     batch = batch[:, :, :-1]
+        #     batch = batch[:, :, :-1] # 파일 인덱스 제거
 
         #     # # mi_net이 있다면 먼저 학습시키고
         #     # mi = None
@@ -176,34 +178,34 @@ def train_model(
         # avg_train_loss = total_loss / len(train_loader.dataset)
         # print(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {avg_train_loss:.6f}")
 
-        # 검증
-        model.eval()
-        val_loss = 0
-        with torch.no_grad():
-            # batch [train_batch_size, target_length(reshaped cycle len), d_comp]
-            val_pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]")
-            for batch in val_pbar:
-                batch = batch.to(device)
-                batch = batch[:, :, :-1]
-                output = model(batch)
-                loss = criterion(output, batch)
-                val_loss += loss.item() * batch.size(0)
-        avg_val_loss = val_loss / len(val_loader.dataset)
-        print(f"[Epoch {epoch+1}/{num_epochs}] Val Loss: {avg_val_loss:.6f}")
+        # # 검증
+        # model.eval()
+        # val_loss = 0
+        # with torch.no_grad():
+        #     # batch [train_batch_size, target_length(reshaped cycle len), d_comp]
+        #     val_pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]")
+        #     for batch in val_pbar:
+        #         batch = batch.to(device)
+        #         batch = batch[:, :, :-1]
+        #         output = model(batch)
+        #         loss = criterion(output, batch)
+        #         val_loss += loss.item() * batch.size(0)
+        # avg_val_loss = val_loss / len(val_loader.dataset)
+        # print(f"[Epoch {epoch+1}/{num_epochs}] Val Loss: {avg_val_loss:.6f}")
 
-        # 스케줄러 step (val loss 기준)
-        scheduler.step(avg_val_loss)
+        # # 스케줄러 step (val loss 기준)
+        # scheduler.step(avg_val_loss)
 
-        # val loss 개선 시 모델 저장
-        if avg_val_loss < best_val_loss:
-            torch.save(model.state_dict(), model_save_path + "best.pth")
-            best_val_loss = avg_val_loss
-            best_epoch_idx = epoch
-            print(
-                f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
-            )
+        # # val loss 개선 시 모델 저장
+        # if avg_val_loss < best_val_loss:
+        #     torch.save(model.state_dict(), model_save_path + "best.pth")
+        #     best_val_loss = avg_val_loss
+        #     best_epoch_idx = epoch
+        #     print(
+        #         f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
+        #     )
 
-        # === epoch 시간 측정 및 로깅 (CSV 저장) ===
+        # # === epoch 시간 측정 및 로깅 (CSV 저장) ===
         # end_time = time.time()
         # lr_now = optimizer.param_groups[0]["lr"]
         # epoch_times = log_epoch_stats_csv(
@@ -213,54 +215,55 @@ def train_model(
 
         # === 정규화된 입력과 output 비교 plot (3개 배치만) ===
         # 0, 40, 80
-        if (epoch) % 40 == 0:
-        # if 1 == 2:
-            os.makedirs(save_fig_dir, exist_ok=True)
-            # batch: [batch_size, window, feature]
+        if (epoch+1) % 40 == 0:
             fixed_batch = fixed_batch[:, :, :-1] # 인덱스 제거
-            orig_fixed_batch = fixed_batch.contiguous().view(1, 424, 5) # 비교용 원본
-            pdb.set_trace()
+            orig_fixed_batch = fixed_batch.contiguous().view(-1, 512, 7) # 비교용 원본
             sample_output = model(fixed_batch)
-            sample_output = sample_output.contiguous().view(1, 424, 5) # 비교용 결과본
-            input_norm = orig_fixed_batch[:3, :, :5].detach().cpu().numpy()  # [3, window, 6]
-            output_norm = (
-                sample_output[:3, :, :5].detach().cpu().numpy()
-            )  # [6, window, 6]
-            # for sample_idx in range(3):
-            plt.figure(figsize=(15, 8))
+            sample_output = sample_output.contiguous().view(-1, 512, 7) # 비교용 결과본
 
-            for i in range(input_norm.shape[2]):
-                plt.subplot(2, 3, i + 1)
-                plt.ylim(-3, 3) # y축의 범위를 지정합니다.
+            for idx in range(3):
+                os.makedirs(save_fig_dir, exist_ok=True)
+                # batch: [batch_size, window, feature]
+                input_norm = orig_fixed_batch[idx:idx+1, :, :5].detach().cpu().numpy()  # [3, window, 6]
+                output_norm = (
+                    sample_output[idx:idx+1, :, :5].detach().cpu().numpy()
+                )  # [6, window, 6]
+                # for sample_idx in range(3):
+                plt.figure(figsize=(15, 8))
 
-                plt.plot(
-                    input_norm[0, :, i],
-                    label="Input (norm)",
-                    color="blue",
-                    alpha=0.7,
-                )
-                plt.plot(
-                    output_norm[0, :, i],
-                    label="Output (norm)",
-                    color="orange",
-                    alpha=0.7,
-                )
-                plt.title(f"Feature {i+1}")
-                plt.legend()
-                plt.grid(True)
-                plt.suptitle(
-                    f"정규화 입력 vs Output (Epoch {epoch+1}, Sample {0+1})"
-                )
-                plt.tight_layout()
-                plt.savefig(
-                    f"{save_fig_dir}_epoch{epoch+1}_sample{0+1}.png", dpi=200
-                )
-                # plt.show()
+                for i in range(input_norm.shape[2]):
+                    plt.subplot(2, 3, i + 1)
+                    plt.ylim(-3, 3) # y축의 범위를 지정합니다.
+
+                    plt.plot(
+                        input_norm[0, :, i],
+                        label="Input (norm)",
+                        color="blue",
+                        alpha=0.7,
+                    )
+                    plt.plot(
+                        output_norm[0, :, i],
+                        label="Output (norm)",
+                        color="orange",
+                        alpha=0.7,
+                    )
+                    plt.title(f"Feature {i+1}")
+                    plt.legend()
+                    plt.grid(True)
+                    plt.suptitle(
+                        f"정규화 입력 vs Output (Epoch {epoch+1}, Sample {idx+1})"
+                    )
+                    plt.tight_layout()
+                    plt.savefig(
+                        f"{save_fig_dir}_epoch{epoch+1}_sample{idx+1}.png", dpi=200
+                    )
+                    # plt.show()
+            exit()
 
         # 진행 상황 출력
         print(f"Epoch {epoch+1}/{num_epochs}:")
         # print(f"  Train Loss: {avg_train_loss:.6f}")
-        print(f"  Val Loss: {avg_val_loss:.6f}")
+        # print(f"  Val Loss: {avg_val_loss:.6f}")
         print(f"  Best Val Loss: {best_val_loss:.6f}")
         print(f'  Learning Rate: {optimizer.param_groups[0]["lr"]:.6f}')
     print("학습 완료!")

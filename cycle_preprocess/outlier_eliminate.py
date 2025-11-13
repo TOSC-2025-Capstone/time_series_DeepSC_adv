@@ -347,7 +347,7 @@ def process_and_save_hybrid_outlier_data(
     total_df = load_csv_data(discharge_files, input_folder)
 
     # time 피쳐 제거
-    total_df = total_df.drop(columns=["Time"])
+    # total_df = total_df.drop(columns=["Time"])
 
     original_total_rows = len(total_df)
     print(f"Initial data loaded: {original_total_rows:,} rows")
@@ -370,6 +370,38 @@ def process_and_save_hybrid_outlier_data(
             exclude_current_columns=True,
         )
     )
+
+    # 3-2. battery_id col 추가
+    file_and_battery_indices = discharge_data[["uid", "battery_id"]] # uid: 1, battery_id B0047...
+    # 1. 'file_and_battery_indices'를 매핑용 Series로 변환합니다.
+    #    인덱스(key)를 'uid'로, 값(value)을 'battery_id'로 설정합니다.
+    #    (Pdb) id_to_battery_map
+    #    uid
+    #    1       B0047
+    #    5       B0047
+    #    7       B0047
+    #    7562    B0055
+    #    7564    B0055
+    #    Name: battery_id, dtype: object
+    id_to_battery_map = file_and_battery_indices.set_index('uid')['battery_id']
+
+    # 2. 'df_cleaned'의 'file_index' 열에 'map' 함수를 적용합니다.
+    #    'file_index'의 각 값이 'id_to_battery_map'의 인덱스와 일치하는 것을 찾아
+    #    해당하는 'battery_id' 값을 가져와 새 열에 할당합니다.
+    df_cleaned['battery_id'] = df_cleaned['file_index'].map(id_to_battery_map)
+
+    # 현재 컬럼 순서를 리스트로 가져옵니다.
+    cols = list(df_cleaned.columns)
+
+    # (Pdb) cols
+    # ['Voltage_measured', 'Current_measured', 'Temperature_measured',
+    #  'Current_load', 'Voltage_load', 'Time', 'file_index', 'battery_id']
+
+    # 리스트에서 마지막 두 항목의 위치를 바꿉니다 (Python 스왑).
+    cols[-2], cols[-1] = cols[-1], cols[-2]
+
+    # 변경된 컬럼 순서를 DataFrame에 다시 적용(re-indexing)합니다.
+    df_cleaned = df_cleaned[cols]
 
     print("\n" + "=" * 70)
     print("HYBRID OUTLIER REMOVAL FINAL SUMMARY")
@@ -415,7 +447,7 @@ def process_and_save_hybrid_outlier_data(
     feature_names = [col for col in total_df.columns if col != "file_index"]
     visualize_data_comparison(
         total_df.drop(columns=["file_index"]),
-        df_cleaned.drop(columns=["file_index"]),
+        df_cleaned.drop(columns=["file_index", "battery_id"]),
         feature_names=feature_names,
         output_dir=f"cycle_preprocess/analysis/hybrid_outlier_comparison_{outlier_threshold}/",
     )
