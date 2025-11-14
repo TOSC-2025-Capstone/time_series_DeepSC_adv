@@ -336,19 +336,19 @@ if __name__ == "__main__":
         # "results/performance_test/case10003.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
         # "results/performance_test/case10004.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
 
-        "results/performance_test/case10004.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10004.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10004.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10004.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case10004.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case10004.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10021.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10021.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10021.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10021.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10021.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10021.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     # filename = "01291.csv"
     filename = "01319.csv"
     metric_type = "MSE"
-    case_index_prefix = "10004"
-    date = "251105"  # 그래프 저장용 날짜 디렉토리 이름
+    case_index_prefix = "10021"
+    date = "251114"  # 그래프 저장용 날짜 디렉토리 이름
     save_path = (
         f"./final_comparison_plots/{date}/case{case_index_prefix}/{metric_type}/{filename}/"
     )

@@ -809,8 +809,19 @@ Epoch 39/120:
   Val Loss: 0.009983
   Best Val Loss: 0.009983
 
-case 10020 : 10019 + resampling 512 + time & cycle_sequence 추가, 트레인 로더 셔플 함
+case 10020 : 10019 + resampling 512 + time & cycle_sequence 추가, 트레인 로더 셔플 함, (channel_model 적용 테스트)
+epoch 29에서 중단됨 (윈도우 업데이트)
 [Epoch 40/120] Val Loss: 0.002937
+
+case 10021 : 10020 + 확장 차원(d_model, d_seq) 둘다 128로 줄임, 파워 노멀라이제이션도 새로운 방식에 맞춰서 평균에 2곱하고 루트 적용
+(Pdb) x.shape,               encoded.shape,             compressed.shape,      channel_encoded.shape,     tx_sig.shape,
+(torch.Size([16, 8, 7]), torch.Size([16, 128, 128]), torch.Size([16, 2, 128]), torch.Size([16, 2, 3]), torch.Size([16, 2, 3]),
+rx_sig.shape,             channel_decoded.shape,       decompressed.shape,        output.shape,            final_output.shape
+torch.Size([16, 2, 3]), torch.Size([16, 2, 128]), torch.Size([16, 128, 128]), torch.Size([16, 128, 128]), torch.Size([16, 8, 7]))
+
+========================== case_10021.1.1 start =========================
+max_len=8, compressed_len=2, caseindex: 10021.1.1, batch_size=16, test_path=./checkpoints/case_10021.1.1/MSE/deepsc/deepsc_battery_epoch,
+
 
 (Pdb) train_params
 TrainParams(

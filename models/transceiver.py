@@ -23,6 +23,13 @@ import torch.nn.functional as F
 from torch.autograd import Function
 import math
 import pdb
+import numpy as np
+
+def SNR_to_noise(snr):
+    snr = 10 ** (snr / 10)
+    noise_std = 1 / np.sqrt(2 * snr)
+
+    return noise_std
 
 # from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
 from utils import Channels, power_normalize
@@ -816,13 +823,13 @@ class DeepSC(nn.Module):
         self.output_dim = p.get("output_dim", output_dim)
         self.max_len = p.get("max_len", max_len)
         self.seq_len = p.get("seq_len", 512)
-        self.d_model = p.get("d_model", d_model)
         self.num_heads = p.get("num_heads", num_heads)
         self.dff = p.get("dff", dff)
         self.dropout = p.get("dropout", dropout)
         self.compressed_len = p.get("compressed_len", compressed_len)
         self.d_comp = p.get("d_comp", 3)
-        self.d_seq = p.get("d_seq", 512)
+        self.d_model = p.get("d_model", d_model) # 모델 피쳐 확장차원
+        self.d_seq = p.get("d_seq", 512) # 모델 시간 확장차원
 
         self.hidden_dim = p.get("hidden_dim", 512)
         self.compressed_features = p.get("compressed_features", 0)
@@ -954,7 +961,6 @@ class DeepSC(nn.Module):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
         # 1단계: 의미 인코더
         # (batch, max_len, input_dim->d_model)
-
         if self.model_type == 'deepsc' :
             encoded = self.encoder(x, src_mask)
         else:  # GRU/LSTM 인코더
@@ -971,15 +977,17 @@ class DeepSC(nn.Module):
         channel_encoded = self.channel_encoder(compressed)
 
         tx_sig = power_normalize(channel_encoded)
+
         # 4단계 : 채널 상태 적용
+        n_std = SNR_to_noise(self.snr_db)
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
-            # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
-            rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            # rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            rx_sig = self.channels.fading(tx_sig, 0, n_std, detector="MMSE")
         else:
             rx_sig = tx_sig
 
-        # 5단계 : 채널 디코더 (피쳐 복원 예측을 위한 linear 적용)
+        # 5단계 : 채널 디코더
         # (batch_size, compressed_len, d_comp -> d_model)
         channel_decoded = self.channel_decoder(rx_sig)
 

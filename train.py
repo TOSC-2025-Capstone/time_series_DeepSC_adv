@@ -115,8 +115,8 @@ def train_model(
                             "TrainLoss", "ValLoss", "BestValLoss", "LR"])
 
     for epoch in range(num_epochs):
-        if epoch < 39:
-            continue # 현재 루프를 중단하고 다음 epoch(1, 2, 3...)로 넘어감
+        # if epoch < 29:
+        #     continue # 현재 루프를 중단하고 다음 epoch(1, 2, 3...)로 넘어감
 
         start_time = time.time()  # 시작 시각 기록
         channels = Channels()
@@ -125,93 +125,93 @@ def train_model(
         model.train()
         total_loss = 0
 
-        # # 학습 루프
-        # train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
-        # for batch in train_pbar:
-        #     batch = batch.to(device)
+        # 학습 루프
+        train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
+        for batch in train_pbar:
+            batch = batch.to(device)
 
-        #     batch = batch[:, :, :-1] # 파일 인덱스 제거
+            batch = batch[:, :, :-1] # 파일 인덱스 제거
 
-        #     # # mi_net이 있다면 먼저 학습시키고
-        #     # mi = None
-        #     # # snr_db = 10
-        #     # if mi_net != None :
-        #     #     # mi = train_mi(model, mi_net, batch, snr_db, None, mi_opt, channel_type)
+            # # mi_net이 있다면 먼저 학습시키고
+            # mi = None
+            # # snr_db = 10
+            # if mi_net != None :
+            #     # mi = train_mi(model, mi_net, batch, snr_db, None, mi_opt, channel_type)
 
-        #     # 그 다음 메인 모델 학습
-        #     optimizer.zero_grad()
-        #     output = model(batch)
-        #     loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
+            # 그 다음 메인 모델 학습
+            optimizer.zero_grad()
+            output = model(batch)
+            loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
 
-        #     # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함
-        #     # if mi_net is not None:
-        #     #     enc_output = model.encoder(batch, src_mask=None)
-        #     #     compressed = model.time_compressor(enc_output)
-        #     #     channel_enc_output = model.channel_encoder(compressed)
-        #     #     Tx_sig = PowerNormalize(channel_enc_output)
+            # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함
+            # if mi_net is not None:
+            #     enc_output = model.encoder(batch, src_mask=None)
+            #     compressed = model.time_compressor(enc_output)
+            #     channel_enc_output = model.channel_encoder(compressed)
+            #     Tx_sig = PowerNormalize(channel_enc_output)
 
-        #     #     if channel_type == 'AWGN':
-        #     #         Rx_sig = channels.AWGN(Tx_sig, snr_db)
-        #     #     elif channel_type == 'rayleigh':
-        #     #         Rx_sig = channels.Rayleigh(Tx_sig, snr_db)
-        #     #     elif channel_type == 'rician':
-        #     #         Rx_sig = channels.Rician(Tx_sig, snr_db)
-        #     #     else:
-        #     #         raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
+            #     if channel_type == 'AWGN':
+            #         Rx_sig = channels.AWGN(Tx_sig, snr_db)
+            #     elif channel_type == 'rayleigh':
+            #         Rx_sig = channels.Rayleigh(Tx_sig, snr_db)
+            #     elif channel_type == 'rician':
+            #         Rx_sig = channels.Rician(Tx_sig, snr_db)
+            #     else:
+            #         raise ValueError("Please choose from AWGN, Rayleigh, and Rician")
 
-        #     #     mi_net.eval()
-        #     #     joint, marginal = sample_batch(Tx_sig, Rx_sig)
-        #     #     mi_lb, _, _ = mutual_information(joint, marginal, mi_net)
-        #     #     loss_mine = -mi_lb
-        #     #     loss = loss + 0.0009 * loss_mine
+            #     mi_net.eval()
+            #     joint, marginal = sample_batch(Tx_sig, Rx_sig)
+            #     mi_lb, _, _ = mutual_information(joint, marginal, mi_net)
+            #     loss_mine = -mi_lb
+            #     loss = loss + 0.0009 * loss_mine
 
-        #     loss.backward()
+            loss.backward()
 
-        #     # 그래디언트 클리핑 추가
-        #     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # 그래디언트 클리핑 추가
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
-        #     optimizer.step()
+            optimizer.step()
 
-        #     total_loss += loss.item() * batch.size(0)
-        #     train_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
+            total_loss += loss.item() * batch.size(0)
+            train_pbar.set_postfix({"Loss": f"{loss.item():.6f}"})
 
-        # avg_train_loss = total_loss / len(train_loader.dataset)
-        # print(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {avg_train_loss:.6f}")
+        avg_train_loss = total_loss / len(train_loader.dataset)
+        print(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {avg_train_loss:.6f}")
 
-        # # 검증
-        # model.eval()
-        # val_loss = 0
-        # with torch.no_grad():
-        #     # batch [train_batch_size, target_length(reshaped cycle len), d_comp]
-        #     val_pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]")
-        #     for batch in val_pbar:
-        #         batch = batch.to(device)
-        #         batch = batch[:, :, :-1]
-        #         output = model(batch)
-        #         loss = criterion(output, batch)
-        #         val_loss += loss.item() * batch.size(0)
-        # avg_val_loss = val_loss / len(val_loader.dataset)
-        # print(f"[Epoch {epoch+1}/{num_epochs}] Val Loss: {avg_val_loss:.6f}")
+        # 검증
+        model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            # batch [train_batch_size, target_length(reshaped cycle len), d_comp]
+            val_pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]")
+            for batch in val_pbar:
+                batch = batch.to(device)
+                batch = batch[:, :, :-1]
+                output = model(batch)
+                loss = criterion(output, batch)
+                val_loss += loss.item() * batch.size(0)
+        avg_val_loss = val_loss / len(val_loader.dataset)
+        print(f"[Epoch {epoch+1}/{num_epochs}] Val Loss: {avg_val_loss:.6f}")
 
-        # # 스케줄러 step (val loss 기준)
-        # scheduler.step(avg_val_loss)
+        # 스케줄러 step (val loss 기준)
+        scheduler.step(avg_val_loss)
 
-        # # val loss 개선 시 모델 저장
-        # if avg_val_loss < best_val_loss:
-        #     torch.save(model.state_dict(), model_save_path + "best.pth")
-        #     best_val_loss = avg_val_loss
-        #     best_epoch_idx = epoch
-        #     print(
-        #         f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
-        #     )
+        # val loss 개선 시 모델 저장
+        if avg_val_loss < best_val_loss:
+            torch.save(model.state_dict(), model_save_path + "best.pth")
+            best_val_loss = avg_val_loss
+            best_epoch_idx = epoch
+            print(
+                f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
+            )
 
-        # # === epoch 시간 측정 및 로깅 (CSV 저장) ===
-        # end_time = time.time()
-        # lr_now = optimizer.param_groups[0]["lr"]
-        # epoch_times = log_epoch_stats_csv(
-        #     start_time, end_time, epoch + 1, epoch_times, csv_file,
-        #     avg_train_loss, avg_val_loss, best_val_loss, lr_now
-        # )
+        # === epoch 시간 측정 및 로깅 (CSV 저장) ===
+        end_time = time.time()
+        lr_now = optimizer.param_groups[0]["lr"]
+        epoch_times = log_epoch_stats_csv(
+            start_time, end_time, epoch + 1, epoch_times, csv_file,
+            avg_train_loss, avg_val_loss, best_val_loss, lr_now
+        )
 
         # === 정규화된 입력과 output 비교 plot (3개 배치만) ===
         # 0, 40, 80
@@ -258,12 +258,11 @@ def train_model(
                         f"{save_fig_dir}_epoch{epoch+1}_sample{idx+1}.png", dpi=200
                     )
                     # plt.show()
-            exit()
 
         # 진행 상황 출력
         print(f"Epoch {epoch+1}/{num_epochs}:")
-        # print(f"  Train Loss: {avg_train_loss:.6f}")
-        # print(f"  Val Loss: {avg_val_loss:.6f}")
+        print(f"  Train Loss: {avg_train_loss:.6f}")
+        print(f"  Val Loss: {avg_val_loss:.6f}")
         print(f"  Best Val Loss: {best_val_loss:.6f}")
         print(f'  Learning Rate: {optimizer.param_groups[0]["lr"]:.6f}')
     print("학습 완료!")

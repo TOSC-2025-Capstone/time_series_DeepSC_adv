@@ -16,15 +16,18 @@ model_params = {
     "num_layers": 1, # 모든 모델의 레이어 수
     "dropout": 0,
     # lstm, gru, at_lstm
-    "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    # "hidden_dim": 512,  # lstm, gru, at_lstm hidden dim
+    "hidden_dim": 128,  # lstm, gru, at_lstm hidden dim
     # "seq_len": 512,  # lstm, gru, at_lstm 입력 시퀀스 길이
     "seq_len": 8,  # lstm, gru, at_lstm 입력 시퀀스 길이
     # deepsc
     "dff": 512,  # deepsc 모델 최대 노드 수
     "num_heads": 4,  # deepsc 모델 헤드 수
     # "d_model": 512,  # deepsc 모델 피쳐 확장 차원
-    "d_model": 512,  # deepsc 모델 피쳐 확장 차원
-    "d_seq": 512,  # deepsc 모델 시간 확장 차원
+    # "d_model": 512,  # deepsc 모델 피쳐 확장 차원
+    "d_model": 128,  # deepsc 모델 피쳐 확장 차원
+    # "d_seq": 512,  # deepsc 모델 시간 확장 차원
+    "d_seq": 128,  # deepsc 모델 시간 확장 차원
     # "max_len": 512,  # deepsc 모델 출력 sequence length
     "max_len": 8,  # deepsc 모델 출력 sequence length
     "d_comp": 3,  # deepsc 압축 피쳐 수

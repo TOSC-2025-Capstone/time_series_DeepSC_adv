@@ -38,12 +38,11 @@ from tqdm import tqdm
 
 from cycle_preprocess.reverse_cycle_reshape import *
 from models.transceiver import DeepSC
-from torch.utils.data import DataLoader, TensorDataset
 
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.model_parameters import *
 from parameters.parameters import ReconstructParams, TestParams
-import parameters.parameters as p
+
 
 def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
     """
@@ -85,7 +84,9 @@ def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
             os.path.join(preprocessed_folder, "csv/total_preprocessed", sample_file)
         ).columns
 
-    return pd.DataFrame(data_original_scale, columns=feature_names)
+    result_df =  pd.DataFrame(data_original_scale, columns=feature_names).drop(columns=["cycle_sequence"])
+
+    return result_df
 
 
 def split_to_cycles(df_original, target_length=None, file_indices=None):
@@ -103,6 +104,7 @@ def split_to_cycles(df_original, target_length=None, file_indices=None):
     # 사이클의 개수 계산 (역정규화하느라 합쳐놓은 데이터 256row씩으로 다시 나누기)
     n_cycles = len(df_original) // target_length
     cycle_dfs = {}
+
 
     if file_indices is None or len(file_indices) != n_cycles:
         print(
@@ -341,17 +343,14 @@ def post_process(tensor_data, scaler, preprocessed_folder, target_length, tensor
             # file_indices = indices_info["test_indices"]
     print("후처리 시작...")
 
-
     # 1. 텐서 데이터 역변환
     df_original = inverse_transform_tensor(tensor_data, scaler, preprocessed_folder)
     print(f"텐서 데이터 역변환 완료 (shape: {df_original.shape})")
 
     # 2. 사이클 단위로 분할
-    # cycle_dfs = split_to_cycles(
-    #     df_original, target_length=target_length, file_indices=file_indices
-    # )
-    # segment_trimmed_dfs = p.segment_trimmed_dfs
-    pdb.set_trace()
+    cycle_dfs = split_to_cycles(
+        df_original, target_length=target_length, file_indices=file_indices
+    )
     print(f"총 {len(cycle_dfs)}개의 사이클로 분할 완료")
     print(f"파일 인덱스: {sorted(cycle_dfs.keys())}")
 
@@ -474,36 +473,18 @@ def performance_cycle(
     post_processed_cycles = None
 
     for idx, tensor_data in enumerate(tensor_list):
-        data_loader = DataLoader(tensor_data, batch_size=128, shuffle=False)
-        data_pbar = tqdm(data_loader, desc=f"Performance Test")
-        all_outputs = []
-        all_file_indices = []
-        for batch in data_pbar:
-            batch = batch.to(device)
-
-            file_indices = batch[:, :, -1:]
-            batch = batch[:, :, :-1]
-            if model is None:
-                print("모델을 전달해주세요!")
-                return
-            else:
-                with torch.no_grad():
-                    output_tensor = model(batch.to(device))
-                    # 5. 결과를 리스트에 추가 (GPU 메모리 확보를 위해 .cpu() 사용)
-                    all_outputs.append(output_tensor.cpu())
-                    all_file_indices.append(file_indices.cpu())
-
-
-        # 6. 리스트에 저장된 모든 텐서를 dim=0 (배치 차원) 기준으로 합치기
-        concatenated_outputs = torch.cat(all_outputs, dim=0)
-        all_file_indices_tensor = torch.cat(all_file_indices, dim=0)
-        outputs = torch.cat((concatenated_outputs, all_file_indices_tensor), dim=2)
-        pdb.set_trace()
+        if model is None:
+            print("모델을 전달해주세요!")
+            return
+        else:
+            with torch.no_grad():
+                tensor_data = tensor_data[:, :, :-1]
+                output_tensor = model(tensor_data.to(device))
+                output_tensor = output_tensor.contiguous().view(-1, 512, 7)
 
         # 복원된 사이클 얻기
         post_processed_cycles = post_process(
-            # tensor_data=output_tensor.cpu(),
-            tensor_data=concatenated_outputs.cpu(),
+            tensor_data=output_tensor.cpu(),
             scaler=scaler,
             preprocessed_folder=preprocessed_folder,
             target_length=target_length,
@@ -528,6 +509,7 @@ def performance_cycle(
             )
             if os.path.exists(original_path):
                 original_df = pd.read_csv(original_path)
+                original_df.drop(columns=["battery_id", "file_index"])
 
                 if reconstruct_count % 100 == 0:
                     print(
