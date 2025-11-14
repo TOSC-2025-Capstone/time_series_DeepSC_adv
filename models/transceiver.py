@@ -982,8 +982,8 @@ class DeepSC(nn.Module):
         n_std = SNR_to_noise(self.snr_db)
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
-            # rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
-            rx_sig = self.channels.fading(tx_sig, 0, n_std, detector="MMSE")
+            rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            # rx_sig = self.channels.fading(tx_sig, 0, n_std, detector="MMSE")
         else:
             rx_sig = tx_sig
 

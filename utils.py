@@ -114,222 +114,223 @@ class NoamOpt:
 
 def power_normalize(x):
     x_square = torch.mul(x, x)
-    # power = torch.mean(x_square).sqrt()
-    power = (2 * torch.mean(x_square)).sqrt()
+    power = torch.mean(x_square).sqrt()
+    # power = (2 * torch.mean(x_square)).sqrt()
     x = torch.div(x, power)
 
     return x
 
-# class Channels():
-#     def AWGN(self, Tx_sig, snr_db=10):
-#         snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환
-#         signal_power = Tx_sig.pow(2).mean().item()  # 신호 평균 전력
-#         n_var = signal_power / snr_linear         # 잡음 분산
-#         noise = torch.normal(
-#             mean=0,
-#             std=math.sqrt(n_var),
-#             # std=0.01,
-#             size=Tx_sig.shape,
-#             device=Tx_sig.device
-#         )
+class Channels():
+    def AWGN(self, Tx_sig, snr_db=10):
+        snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환
+        signal_power = Tx_sig.pow(2).mean().item()  # 신호 평균 전력
+        n_var = signal_power / snr_linear         # 잡음 분산
+        noise = torch.normal(
+            mean=0,
+            std=math.sqrt(n_var),
+            # std=0.01,
+            size=Tx_sig.shape,
+            device=Tx_sig.device
+        )
 
-#         # # 데이터 준비
-#         # tx_signals = [Tx_sig[0, :128, i].detach().cpu().numpy() for i in range(3)]
-#         # noise_signals = [noise[0, :128, i].detach().cpu().numpy() for i in range(3)]
-#         # rx_signals = [tx_signals[i] + noise_signals[i] for i in range(3)]
+        # # 데이터 준비
+        # tx_signals = [Tx_sig[0, :128, i].detach().cpu().numpy() for i in range(3)]
+        # noise_signals = [noise[0, :128, i].detach().cpu().numpy() for i in range(3)]
+        # rx_signals = [tx_signals[i] + noise_signals[i] for i in range(3)]
 
-#         # # 전체 데이터의 min/max 계산 (통일된 스케일)
-#         # all_data = tx_signals + noise_signals + rx_signals
-#         # y_min = min(data.min() for data in all_data)
-#         # y_max = max(data.max() for data in all_data)
-#         # x_range = [0, 128]
+        # # 전체 데이터의 min/max 계산 (통일된 스케일)
+        # all_data = tx_signals + noise_signals + rx_signals
+        # y_min = min(data.min() for data in all_data)
+        # y_max = max(data.max() for data in all_data)
+        # x_range = [0, 128]
 
-#         # # 3x3 그리드 생성
-#         # fig, axes = plt.subplots(3, 3, figsize=(15, 10))
+        # # 3x3 그리드 생성
+        # fig, axes = plt.subplots(3, 3, figsize=(15, 10))
 
-#         # feature_names = ['Feature 0', 'Feature 1', 'Feature 2']
-#         # column_titles = ['Tx Signal', 'Noise', 'Rx Signal']
+        # feature_names = ['Feature 0', 'Feature 1', 'Feature 2']
+        # column_titles = ['Tx Signal', 'Noise', 'Rx Signal']
 
-#         # # 각 서브플롯 그리기
-#         # for row in range(3):  # 피처 (0, 1, 2)
-#         #     for col in range(3):  # Tx, Noise, Rx
-#         #         ax = axes[row, col]
+        # # 각 서브플롯 그리기
+        # for row in range(3):  # 피처 (0, 1, 2)
+        #     for col in range(3):  # Tx, Noise, Rx
+        #         ax = axes[row, col]
 
-#         #         # 데이터 선택
-#         #         if col == 0:  # Tx
-#         #             data = tx_signals[row]
-#         #             color = 'blue'
-#         #         elif col == 1:  # Noise
-#         #             data = noise_signals[row]
-#         #             color = 'orange'
-#         #         else:  # Rx
-#         #             data = rx_signals[row]
-#         #             color = 'red'
+        #         # 데이터 선택
+        #         if col == 0:  # Tx
+        #             data = tx_signals[row]
+        #             color = 'blue'
+        #         elif col == 1:  # Noise
+        #             data = noise_signals[row]
+        #             color = 'orange'
+        #         else:  # Rx
+        #             data = rx_signals[row]
+        #             color = 'red'
 
-#         #         # 플롯
-#         #         ax.plot(data, color=color, linewidth=1.5, alpha=0.8)
+        #         # 플롯
+        #         ax.plot(data, color=color, linewidth=1.5, alpha=0.8)
 
-#         #         # 스케일 통일
-#         #         ax.set_xlim(x_range)
-#         #         ax.set_ylim([y_min, y_max])
+        #         # 스케일 통일
+        #         ax.set_xlim(x_range)
+        #         ax.set_ylim([y_min, y_max])
 
-#         #         # 그리드
-#         #         ax.grid(True, alpha=0.3)
+        #         # 그리드
+        #         ax.grid(True, alpha=0.3)
 
-#         #         # 라벨 (첫 행에만 열 제목, 첫 열에만 행 제목)
-#         #         if row == 0:
-#         #             ax.set_title(column_titles[col], fontsize=12, fontweight='bold')
-#         #         if col == 0:
-#         #             ax.set_ylabel(feature_names[row], fontsize=11, fontweight='bold')
+        #         # 라벨 (첫 행에만 열 제목, 첫 열에만 행 제목)
+        #         if row == 0:
+        #             ax.set_title(column_titles[col], fontsize=12, fontweight='bold')
+        #         if col == 0:
+        #             ax.set_ylabel(feature_names[row], fontsize=11, fontweight='bold')
 
-#         #         # x축 라벨 (마지막 행에만)
-#         #         if row == 2:
-#         #             ax.set_xlabel('Time Step', fontsize=10)
+        #         # x축 라벨 (마지막 행에만)
+        #         if row == 2:
+        #             ax.set_xlabel('Time Step', fontsize=10)
 
-#         # # 전체 타이틀
-#         # fig.suptitle(f'Signal Comparison (SNR={snr_db}dB)\n'
-#         #             f'Signal Power: {signal_power:.6f}, Noise Std: {math.sqrt(n_var):.6f}',
-#         #             fontsize=14, fontweight='bold', y=0.995)
+        # # 전체 타이틀
+        # fig.suptitle(f'Signal Comparison (SNR={snr_db}dB)\n'
+        #             f'Signal Power: {signal_power:.6f}, Noise Std: {math.sqrt(n_var):.6f}',
+        #             fontsize=14, fontweight='bold', y=0.995)
 
-#         # plt.tight_layout()
-#         # plt.savefig('signal_comparison_3x3.png', dpi=300, bbox_inches='tight')
-#         # plt.show()
-#         # # self.visualize_awgn_effect(Tx_sig, snr_db=15)
-#         return Tx_sig + noise
+        # plt.tight_layout()
+        # plt.savefig('signal_comparison_3x3.png', dpi=300, bbox_inches='tight')
+        # plt.show()
+        # # self.visualize_awgn_effect(Tx_sig, snr_db=15)
+        return Tx_sig + noise
 
-#     def Rayleigh(self, Tx_sig, snr=10):
-#         shape = Tx_sig.shape
-#         H_real = torch.normal(0, math.sqrt(1/2), size=[1]).to(device)
-#         H_imag = torch.normal(0, math.sqrt(1/2), size=[1]).to(device)
-#         H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
-#         Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
-#         Rx_sig = self.AWGN(Tx_sig, snr)
-#         # Channel estimation
-#         Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
+    def Rayleigh(self, Tx_sig, snr=10):
+        shape = Tx_sig.shape
+        H_real = torch.normal(0, math.sqrt(1/2), size=[1]).to(device)
+        H_imag = torch.normal(0, math.sqrt(1/2), size=[1]).to(device)
+        H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
+        Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
+        Rx_sig = self.AWGN(Tx_sig, snr)
+        # Channel estimation
+        Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
 
-#         return Rx_sig
+        return Rx_sig
 
-#     def Rician(self, Tx_sig, snr=10, K=1):
-#         shape = Tx_sig.shape
-#         mean = math.sqrt(K / (K + 1))
-#         std = math.sqrt(1 / (K + 1))
-#         H_real = torch.normal(mean, std, size=[1]).to(device)
-#         H_imag = torch.normal(mean, std, size=[1]).to(device)
-#         H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
-#         Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
-#         Rx_sig = self.AWGN(Tx_sig, snr)
-#         # Channel estimation
-#         Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
+    def Rician(self, Tx_sig, snr=10, K=1):
+        shape = Tx_sig.shape
+        mean = math.sqrt(K / (K + 1))
+        std = math.sqrt(1 / (K + 1))
+        H_real = torch.normal(mean, std, size=[1]).to(device)
+        H_imag = torch.normal(mean, std, size=[1]).to(device)
+        H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
+        Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
+        Rx_sig = self.AWGN(Tx_sig, snr)
+        # Channel estimation
+        Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
 
-#         return Rx_sig
+        return Rx_sig
 
-class Channels(nn.Module):
-    def __init__(self):
-        """
-        args 대신 is_train_phase 플래그를 직접 받아 초기화합니다.
-        is_train_phase=True: 학습 모드 (노이즈 X - 원본 TF 코드 로직 기준)
-        is_train_phase=False: 추론/검증 모드 (노이즈 O)
-        """
-        super(Channels, self).__init__()
-        # is_train_phase = is_train_phase
+# class Channels(nn.Module):
+#     def __init__(self):
+#         """
+#         args 대신 is_train_phase 플래그를 직접 받아 초기화합니다.
+#         is_train_phase=True: 학습 모드 (노이즈 X - 원본 TF 코드 로직 기준)
+#         is_train_phase=False: 추론/검증 모드 (노이즈 O)
+#         """
+#         super(Channels, self).__init__()
+#         # is_train_phase = is_train_phase
 
-    def awgn(self, inputs, n_std=0.1):
-        """
-        AWGN 채널을 시뮬레이션합니다.
-        """
-        x = inputs
-        y = None
+#     def awgn(self, inputs, n_std=0.1):
+#         """
+#         AWGN 채널을 시뮬레이션합니다.
+#         """
+#         x = inputs
+#         y = None
 
-        # torch.randn_like(x)는 평균 0, 표준편차 1의 노이즈를 생성
-        # n_std를 곱해 표준편차를 조절
-        # 입력 텐서와 동일한 device 및 dtype을 사용해야 함
-        noise = torch.randn_like(x) * n_std
-        y = x + noise
+#         # torch.randn_like(x)는 평균 0, 표준편차 1의 노이즈를 생성
+#         # n_std를 곱해 표준편차를 조절
+#         # 입력 텐서와 동일한 device 및 dtype을 사용해야 함
+#         noise = torch.randn_like(x) * n_std
+#         y = x + noise
 
-        return y
+#         return y
 
-    def fading(self, inputs, K=1, n_std=0.1, detector="MMSE"):
-        """
-        Fading 채널(Rician) 및 검출기(LS, MMSE)를 시뮬레이션합니다.
-        마찬가지로 is_train_phase=False일 때만 AWGN 노이즈(n)를 추가합니다.
-        """
-        x = inputs
-        # PyTorch에서는 .shape 대신 .size() 또는 .shape 사용
-        bs, sent_len, d_model = x.shape
+#     def fading(self, inputs, K=1, n_std=0.1, detector="MMSE"):
+#         """
+#         Fading 채널(Rician) 및 검출기(LS, MMSE)를 시뮬레이션합니다.
+#         마찬가지로 is_train_phase=False일 때만 AWGN 노이즈(n)를 추가합니다.
+#         """
+#         pdb.set_trace()
+#         x = inputs
+#         # PyTorch에서는 .shape 대신 .size() 또는 .shape 사용
+#         bs, sent_len, d_model = x.shape
 
-        # K 값은 Python float이므로 math 사용 유지
-        mean = math.sqrt(K / (2 * (K + 1)))
-        std = math.sqrt(1 / (2 * (K + 1)))
+#         # K 값은 Python float이므로 math 사용 유지
+#         mean = math.sqrt(K / (2 * (K + 1)))
+#         std = math.sqrt(1 / (2 * (K + 1)))
 
-        # tf.reshape -> x.view (더 효율적)
-        # tf.complex(x_real, x_imag)
+#         # tf.reshape -> x.view (더 효율적)
+#         # tf.complex(x_real, x_imag)
 
-        # 원본 TF 코드는 [bs, -1, 2]로 변환합니다.
-        # 이는 (sent_len * d_model / 2) 길이의 복소수 벡터를 의미합니다.
-        # [bs, sent_len, d_model] -> [bs, -1, 2]
-        x_reshaped = x.reshape(bs, -1, 2) # 실수부와 허수부 2개의 피쳐로 구분할 수 있게 쉐이핑
-        x_complex = torch.complex(x_reshaped[..., 0], x_reshaped[..., 1]) # [bs, (sent_len*d_model)/2]
+#         # 원본 TF 코드는 [bs, -1, 2]로 변환합니다.
+#         # 이는 (sent_len * d_model / 2) 길이의 복소수 벡터를 의미합니다.
+#         # [bs, sent_len, d_model] -> [bs, -1, 2]
+#         x_reshaped = x.reshape(bs, -1, 2) # 실수부와 허수부 2개의 피쳐로 구분할 수 있게 쉐이핑
+#         x_complex = torch.complex(x_reshaped[..., 0], x_reshaped[..., 1]) # [bs, (sent_len*d_model)/2]
 
-        # h 채널 생성 (Rician)
-        # tf.random.normal((1,), ...) -> torch.normal(mean, std, size=(1,))
-        # h가 배치 전체에 동일하게 적용되도록 브로드캐스팅 활용
-        # 입력 텐서와 동일한 device 및 dtype 사용
-        h_real = torch.normal(mean, std, size=(1,), device=x.device, dtype=torch.float32)
-        h_imag = torch.normal(mean, std, size=(1,), device=x.device, dtype=torch.float32)
-        h_complex = torch.complex(h_real, h_imag) # shape: [1]
+#         # h 채널 생성 (Rician)
+#         # tf.random.normal((1,), ...) -> torch.normal(mean, std, size=(1,))
+#         # h가 배치 전체에 동일하게 적용되도록 브로드캐스팅 활용
+#         # 입력 텐서와 동일한 device 및 dtype 사용
+#         h_real = torch.normal(mean, std, size=(1,), device=x.device, dtype=torch.float32)
+#         h_imag = torch.normal(mean, std, size=(1,), device=x.device, dtype=torch.float32)
+#         h_complex = torch.complex(h_real, h_imag) # shape: [1]
 
-        # 노이즈 벡터 생성 (AWGN)
-        # x_complex와 동일한 shape의 복소수 노이즈 생성
-        # 복소수 노이즈의 표준편차가 n_std가 되도록 실수/허수부 표준편차를 n_std/sqrt(2)로 설정
-        n_std_complex = n_std / math.sqrt(2)
-        n_real = torch.normal(0.0, n_std_complex, size=x_complex.shape, device=x.device, dtype=torch.float32)
-        n_imag = torch.normal(0.0, n_std_complex, size=x_complex.shape, device=x.device, dtype=torch.float32)
-        n_complex = torch.complex(n_real, n_imag) # [bs, (sent_len*d_model)/2]
+#         # 노이즈 벡터 생성 (AWGN)
+#         # x_complex와 동일한 shape의 복소수 노이즈 생성
+#         # 복소수 노이즈의 표준편차가 n_std가 되도록 실수/허수부 표준편차를 n_std/sqrt(2)로 설정
+#         n_std_complex = n_std / math.sqrt(2)
+#         n_real = torch.normal(0.0, n_std_complex, size=x_complex.shape, device=x.device, dtype=torch.float32)
+#         n_imag = torch.normal(0.0, n_std_complex, size=x_complex.shape, device=x.device, dtype=torch.float32)
+#         n_complex = torch.complex(n_real, n_imag) # [bs, (sent_len*d_model)/2]
 
-        # y = hx + n
-        # y_complex = None
-        y_complex = x_complex * h_complex + n_complex
+#         # y = hx + n
+#         # y_complex = None
+#         y_complex = x_complex * h_complex + n_complex
 
-        # Detector (Perfect CSI)
-        x_est_complex = None
-        if detector == "LS":
-            # h_complex_conj = tf.math.conj(h_complex)
-            h_complex_conj = torch.conj(h_complex)
-            # 분모가 0이 되는 것을 방지하기 위해 작은 값(epsilon) 추가
-            eps = 1e-10
-            x_est_complex = y_complex * h_complex_conj / (h_complex * h_complex_conj + eps)
-        elif detector == "MMSE":
-            # h_complex_conj = tf.math.conj(h_complex)
-            h_complex_conj = torch.conj(h_complex)
+#         # Detector (Perfect CSI)
+#         x_est_complex = None
+#         if detector == "LS":
+#             # h_complex_conj = tf.math.conj(h_complex)
+#             h_complex_conj = torch.conj(h_complex)
+#             # 분모가 0이 되는 것을 방지하기 위해 작은 값(epsilon) 추가
+#             eps = 1e-10
+#             x_est_complex = y_complex * h_complex_conj / (h_complex * h_complex_conj + eps)
+#         elif detector == "MMSE":
+#             # h_complex_conj = tf.math.conj(h_complex)
+#             h_complex_conj = torch.conj(h_complex)
 
-            # 원본 TF 코드의 (n_std * n_std * 2)는 실수부/허수부 분산의 합을 의미 (각각 n_std^2)
-            # PyTorch에서는 복소수 노이즈의 총 분산 E[|n|^2] = E[n_r^2] + E[n_i^2] = (n_std_complex^2) + (n_std_complex^2) = n_std^2
-            noise_power = n_std * n_std
+#             # 원본 TF 코드의 (n_std * n_std * 2)는 실수부/허수부 분산의 합을 의미 (각각 n_std^2)
+#             # PyTorch에서는 복소수 노이즈의 총 분산 E[|n|^2] = E[n_r^2] + E[n_i^2] = (n_std_complex^2) + (n_std_complex^2) = n_std^2
+#             noise_power = n_std * n_std
 
-            a = (h_complex * h_complex_conj) + noise_power
-            x_est_complex = y_complex * h_complex_conj / a
-        else:
-            raise ValueError("detector must be in ['LS', 'MMSE']")
+#             a = (h_complex * h_complex_conj) + noise_power
+#             x_est_complex = y_complex * h_complex_conj / a
+#         else:
+#             raise ValueError("detector must be in ['LS', 'MMSE']")
 
-        # x_est를 다시 [bs, sent_len, d_model] 형태로 복원
-        # x_est_real = tf.math.real(x_est_complex)
-        # x_est_img = tf.math.imag(x_est_complex)
-        x_est_real = torch.real(x_est_complex)
-        x_est_img = torch.imag(x_est_complex)
+#         # x_est를 다시 [bs, sent_len, d_model] 형태로 복원
+#         # x_est_real = tf.math.real(x_est_complex)
+#         # x_est_img = tf.math.imag(x_est_complex)
+#         x_est_real = torch.real(x_est_complex)
+#         x_est_img = torch.imag(x_est_complex)
 
-        # x_est_real = tf.expand_dims(x_est_real, -1)
-        # x_est_img = tf.expand_dims(x_est_img, -1)
-        x_est_real = x_est_real.unsqueeze(-1)
-        x_est_img = x_est_img.unsqueeze(-1)
+#         # x_est_real = tf.expand_dims(x_est_real, -1)
+#         # x_est_img = tf.expand_dims(x_est_img, -1)
+#         x_est_real = x_est_real.unsqueeze(-1)
+#         x_est_img = x_est_img.unsqueeze(-1)
 
-        # x_est = tf.concat([x_est_real, x_est_img], axis=-1)
-        x_est = torch.cat((x_est_real, x_est_img), dim=-1) # [bs, (sent_len*d_model)/2, 2]
+#         # x_est = tf.concat([x_est_real, x_est_img], axis=-1)
+#         x_est = torch.cat((x_est_real, x_est_img), dim=-1) # [bs, (sent_len*d_model)/2, 2]
 
-        # x_est = tf.reshape(x_est, (bs, sent_len, -1))
-        x_est = x_est.reshape(bs, sent_len, -1) # [bs, sent_len, d_model]
+#         # x_est = tf.reshape(x_est, (bs, sent_len, -1))
+#         x_est = x_est.reshape(bs, sent_len, -1) # [bs, sent_len, d_model]
 
-        # 원본 TF 코드의 out1, out2는 반환되지 않으므로 x_est만 반환
-        return x_est
+#         # 원본 TF 코드의 out1, out2는 반환되지 않으므로 x_est만 반환
+#         return x_est
 
 
 

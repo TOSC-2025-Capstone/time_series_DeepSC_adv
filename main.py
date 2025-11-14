@@ -101,9 +101,10 @@ if __name__ == "__main__":
 
                 test1 = model_params['snr_db']
                 test2 = model_params["compressed_len"]
+                test3 = model_params["hidden_dim"]
 
                 print(f"========================== case_{p.case_index} start ==========================\n")
-                print(f"model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index}, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+                print(f"hidden_dim={test3}, model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index}, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
 
                 print("========================== preprocess ==========================\n")
                 if is_preprocessed == False:
