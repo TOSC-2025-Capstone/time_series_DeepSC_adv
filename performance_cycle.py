@@ -39,10 +39,14 @@ from tqdm import tqdm
 from cycle_preprocess.reverse_cycle_reshape import *
 from models.transceiver import DeepSC
 
+from torch.utils.data import DataLoader, TensorDataset
+
 # 기타 매개변수, 모델 파라미터 모두 가져오기
 from parameters.model_parameters import *
 from parameters.parameters import ReconstructParams, TestParams
+import parameters.parameters as p
 
+from tqdm import tqdm
 
 def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
     """
@@ -141,9 +145,9 @@ def visualize_cycle_performance(
     os.makedirs(save_fig_dir, exist_ok=True)
 
     # 1. 원본-복원 비교 플롯
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(18, 10))
     for i, col in enumerate(feature_cols):
-        plt.subplot(2, 3, i + 1)
+        plt.subplot(2, 4, i + 1)
         plt.plot(original_df[col], label="Original", alpha=0.7)
         plt.plot(reconstructed_df[col], label="Reconstructed", alpha=0.7)
         plt.title(col)
@@ -154,123 +158,125 @@ def visualize_cycle_performance(
     plt.savefig(os.path.join(save_fig_dir, f"{base}_compare.png"), dpi=200)
     plt.close()
 
-    # 2. Residual(오차) 시계열 플롯
-    plt.figure(figsize=(15, 10))
-    for i, col in enumerate(feature_cols):
-        plt.subplot(2, 3, i + 1)
+    # # 2. Residual(오차) 시계열 플롯
+    # plt.figure(figsize=(15, 10))
+    # for i, col in enumerate(feature_cols):
+    #     plt.subplot(2, 4, i + 1)
 
-        # 그냥 오차 계산
-        residual = original_df[col] - reconstructed_df[col]
+    #     # 그냥 오차 계산
+    #     residual = original_df[col] - reconstructed_df[col]
 
-        # 원본 데이터의 범위 계산
-        original_range = original_df[col].max() - original_df[col].min()
-        y_limit = original_range * 0.5  # 원본 데이터 범위의 ±50%로 설정
+    #     # 원본 데이터의 범위 계산
+    #     original_range = original_df[col].max() - original_df[col].min()
+    #     y_limit = original_range * 0.5  # 원본 데이터 범위의 ±50%로 설정
+    #     if y_limit == 0:
+    #         y_limit = 1
 
-        plt.plot(residual, label="Residual", color="orange", alpha=0.8)
-        plt.title(f"Residual: {col}")
-        plt.axhline(0, color="gray", linestyle="--", linewidth=1)
-        plt.ylim(-y_limit, y_limit)  # y축 범위 설정
-        plt.legend()
-        plt.grid(True)
+    #     plt.plot(residual, label="Residual", color="orange", alpha=0.8)
+    #     plt.title(f"Residual: {col}")
+    #     plt.axhline(0, color="gray", linestyle="--", linewidth=1)
+    #     plt.ylim(-y_limit, y_limit)  # y축 범위 설정
+    #     plt.legend()
+    #     plt.grid(True)
 
-        # y축에 원본 데이터 범위의 백분율 표시
-        plt.ylabel(f"Error (±{(y_limit/original_range*100):.1f}% of range)")
+    #     # y축에 원본 데이터 범위의 백분율 표시
+    #     plt.ylabel(f"Error (±{(y_limit/original_range*100):.1f}% of range)")
 
-    plt.suptitle(f"Cycle Residuals: {base}")
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(os.path.join(save_fig_dir, f"{base}_residual.png"), dpi=200)
-    plt.close()
+    # plt.suptitle(f"Cycle Residuals: {base}")
+    # plt.tight_layout(rect=[0, 0, 1, 0.96])
+    # plt.savefig(os.path.join(save_fig_dir, f"{base}_residual.png"), dpi=200)
+    # plt.close()
 
-    # 3. 복원 오차율(%) 플롯 - 원본 데이터 범위 대비 상대 오차
-    plt.figure(figsize=(15, 10))
-    for i, col in enumerate(feature_cols):
-        plt.subplot(2, 3, i + 1)
+    # # 3. 복원 오차율(%) 플롯 - 원본 데이터 범위 대비 상대 오차
+    # plt.figure(figsize=(15, 10))
+    # for i, col in enumerate(feature_cols):
+    #     plt.subplot(2, 4, i + 1)
 
-        # 원본 데이터의 범위 계산
-        original_max = np.max(original_df[col])
-        original_min = np.min(original_df[col])
-        original_range = original_max - original_min
+    #     # 원본 데이터의 범위 계산
+    #     original_max = np.max(original_df[col])
+    #     original_min = np.min(original_df[col])
+    #     original_range = original_max - original_min
 
-        # 절대 오차 계산
-        diff = np.abs(original_df[col] - reconstructed_df[col])
+    #     # 절대 오차 계산
+    #     diff = np.abs(original_df[col] - reconstructed_df[col])
 
-        mae_relative_error = (diff / original_range) * 100  # MAE 기반 상대 오차 %
+    #     mae_relative_error = (diff / original_range) * 100  # MAE 기반 상대 오차 %
 
-        relative_error = None
+    #     relative_error = None
 
-        # 이진화 기반 오차율 계산 (0.5 기준)
-        if col == "Current_measured" or col == "Current_load":
-            y_true_binary = (original_df[col] >= 0.5).astype(int)
-            y_pred_binary = (reconstructed_df[col] >= 0.5).astype(int)
-            binary_diff = np.abs(y_true_binary - y_pred_binary)
+    #     # 이진화 기반 오차율 계산 (0.5 기준)
+    #     if col == "Current_measured" or col == "Current_load":
+    #         y_true_binary = (original_df[col] >= 0.5).astype(int)
+    #         y_pred_binary = (reconstructed_df[col] >= 0.5).astype(int)
+    #         binary_diff = np.abs(y_true_binary - y_pred_binary)
 
-            binary_error_rate = (
-                binary_diff * 100
-            )  # 각 시점별 binary 오차 (0% 또는 100%)
-            relative_error = binary_error_rate  # 이진화 기반 복원 실패 시점 표시
+    #         binary_error_rate = (
+    #             binary_diff * 100
+    #         )  # 각 시점별 binary 오차 (0% 또는 100%)
+    #         relative_error = binary_error_rate  # 이진화 기반 복원 실패 시점 표시
 
-        else:
-            # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
-            # relative_error = (diff / original_range) * 100
-            relative_error = (diff / original_df[col]) * 100
+    #     else:
+    #         # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
+    #         # relative_error = (diff / original_range) * 100
+    #         relative_error = (diff / original_df[col]) * 100
 
-        plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
-        plt.title(f"Relative Error: {col}")
-        plt.ylabel("Error (% of data range)")
-        plt.ylim(0, 50)  # 데이터 범위의 0~50%로 제한
-        plt.axhline(0, color="gray", linestyle="--", linewidth=1)
-        plt.legend()
-        plt.grid(True)
-    plt.suptitle(f"Cycle Residual Percent: {base}")
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(os.path.join(save_fig_dir, f"{base}_residual_percent.png"), dpi=200)
-    plt.close()
+    #     plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
+    #     plt.title(f"Relative Error: {col}")
+    #     plt.ylabel("Error (% of data range)")
+    #     plt.ylim(0, 50)  # 데이터 범위의 0~50%로 제한
+    #     plt.axhline(0, color="gray", linestyle="--", linewidth=1)
+    #     plt.legend()
+    #     plt.grid(True)
+    # plt.suptitle(f"Cycle Residual Percent: {base}")
+    # plt.tight_layout(rect=[0, 0, 1, 0.96])
+    # plt.savefig(os.path.join(save_fig_dir, f"{base}_residual_percent.png"), dpi=200)
+    # plt.close()
 
-    # 복원 오차율 (min-max scale로 구한 버전)
-    plt.figure(figsize=(15, 10))
-    for i, col in enumerate(feature_cols):
-        plt.subplot(2, 3, i + 1)
+    # # 복원 오차율 (min-max scale로 구한 버전)
+    # plt.figure(figsize=(15, 10))
+    # for i, col in enumerate(feature_cols):
+    #     plt.subplot(2, 4, i + 1)
 
-        # 원본 데이터의 범위 계산
-        original_max = np.max(original_df[col])
-        original_min = np.min(original_df[col])
-        original_range = original_max - original_min
+    #     # 원본 데이터의 범위 계산
+    #     original_max = np.max(original_df[col])
+    #     original_min = np.min(original_df[col])
+    #     original_range = original_max - original_min
 
-        # 절대 오차 계산
-        diff = np.abs(original_df[col] - reconstructed_df[col])
+    #     # 절대 오차 계산
+    #     diff = np.abs(original_df[col] - reconstructed_df[col])
 
-        mae_relative_error = (diff / original_range) * 100  # MAE 기반 상대 오차 %
+    #     mae_relative_error = (diff / original_range) * 100  # MAE 기반 상대 오차 %
 
-        relative_error = None
+    #     relative_error = None
 
-        # 이진화 기반 오차율 계산 (0.5 기준)
-        if col == "Current_measured" or col == "Current_load":
-            y_true_binary = (original_df[col] >= 0.5).astype(int)
-            y_pred_binary = (reconstructed_df[col] >= 0.5).astype(int)
-            binary_diff = np.abs(y_true_binary - y_pred_binary)
+    #     # 이진화 기반 오차율 계산 (0.5 기준)
+    #     if col == "Current_measured" or col == "Current_load":
+    #         y_true_binary = (original_df[col] >= 0.5).astype(int)
+    #         y_pred_binary = (reconstructed_df[col] >= 0.5).astype(int)
+    #         binary_diff = np.abs(y_true_binary - y_pred_binary)
 
-            binary_error_rate = (
-                binary_diff * 100
-            )  # 각 시점별 binary 오차 (0% 또는 100%)
-            relative_error = binary_error_rate  # 이진화 기반 복원 실패 시점 표시
+    #         binary_error_rate = (
+    #             binary_diff * 100
+    #         )  # 각 시점별 binary 오차 (0% 또는 100%)
+    #         relative_error = binary_error_rate  # 이진화 기반 복원 실패 시점 표시
 
-        else:
-            # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
-            relative_error = (diff / original_range) * 100
+    #     else:
+    #         # 오차를 원본 데이터 범위에 대한 비율로 표시 (백분율)
+    #         relative_error = (diff / original_range) * 100
 
-        plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
-        plt.title(f"Relative Error: {col}")
-        plt.ylabel("Error (% of data range)")
-        plt.ylim(0, 50)  # 데이터 범위의 0~50%로 제한
-        plt.axhline(0, color="gray", linestyle="--", linewidth=1)
-        plt.legend()
-        plt.grid(True)
-    plt.suptitle(f"Cycle Residual Percent: {base}")
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(
-        os.path.join(save_fig_dir, f"{base}_residual_percent_minmax.png"), dpi=200
-    )
-    plt.close()
+    #     plt.plot(relative_error, label="Relative Error", color="orange", alpha=0.8)
+    #     plt.title(f"Relative Error: {col}")
+    #     plt.ylabel("Error (% of data range)")
+    #     plt.ylim(0, 50)  # 데이터 범위의 0~50%로 제한
+    #     plt.axhline(0, color="gray", linestyle="--", linewidth=1)
+    #     plt.legend()
+    #     plt.grid(True)
+    # plt.suptitle(f"Cycle Residual Percent: {base}")
+    # plt.tight_layout(rect=[0, 0, 1, 0.96])
+    # plt.savefig(
+    #     os.path.join(save_fig_dir, f"{base}_residual_percent_minmax.png"), dpi=200
+    # )
+    # plt.close()
 
 
 def calculate_performance_metrics(original_df, reconstructed_df, feature_cols):
@@ -472,19 +478,29 @@ def performance_cycle(
     # 3. 전체 배터리 시계열 복원 및 성능 평가
     post_processed_cycles = None
 
+    all_output_tensors = None
     for idx, tensor_data in enumerate(tensor_list):
         if model is None:
             print("모델을 전달해주세요!")
             return
         else:
             with torch.no_grad():
-                tensor_data = tensor_data[:, :, :-1]
-                output_tensor = model(tensor_data.to(device))
-                output_tensor = output_tensor.contiguous().view(-1, 512, 7)
+                tensor_loader = DataLoader(tensor_data, batch_size=p.target_length // p.segment_length_n, shuffle=False)
+                tensor_pbar = tqdm(tensor_loader, desc=f"[Test]")
+                for batch in tensor_pbar:
+                    batch = batch.to(device)
+                    batch = batch[:, :, :-1] # 파일 인덱스 제거
+                    # tensor_data = tensor_data[:, :, :-1]
+                    output_tensor = model(batch.to(device))
+                    output_tensor = output_tensor.contiguous().view(-1, 512, len(batch[0][0]))
+                    if all_output_tensors == None :
+                        all_output_tensors = output_tensor
+                    else:
+                        all_output_tensors = torch.cat((all_output_tensors, output_tensor), dim=0)
 
         # 복원된 사이클 얻기
         post_processed_cycles = post_process(
-            tensor_data=output_tensor.cpu(),
+            tensor_data=all_output_tensors.cpu(),
             scaler=scaler,
             preprocessed_folder=preprocessed_folder,
             target_length=target_length,
@@ -509,7 +525,8 @@ def performance_cycle(
             )
             if os.path.exists(original_path):
                 original_df = pd.read_csv(original_path)
-                original_df.drop(columns=["battery_id", "file_index"])
+                original_df = original_df.drop(columns=["file_index"])
+                original_df["battery_id"] = original_df["battery_id"].str.replace(r'\D', '', regex=True).astype(int)
 
                 if reconstruct_count % 100 == 0:
                     print(

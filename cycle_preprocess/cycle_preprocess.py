@@ -77,7 +77,8 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     )
 
     file_index_col = df_cleaned["file_index"].values
-    df_cleaned = df_cleaned.drop(columns=["file_index", "battery_id"])
+    df_cleaned = df_cleaned.drop(columns=["file_index"])
+    df_cleaned["battery_id"] = df_cleaned["battery_id"].str.replace(r'\D', '', regex=True).astype(int)
 
     if scaler_type == "minmax":
         scaler = MinMaxScaler()
@@ -103,7 +104,6 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
 
     # 다시 scaled_df에 저장했던 file_index 컬럼 복원
     scaled_df["file_index"] = file_index_col
-
 
     # 2. 정규화를 마친 통합 데이터프레임을 파일 단위로 분리 후
     grouped_dfs = grouping_df(scaled_df)

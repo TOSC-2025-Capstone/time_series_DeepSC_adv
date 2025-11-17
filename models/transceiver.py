@@ -944,14 +944,6 @@ class DeepSC(nn.Module):
                 batch_first=True,
             )
 
-        self.sequence_model = nn.LSTM(
-            input_size=self.hidden_dim,
-            hidden_size=self.hidden_dim,
-            num_layers=self.num_layers,
-            dropout=self.dropout,
-            batch_first=True,
-        )
-
         # 자연어 디코더 대신 시계열 출력 레이어 사용
         self.output_projection = nn.Linear(self.d_model, self.input_dim)
         self.output_time_projection = nn.Linear(self.d_seq, self.seq_len)
@@ -979,7 +971,6 @@ class DeepSC(nn.Module):
         tx_sig = power_normalize(channel_encoded)
 
         # 4단계 : 채널 상태 적용
-        n_std = SNR_to_noise(self.snr_db)
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
             rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)

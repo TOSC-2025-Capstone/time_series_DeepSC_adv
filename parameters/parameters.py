@@ -36,8 +36,8 @@ is_preprocessed = True
 is_skip_outlier_eliminate = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
-is_trained = True
-# is_trained = False
+# is_trained = True
+is_trained = False
 
 # 성능평가를 진행하지 않게 만듦
 # is_skip_performance = True
@@ -71,7 +71,7 @@ is_row_x_label_on_EDA = True
     테스트할 때는 이 부분을 자신의 버전으로 적용했는 지 반드시 잘 보고 실행해야합니다! (다른 테스트 결과를 오염시킬 수 있음)
 """
 # 테스트 케이스 인덱스
-case_index = "10021.1.1"
+case_index = "10022.1.1"
 
 # 모델 종류
 class ModelType(Enum):
@@ -131,6 +131,7 @@ feature_cols = [
     "Current_load",
     "Voltage_load",
     "Time",
+    "battery_id"
 ]
 
 # outlier elimination threshold
@@ -226,7 +227,7 @@ get_save_performance_dir = lambda: (
 """ ========================= 모델 파라미터 설정 ======================== """
 
 # epochs
-train_epochs = 120
+train_epochs = 80
 # batch size
 train_batch_size = 16
 # learning rate
@@ -238,6 +239,7 @@ segment_length_n = 8  # 입력 시퀀스 길이를 segment_length_n 등분하여
 
 get_train_batch_size = lambda: train_batch_size
 get_segment_length_n = lambda: segment_length_n
+get_train_lr = lambda: train_lr
 
 """ ========================= 각 기능 모듈별 파라미터 정리 ========================= """
 # # preprocess
@@ -329,7 +331,7 @@ class TrainParams:
     # (단순 변수 -> field(default_factory=...)로 변경)
     num_epochs: int = field(default=train_epochs) # (이 변수들은 루프에서 안바뀌면 default= 그대로 둬도 됨)
     batch_size: int = field(default_factory=get_train_batch_size)
-    lr: float = field(default=train_lr)
+    lr: float = field(default_factory=get_train_lr)
     loss_type: str = field(default_factory=lambda: loss_type)
     lambda_feat: float = 3  # (정적 값이면 그대로 둠)
     segment_length_n : int = field(default_factory=get_segment_length_n)

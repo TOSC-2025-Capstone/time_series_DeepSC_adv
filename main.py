@@ -52,11 +52,13 @@ def count_parameters(model):
 snr_list = [3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 model_type_list = ["deepsc", "lstm"]
+# model_type_list = ["deepsc"]
 batch_size_list = [1, 2, 4, 8, 16]
 base_case_number = int(case_index.split(".")[0])
 model_type_index = 1 if model_type == "deepsc" else 2
-# seq_len_list = [8, 16, 32, 64, 128, 256, 512]
-seq_len_list = [8]
+seq_len_list = [2, 8, 32] # segment length
+projection_list = [8, 64, 512]
+# seq_len_list = [8]
 
 if __name__ == "__main__":
     print(torch.__version__)  # PyTorch 버전 확인
@@ -66,27 +68,45 @@ if __name__ == "__main__":
 
     seed = 1
     setup_seed(seed)
-    # for batch_idx, batch_size in enumerate(batch_size_list):
-    for model_type_index, v_model_type in enumerate(model_type_list):
-        p.model_type=v_model_type
-        if p.model_type == "deepsc":
-            model_params["hidden_dim"] = 512
-        else :
-            model_params["hidden_dim"] = 128
+    for seq_len_idx, v_seq_len in enumerate(seq_len_list):
+        if seq_len_idx <= 1 :
+            continue
 
-        for snr_idx, v_snr_db in enumerate(snr_list):
-            model_params["snr_db"] = v_snr_db
-            for seq_len_idx, v_seq_len in enumerate(seq_len_list):
-                case_number = base_case_number + seq_len_idx
-                model_params["seq_len"] = v_seq_len
-                model_params["max_len"] = v_seq_len
-                model_params["compressed_len"] = v_seq_len // 4  # 압축 길이는 입력 길이의 1/4로 설정
-                p.segment_length_n = v_seq_len
+        model_params["seq_len"] = v_seq_len
+        model_params["max_len"] = v_seq_len
+        if v_seq_len == 2 :
+            model_params["compressed_len"] = v_seq_len // 2  # 압축 길이는 입력 길이의 1/4로 설정
+            # 더 잘게 잘라서, 많아진 데이터를 더 큰 배치로 학습
+            p.train_batch_size = 32
+        elif v_seq_len == 32 :
+            model_params["compressed_len"] = v_seq_len // 4  # 압축 길이는 입력 길이의 1/4로 설정
+            p.train_batch_size = 8 # 더 적은 배치 (배치 요소 하나가 커짐)
+        else :
+            model_params["compressed_len"] = v_seq_len // 4  # 압축 길이는 입력 길이의 1/4로 설정
+        model_params["input_dim"] = 8
+        p.input_dim = 8
+        model_params["d_comp"] = 8 // 4
+        p.segment_length_n = v_seq_len
+
+        for proj_idx, proj_dim in enumerate(projection_list):
+            model_params["d_model"] = proj_dim
+            model_params["d_seq"] = proj_dim
+            model_params["hidden_dim"] = proj_dim
+
+            for model_type_index, v_model_type in enumerate(model_type_list):
+                if seq_len_idx == 0 :
+                    continue
+                p.model_type = v_model_type
+                case_number = base_case_number + len(seq_len_list) * seq_len_idx + proj_idx
+                # case_number = base_case_number + len(seq_len_list) * seq_len_idx
+                # for snr_idx, v_snr_db in enumerate(snr_list):
+                #     model_params["snr_db"] = v_snr_db
 
                 checkpoint_index = f"{case_number}.{model_type_index+1}.1"
                 # test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
                 test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{p.model_type}/{p.model_type}_battery_epoch"
-                p.case_index = f"{case_number}.{model_type_index+1}.{snr_idx+2}"
+                # p.case_index = f"{case_number}.{model_type_index+1}.{snr_idx+2}"
+                p.case_index = f"{case_number}.{model_type_index+1}.1"
 
                     # p.case_index = f"{int(case_number)}.{model_type_index}.1"  # case index 설정
                     # for snr_idx, snr in enumerate(snr_list):
@@ -101,10 +121,12 @@ if __name__ == "__main__":
 
                 test1 = model_params['snr_db']
                 test2 = model_params["compressed_len"]
-                test3 = model_params["hidden_dim"]
+                test3 = model_params["d_model"]
+                test4 = model_params["seq_len"]
+                test5 = p.segment_length_n
 
                 print(f"========================== case_{p.case_index} start ==========================\n")
-                print(f"hidden_dim={test3}, model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index}, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+                print(f"segment_length={test5}, seq_len={test4}, d_model={test3}, \n, model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index},\n, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
 
                 print("========================== preprocess ==========================\n")
                 if is_preprocessed == False:
