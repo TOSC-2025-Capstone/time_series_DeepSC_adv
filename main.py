@@ -96,6 +96,7 @@ if __name__ == "__main__":
             for model_type_index, v_model_type in enumerate(model_type_list):
                 if seq_len_idx == 0 :
                     continue
+
                 p.model_type = v_model_type
                 case_number = base_case_number + len(seq_len_list) * seq_len_idx + proj_idx
                 # case_number = base_case_number + len(seq_len_list) * seq_len_idx
@@ -107,6 +108,9 @@ if __name__ == "__main__":
                 test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{p.model_type}/{p.model_type}_battery_epoch"
                 # p.case_index = f"{case_number}.{model_type_index+1}.{snr_idx+2}"
                 p.case_index = f"{case_number}.{model_type_index+1}.1"
+
+                if p.case_index == "10028.1.1" or p.case_index == "10028.2.1" :
+                    continue
 
                     # p.case_index = f"{int(case_number)}.{model_type_index}.1"  # case index 설정
                     # for snr_idx, snr in enumerate(snr_list):
@@ -160,6 +164,7 @@ if __name__ == "__main__":
                 if p.is_trained == False:
                     print("========================== train ==========================\n")
                     model.train()
+
                     if model.training:
                         print("현재 모델은 training 모드입니다.")
                         # train_model(params=train_params, model=model, expert_model=expert_model, device=device, mi_net=mi_net)
@@ -193,7 +198,6 @@ if __name__ == "__main__":
                     performance_cycle(params=test_params, model=model, device=device, is_full_reconstruct=False)
 
                 print("========================== full reconstruction ==========================\n")
-
                 gc.collect()
                 torch.cuda.empty_cache()
                 if is_skip_full_reconstruct == False :

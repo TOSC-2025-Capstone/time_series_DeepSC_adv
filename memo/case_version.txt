@@ -824,7 +824,9 @@ torch.Size([16, 2, 3]), torch.Size([16, 2, 128]), torch.Size([16, 128, 128]), to
 ========================== case_10021.1.1 start =========================
 max_len=8, compressed_len=2, caseindex: 10021.1.1, batch_size=16, test_path=./checkpoints/case_10021.1.1/MSE/deepsc/deepsc_battery_epoch,
 
+case 10022~30 : segment 2 8 32, projection 8 64 512 로 테스트
 case 10024 : segment 2, projection 512는 한 에포크당 30분 학습이므로 일단 제외
+case 10028~30 은 테스트에서 셔플 끔
 
 (Pdb) train_params
 TrainParams(
