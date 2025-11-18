@@ -69,9 +69,6 @@ if __name__ == "__main__":
     seed = 1
     setup_seed(seed)
     for seq_len_idx, v_seq_len in enumerate(seq_len_list):
-        if seq_len_idx <= 1 :
-            continue
-
         model_params["seq_len"] = v_seq_len
         model_params["max_len"] = v_seq_len
         if v_seq_len == 2 :
@@ -94,9 +91,6 @@ if __name__ == "__main__":
             model_params["hidden_dim"] = proj_dim
 
             for model_type_index, v_model_type in enumerate(model_type_list):
-                if seq_len_idx == 0 :
-                    continue
-
                 p.model_type = v_model_type
                 case_number = base_case_number + len(seq_len_list) * seq_len_idx + proj_idx
                 # case_number = base_case_number + len(seq_len_list) * seq_len_idx
@@ -109,7 +103,7 @@ if __name__ == "__main__":
                 # p.case_index = f"{case_number}.{model_type_index+1}.{snr_idx+2}"
                 p.case_index = f"{case_number}.{model_type_index+1}.1"
 
-                if p.case_index == "10028.1.1" or p.case_index == "10028.2.1" :
+                if p.case_index == "10024.1.1" or p.case_index == "10024.2.1" or v_seq_len < 32 :
                     continue
 
                     # p.case_index = f"{int(case_number)}.{model_type_index}.1"  # case index 설정

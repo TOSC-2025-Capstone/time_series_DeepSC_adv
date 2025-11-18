@@ -828,6 +828,35 @@ case 10022~30 : segment 2 8 32, projection 8 64 512 로 테스트
 case 10024 : segment 2, projection 512는 한 에포크당 30분 학습이므로 일단 제외
 case 10028~30 은 테스트에서 셔플 끔
 
+case 22 23
+(DeepSC) PS C:\Users\ksshin\Desktop\ChanminLee\time_series_DeepSC_adv> python -m plots.f2
+[✓] 저장 완료 (싱글 컬럼 막대): ./final_comparison_plots/251118/case10021/MSE/01319.csv/segment_2/MSE_relative_bar_single_col.png
+lstm-proj8: avg MSE (no Time) = 84.757558
+iT-proj8: avg MSE (no Time) = 71.500077
+lstm-proj64: avg MSE (no Time) = 18.135020
+iT-proj64: avg MSE (no Time) = 48.275904
+
+case 25 26 27
+(DeepSC) PS C:\Users\ksshin\Desktop\ChanminLee\time_series_DeepSC_adv> python -m plots.f2
+[✓] 저장 완료 (싱글 컬럼 막대): ./final_comparison_plots/251118/case10021/MSE/01319.csv/segment_8/MSE_relative_bar_single_col.png
+lstm-proj8: avg MSE (no Time) = 29.961107
+iT-proj8: avg MSE (no Time) = 24.992260
+lstm-proj64: avg MSE (no Time) = 2.474826
+iT-proj64: avg MSE (no Time) = 2.781981
+lstm-proj512: avg MSE (no Time) = 3.547102
+iT-proj512: avg MSE (no Time) = 1.063668
+
+case 28 29 30
+(DeepSC) PS C:\Users\ksshin\Desktop\ChanminLee\time_series_DeepSC_adv> python -m plots.f2
+[✓] 저장 완료 (싱글 컬럼 막대): ./final_comparison_plots/251118/case10021/MSE/01319.csv/segment_32/MSE_relative_bar_single_col.png
+lstm-proj8: avg MSE (no Time) = 16.453279
+iT-proj8: avg MSE (no Time) = 2.921064
+lstm-proj64: avg MSE (no Time) = 2.195047
+iT-proj64: avg MSE (no Time) = 0.839962
+lstm-proj512: avg MSE (no Time) = 0.633413
+iT-proj512: avg MSE (no Time) = 0.125359
+
+
 (Pdb) train_params
 TrainParams(
     train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10000//train_data.pt',

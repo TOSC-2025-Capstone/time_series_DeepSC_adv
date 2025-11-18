@@ -268,31 +268,31 @@ def plot_feature_comparison(
     filename: str,
 ):
     # 1. 데이터 로드
-    # df_original = pd.read_csv(os.path.join(original_path, filename))
-    # df_deepsc = pd.read_csv(
-    #     os.path.join(deepsc_path, filename.replace(".csv", "_reconstructed.csv"))
-    # )
-    # df_lstm = pd.read_csv(
-    #     os.path.join(lstm_path, filename.replace(".csv", "_reconstructed.csv"))
-    # )
+    df_original = pd.read_csv(os.path.join(original_path, filename))
+    df_deepsc = pd.read_csv(
+        os.path.join(deepsc_path, filename.replace(".csv", "_reconstructed.csv"))
+    )
+    df_lstm = pd.read_csv(
+        os.path.join(lstm_path, filename.replace(".csv", "_reconstructed.csv"))
+    )
     # df_gru = pd.read_csv(
     #     os.path.join(gru_path, filename.replace(".csv", "_reconstructed.csv"))
     # )
 
     # 2. 시각화
-    # plt.figure(figsize=(13, 10))
-    # for i, feature in enumerate(feature_names):
-    #     plt.subplot(2, 3, i + 1)
-    #     plt.plot(df_original[feature], label="Original", linewidth=2)
-    #     plt.plot(df_deepsc[feature], label="DeepSC", linestyle="--")
-    #     plt.plot(df_lstm[feature], label="LSTM", linestyle="-.")
-    #     plt.plot(df_gru[feature], label="GRU", linestyle=":")
-    #     plt.title(feature, fontsize=22)
-    #     plt.xlabel("Timestep")
-    #     plt.ylabel(feature, fontsize=22)
-    #     plt.legend()
+    plt.figure(figsize=(13, 10))
+    for i, feature in enumerate(feature_names):
+        plt.subplot(2, 3, i + 1)
+        plt.plot(df_original[feature], label="Original", linewidth=2)
+        plt.plot(df_deepsc[feature], label="DeepSC", linestyle="--")
+        plt.plot(df_lstm[feature], label="LSTM", linestyle="-.")
+        # plt.plot(df_gru[feature], label="GRU", linestyle=":")
+        plt.title(feature, fontsize=22)
+        plt.xlabel("Timestep")
+        plt.ylabel(feature, fontsize=22)
+        plt.legend()
 
-    # plt.tight_layout()
+    plt.tight_layout()
 
     os.makedirs(save_path, exist_ok=True)
     output_file = os.path.join(
@@ -336,28 +336,30 @@ if __name__ == "__main__":
         # "results/performance_test/case10003.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
         # "results/performance_test/case10004.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
 
-        "results/performance_test/case10021.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10021.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10021.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10021.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case10021.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case10021.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case10028.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10028.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        # "results/performance_test/case10029.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        # "results/performance_test/case10029.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10030.2.1/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10030.1.1/Rayleigh_deepsc_MSE/performance_statistics.csv",
     ]
 
     # filename = "01291.csv"
-    filename = "01319.csv"
+    filename = "01420.csv"
     metric_type = "MSE"
-    case_index_prefix = "10021"
-    date = "251114"  # 그래프 저장용 날짜 디렉토리 이름
+    case_index_prefix = "10030"
+    date = "251118"  # 그래프 저장용 날짜 디렉토리 이름
     save_path = (
-        f"./final_comparison_plots/{date}/case{case_index_prefix}/{metric_type}/{filename}/"
+        f"./final_comparison_plots/{date}/case{case_index_prefix}/{metric_type}/{filename}/segment_32/"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
     # case_labels = [ "60-iT-3db","60-lstm-3db", "10002-3db", "60-iT-21db", "60-lstm-21db", "10002-21db"]
     # case_labels = ["batch-1","batch-2","batch-4","batch-8","batch-16" ]
     # case_labels = ["snr 3", "snr 6", "snr 9", "snr 12", "snr 15", "snr 18", "snr 21"]
-    case_labels = [ "lstm-snr 3", "lstm-snr 12", "lstm-snr 21", "iT-snr 3", "iT-snr 12",  "iT-snr 21",]
+    # case_labels = [ "lstm-snr 3", "lstm-snr 12", "lstm-snr 21", "iT-snr 3", "iT-snr 12",  "iT-snr 21",]
+    case_labels = [ "lstm-proj8", "iT-proj8", "lstm-proj64", "iT-proj64", "lstm-proj512", "iT-proj512"]
+    # case_labels = [ "lstm-proj8", "iT-proj8", "lstm-proj64", "iT-proj64"]
 
     # 1. 기본 라벨 정의
     # base_labels = ["no-compress",  "feature 3/5",  "feature 1/5"]
@@ -374,6 +376,8 @@ if __name__ == "__main__":
     plot_bars_single_column(
         csv_paths, case_labels, save_path=save_path, metric_type=metric_type, wrap_width=12
     )
+
+    plot_feature_comparison()
 
     # plot_line_comparison(
     #     csv_paths, case_labels, save_path=save_path, metric_type=metric_type
