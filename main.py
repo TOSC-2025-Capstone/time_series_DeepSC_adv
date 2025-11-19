@@ -56,8 +56,10 @@ model_type_list = ["deepsc", "lstm"]
 batch_size_list = [1, 2, 4, 8, 16]
 base_case_number = int(case_index.split(".")[0])
 model_type_index = 1 if model_type == "deepsc" else 2
-seq_len_list = [2, 8, 32] # segment length
-projection_list = [8, 64, 512]
+# seq_len_list = [2, 8, 32] # segment length
+# projection_list = [8, 64, 512]
+seq_len_list = [16] # segment length
+projection_list = [512]
 # seq_len_list = [8]
 
 if __name__ == "__main__":
@@ -100,22 +102,12 @@ if __name__ == "__main__":
                 checkpoint_index = f"{case_number}.{model_type_index+1}.1"
                 # test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
                 test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{p.model_type}/{p.model_type}_battery_epoch"
-                # p.case_index = f"{case_number}.{model_type_index+1}.{snr_idx+2}"
+
                 p.case_index = f"{case_number}.{model_type_index+1}.1"
 
-                if p.case_index == "10024.1.1" or p.case_index == "10024.2.1" or v_seq_len < 32 :
-                    continue
-
-                    # p.case_index = f"{int(case_number)}.{model_type_index}.1"  # case index 설정
-                    # for snr_idx, snr in enumerate(snr_list):
-                        # model_params["snr_db"] = snr
-                        # p.case_index = f"{int(case_number)}.{model_type_index}.{snr_idx+2}"  # case index 설정
-
-                # 파라미터 클래스 가져오기
-                preprocess_params = PreprocessParams()
-                train_params = TrainParams()
-                test_params = TestParams()
-                recons_params = ReconstructParams()
+                # for snr_idx, snr in enumerate(snr_list):
+                #     model_params["snr_db"] = snr
+                #     p.case_index = f"{int(case_number)}.{model_type_index+1}.{snr_idx+2}"  # case index 설정
 
                 test1 = model_params['snr_db']
                 test2 = model_params["compressed_len"]
@@ -125,6 +117,12 @@ if __name__ == "__main__":
 
                 print(f"========================== case_{p.case_index} start ==========================\n")
                 print(f"segment_length={test5}, seq_len={test4}, d_model={test3}, \n, model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index},\n, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+
+                # 파라미터 클래스 가져오기
+                preprocess_params = PreprocessParams()
+                train_params = TrainParams()
+                test_params = TestParams()
+                recons_params = ReconstructParams()
 
                 print("========================== preprocess ==========================\n")
                 if is_preprocessed == False:

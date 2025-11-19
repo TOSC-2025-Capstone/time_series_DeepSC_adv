@@ -201,23 +201,22 @@ def train_model(
         # 스케줄러 step (val loss 기준)
         scheduler.step(avg_val_loss)
 
-        # === 기존 if 블록을 아래 코드로 대체 ===
-        if avg_val_loss < best_val_loss:
-            # Val loss 개선
-            torch.save(model.state_dict(), model_save_path + "best.pth")
-            best_val_loss = avg_val_loss
-            best_epoch_idx = epoch
-            print(
-                f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
-            )
-            early_stop_counter = 0  # 카운터 초기화
-        else:
-            # Val loss 개선되지 않음
-            early_stop_counter += 1
-            print(f"EarlyStopping Counter: {early_stop_counter}/{early_stop_patience}")
-            if early_stop_counter >= early_stop_patience:
-                print(f"Epoch {epoch+1}: Early stopping triggered.")
-                break  # Epoch 루프(for문) 탈출
+        # if avg_val_loss < best_val_loss:
+        #     # Val loss 개선
+        #     torch.save(model.state_dict(), model_save_path + "best.pth")
+        #     best_val_loss = avg_val_loss
+        #     best_epoch_idx = epoch
+        #     print(
+        #         f"[Best Val Epoch {epoch+1}/{num_epochs}] Best Val Loss: {best_val_loss}"
+        #     )
+        #     early_stop_counter = 0  # 카운터 초기화
+        # else:
+        #     # Val loss 개선되지 않음
+        #     early_stop_counter += 1
+        #     print(f"EarlyStopping Counter: {early_stop_counter}/{early_stop_patience}")
+        #     if early_stop_counter >= early_stop_patience:
+        #         print(f"Epoch {epoch+1}: Early stopping triggered.")
+        #         break  # Epoch 루프(for문) 탈출
 
         # val loss 개선 시 모델 저장
         if avg_val_loss < best_val_loss:
