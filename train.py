@@ -74,7 +74,7 @@ def train_model(
     # train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
     # 2-1. sample data fix
-    fixed_batch = train_tensor[:3 * (512 // p.segment_length_n)].to(device) # 파일 3개
+    fixed_batch = val_tensor[:3 * (512 // p.segment_length_n)].to(device) # 파일 3개
     fixed_batch = fixed_batch[:, :, :-1] # 인덱스 제거
 
     # 3. 모델 초기화
@@ -144,7 +144,16 @@ def train_model(
 
             # 그 다음 메인 모델 학습
             optimizer.zero_grad()
-            output = model(batch)
+            # 학습 시에도 50% 확률로 노이즈 추가
+            if torch.rand(1).item() > 0.5:
+                # 임시로 is_train_phase를 False로 설정
+                original_phase = p.is_train_phase
+                p.is_train_phase = False
+                output = model(batch)
+                p.is_train_phase = original_phase
+            else:
+                output = model(batch)
+            # output = model(batch)
             loss = criterion(output, batch)  # 복원 구조에서는 output = batch가 목적
 
             # mi_net을 평가모드로 전환 후 model 학습 결과 loss에 가중치(lambda = 0.0009)곱한 loss_mine을 더함

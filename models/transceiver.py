@@ -17,6 +17,9 @@ Transformer includes:
         3. Multihead-attention
         4. PositionwiseFeedForward
 """
+import os
+
+from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,7 +35,7 @@ def SNR_to_noise(snr):
     return noise_std
 
 # from samba_mixer.model.input_projections.linear_projection_time_embedding_cycle_diff_embedding import LinearProjectionWithLocalTimeAndGlobalDiffEmbedding
-from utils import Channels, power_normalize
+from utils import Channels, power_normalize, visualize_semantic_constellation
 
 import parameters.parameters as parameters
 import parameters.model_parameters as mparams
@@ -962,6 +965,7 @@ class DeepSC(nn.Module):
         # 2단계: sequence compress (downsampling) (시계열 압축)
         # (batch, max_len->compressed_len, d_model)
         # encoded.permute(0, 2, 1)  # (batch, d_model, max_len)
+
         compressed = self.time_compressor(encoded)
 
         # 3단계: 채널 인코더 (피쳐 압축)
@@ -974,6 +978,7 @@ class DeepSC(nn.Module):
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
             rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
             # rx_sig = self.channels.fading(tx_sig, 0, n_std, detector="MMSE")
         else:
             rx_sig = tx_sig
@@ -1000,7 +1005,34 @@ class DeepSC(nn.Module):
         final_output = final_output.permute(0,2,1)
         final_output = self.output_time_projection(final_output)
         final_output = final_output.permute(0,2,1)
-
+        # for i in range(16):
+        # self.visualize_cycle_performance(torch.flatten(x, 0, 1), torch.flatten(final_output, 0, 1))
+        # self.visualize_cycle_performance(torch.flatten(channel_encoded, 0, 1), torch.flatten(tx_sig, 0, 1))
+        # if channel_encoded.pow(2).mean().item() >= 1 :
+        #     print( channel_encoded.pow(2).mean().item(), tx_sig.pow(2).mean().item())
+        #     pdb.set_trace()
         # final_output = output
 
         return final_output
+
+
+    def visualize_cycle_performance(self, tx_df, rx_df):
+        feature_cols = []
+        # 1. 원본-복원 비교 플롯
+        print(tx_df.shape)
+        # print( tx_df.pow(2).mean().item(), rx_df.pow(2).mean().item())
+        plt.figure(figsize=(18, 10))
+        # for i in range(8):
+        for i in range(2):
+            plt.subplot(2, 4, i + 1)
+            plt.plot(tx_df[: , i].cpu(), label="x", alpha=0.7)
+            plt.plot(rx_df[: , i].cpu(), label="final", alpha=0.7)
+            plt.legend()
+            plt.ylim([-3,3])
+            plt.grid(True)
+            # for x_pos in [i*32 for i in range(1,17)]:
+            for x_pos in [i*8 for i in range(1,17)]:
+                plt.axvline(x=x_pos, color='r', linestyle='--', label=f'Vertical line at {x_pos}')
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.show()

@@ -828,6 +828,19 @@ case 10022~30 : segment 2 8 32, projection 8 64 512 로 테스트
 case 10024 : segment 2, projection 512는 한 에포크당 30분 학습이므로 일단 제외
 case 10028~30 은 테스트에서 셔플 끔
 
+case 10031 : segment 16, projection 512
+case 10032 : 10031에서 inverted ffn만 mlp로 변경
+
+*** 현재 문제 : Noise가 배치별로 다르게 계산되어 더해지는 중임
+P1 : power 고정해서 테스트 다시 돌려보기
+    의도 : 노이즈가 고정이어도 계단현상이 발생하는가 검증 -> 해봤는데 거의 그대로임
+P2 : power를 통합하여 계산할 수 있게 송신단의 결과물만 전체 데이터에 대해 모아놓고 PN + n_var 계산하기
+    의도 : 통합된 노이즈 크기에 대해 원래 데이터(압축본)의 크기를 고려하면서도 일관적으로 노이즈 적용하기
+문제 이유 찾음 : power normalization에서 시그널 파워가 1이되는건 확실한데, 채널을 거치면서 0~1로 크기가 변경되고, 그로인해 배치별로 다른 노이즈가 적용됨
+
+=> 학습할 때 노이즈를 일부 배치에만 추가하기
+case 10033 : 10031에서 random value가 0.5보다 크면 노이즈(21db) 추가 아니면 그대로 학습 진행
+
 case 22 23
 (DeepSC) PS C:\Users\ksshin\Desktop\ChanminLee\time_series_DeepSC_adv> python -m plots.f2
 [✓] 저장 완료 (싱글 컬럼 막대): ./final_comparison_plots/251118/case10021/MSE/01319.csv/segment_2/MSE_relative_bar_single_col.png

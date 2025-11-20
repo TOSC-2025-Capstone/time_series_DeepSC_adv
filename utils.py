@@ -20,6 +20,68 @@ import csv
 import time
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+def visualize_semantic_constellation(tx_sig, rx_sig, snr_db):
+    """
+    [16, 4, 2] 형태의 텐서를 받아 성상도를 그립니다.
+    tx_sig: Channel Encoder 출력 (Batch, Time, Dim=2)
+    rx_sig: Rayleigh 채널 및 등화(Equalization) 후 출력 (Batch, Time, Dim=2)
+    """
+    # 1. 데이터 준비 (CPU변환 및 numpy)
+    # shape: [16, 4, 2] -> [64, 2]로 펼치기 전에, 시간 축 정보를 유지하기 위해 분리
+    batch_size, time_steps, dim = tx_sig.shape
+
+    tx_data = tx_sig.detach().cpu().numpy()
+    rx_data = rx_sig.detach().cpu().numpy()
+
+    # 색상맵 (시간 스텝 0, 1, 2, 3을 구분하기 위함)
+    colors = plt.cm.viridis(np.linspace(0, 1, time_steps))
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # --- 첫 번째 그래프: 송신 신호 (Tx) - 모델이 학습한 성상도 ---
+    ax1 = axes[0]
+    for t in range(time_steps):
+        # 모든 배치의 t번째 시간 스텝만 추출 [16, 2]
+        tx_points = tx_data[:, t, :]
+        ax1.scatter(tx_points[:, 0], tx_points[:, 1],
+                   color=colors[t], label=f'Time Step {t}', s=50, alpha=0.8, edgecolors='w')
+
+    ax1.set_title(f'Learned Semantic Constellation (Tx)\n(Color by Compressed Time Step)', fontsize=14)
+    ax1.axhline(0, color='black', linewidth=0.5)
+    ax1.axvline(0, color='black', linewidth=0.5)
+    ax1.grid(True, linestyle='--', alpha=0.6)
+    ax1.legend()
+
+    # --- 두 번째 그래프: 수신 신호 (Rx) - 채널 영향 ---
+    ax2 = axes[1]
+    # 비교를 위해 Tx를 희미하게 깔아줌
+    flat_tx = tx_data.reshape(-1, 2)
+    ax2.scatter(flat_tx[:, 0], flat_tx[:, 1], color='blue', alpha=0.1, s=20, label='Tx Centers')
+
+    # Rx 데이터 플롯
+    flat_rx = rx_data.reshape(-1, 2)
+    ax2.scatter(flat_rx[:, 0], flat_rx[:, 1], color='red', alpha=0.4, s=20, label='Rx (Noisy)')
+
+    ax2.set_title(f'Received Signals after Rayleigh Fading & EQ\n(SNR: {snr_db}dB)', fontsize=14)
+    ax2.axhline(0, color='black', linewidth=0.5)
+    ax2.axvline(0, color='black', linewidth=0.5)
+    ax2.grid(True, linestyle='--', alpha=0.6)
+    ax2.legend()
+
+    # 축 범위 통일 (최대값 기준)
+    max_val = max(np.abs(flat_tx).max(), np.abs(flat_rx).max()) * 1.1
+    for ax in axes:
+        ax.set_xlim(-max_val, max_val)
+        ax.set_ylim(-max_val, max_val)
+        ax.set_aspect('equal')
+
+    plt.tight_layout()
+    plt.show()
+
 
 class LabelSmoothing(nn.Module):
     "Implement label smoothing."
@@ -122,21 +184,24 @@ def power_normalize(x):
 
 class Channels():
     def AWGN(self, Tx_sig, snr_db=10):
-        snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환
+        snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환 (신호 전력/노이즈 전력 값)
         signal_power = Tx_sig.pow(2).mean().item()  # 신호 평균 전력
-        n_var = signal_power / snr_linear         # 잡음 분산
+        n_var = signal_power / snr_linear         # 잡음 분산 -> 노이즈 전력값
+        # print("노이즈 고정중")
         noise = torch.normal(
             mean=0,
             std=math.sqrt(n_var),
-            # std=0.01,
+            # std=0.66,
             size=Tx_sig.shape,
             device=Tx_sig.device
         )
+        # print("mean:",torch.mean(noise),' std:' ,torch.std(noise), math.sqrt(n_var), n_var, "sigpower:", signal_power)
 
         # # 데이터 준비
-        # tx_signals = [Tx_sig[0, :128, i].detach().cpu().numpy() for i in range(3)]
-        # noise_signals = [noise[0, :128, i].detach().cpu().numpy() for i in range(3)]
-        # rx_signals = [tx_signals[i] + noise_signals[i] for i in range(3)]
+        # tx_signals = torch.flatten(Tx_sig, 0, 1).detach().cpu().numpy()
+        # noise_signals = torch.flatten(noise, 0, 1).detach().cpu().numpy()
+        # # rx_signals = [tx_signals[i] + noise_signals[i] for i in range(3)]
+        # rx_signals = tx_signals + noise_signals
 
         # # 전체 데이터의 min/max 계산 (통일된 스케일)
         # all_data = tx_signals + noise_signals + rx_signals
@@ -145,27 +210,26 @@ class Channels():
         # x_range = [0, 128]
 
         # # 3x3 그리드 생성
-        # fig, axes = plt.subplots(3, 3, figsize=(15, 10))
+        # fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
-        # feature_names = ['Feature 0', 'Feature 1', 'Feature 2']
+        # feature_names = ['Feature 0', 'Feature 1']
         # column_titles = ['Tx Signal', 'Noise', 'Rx Signal']
 
         # # 각 서브플롯 그리기
-        # for row in range(3):  # 피처 (0, 1, 2)
+        # for row in range(2):  # 피처 (0, 1, 2)
         #     for col in range(3):  # Tx, Noise, Rx
         #         ax = axes[row, col]
 
         #         # 데이터 선택
         #         if col == 0:  # Tx
-        #             data = tx_signals[row]
+        #             data = tx_signals[:, row]
         #             color = 'blue'
         #         elif col == 1:  # Noise
-        #             data = noise_signals[row]
+        #             data = noise_signals[:, row]
         #             color = 'orange'
         #         else:  # Rx
-        #             data = rx_signals[row]
+        #             data = rx_signals[:, row]
         #             color = 'red'
-
         #         # 플롯
         #         ax.plot(data, color=color, linewidth=1.5, alpha=0.8)
 
@@ -175,6 +239,9 @@ class Channels():
 
         #         # 그리드
         #         ax.grid(True, alpha=0.3)
+
+        #         for x_pos in [i*8 for i in range(1,17)]:
+        #             ax.axvline(x=x_pos, color='r', linestyle='--', label=f'Vertical line at {x_pos}')
 
         #         # 라벨 (첫 행에만 열 제목, 첫 열에만 행 제목)
         #         if row == 0:
@@ -194,7 +261,8 @@ class Channels():
         # plt.tight_layout()
         # plt.savefig('signal_comparison_3x3.png', dpi=300, bbox_inches='tight')
         # plt.show()
-        # # self.visualize_awgn_effect(Tx_sig, snr_db=15)
+
+        # self.visualize_awgn_effect(Tx_sig, snr_db=15)
         return Tx_sig + noise
 
     def Rayleigh(self, Tx_sig, snr=10):
@@ -204,8 +272,11 @@ class Channels():
         H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
         Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
         Rx_sig = self.AWGN(Tx_sig, snr)
+        # visualize_cycle_performance(Tx_sig[0], Rx_sig[0])
+        Rx_sig_orig = Rx_sig
         # Channel estimation
         Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
+        # visualize_cycle_performance(Rx_sig[0], Rx_sig_orig[0])
 
         return Rx_sig
 
@@ -216,12 +287,30 @@ class Channels():
         H_real = torch.normal(mean, std, size=[1]).to(device)
         H_imag = torch.normal(mean, std, size=[1]).to(device)
         H = torch.Tensor([[H_real, -H_imag], [H_imag, H_real]]).to(device)
-        Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H)
+        Tx_sig = torch.matmul(Tx_sig.view(shape[0], -1, 2), H) # 16, 8, 2 * 2, 2
         Rx_sig = self.AWGN(Tx_sig, snr)
         # Channel estimation
         Rx_sig = torch.matmul(Rx_sig, torch.inverse(H)).view(shape)
 
         return Rx_sig
+
+def visualize_cycle_performance(tx_df, rx_df):
+        feature_cols = []
+        # 1. 원본-복원 비교 플롯
+        print(tx_df.shape)
+        plt.figure(figsize=(18, 10))
+        for i in range(2):
+            plt.subplot(2, 4, i + 1)
+            plt.plot(tx_df[: , i].cpu(), label="x", alpha=0.7)
+            plt.plot(rx_df[: , i].cpu(), label="final", alpha=0.7)
+            plt.legend()
+            plt.ylim([-3,3])
+            plt.grid(True)
+            # for x_pos in [i*16 for i in range(1,33)]:
+            #     plt.axvline(x=x_pos, color='r', linestyle='--', label=f'Vertical line at {x_pos}')
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.show()
 
 # class Channels(nn.Module):
 #     def __init__(self):
