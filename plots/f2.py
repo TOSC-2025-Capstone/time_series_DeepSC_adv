@@ -279,13 +279,20 @@ def plot_feature_comparison(
     #     os.path.join(gru_path, filename.replace(".csv", "_reconstructed.csv"))
     # )
 
+    plot_styles = {
+        "Original":   {"color": "k", "linestyle": "-",  "linewidth": 2, "zorder": 1}, # 검정색, 굵게
+        "DeepSC":     {"color": "#F26E3D", "linestyle": "--", "linewidth": 1.5, "zorder": 3}, # 주황 계열
+        "LSTM":       {"color": "#3F85AD", "linestyle": "-.", "linewidth": 1.5, "zorder": 2}, # 하늘색 계열
+        "GRU":        {"color": "#017657", "linestyle": ":",  "linewidth": 1.5, "zorder": 2}, # 녹색 계열
+    }
+
     # 2. 시각화
     plt.figure(figsize=(14, 10))
     for i, feature in enumerate(feature_names):
         plt.subplot(2, 3, i + 1)
-        plt.plot(df_original[feature], label="Original", linewidth=2)
-        plt.plot(df_deepsc[feature], label="DeepSC", linestyle="--")
-        plt.plot(df_lstm[feature], label="LSTM", linestyle="-.")
+        plt.plot(df_original[feature], label="Original", **plot_styles["Original"] )
+        plt.plot(df_deepsc[feature], label="iTransformer", **plot_styles["DeepSC"] )
+        plt.plot(df_lstm[feature], label="31_iT", **plot_styles["LSTM"] )
         # plt.plot(df_gru[feature], label="GRU", linestyle=":")
         plt.title(feature, fontsize=18)
         plt.xlabel("Timestep")
@@ -349,13 +356,14 @@ if __name__ == "__main__":
 
     # filename = "01291.csv"
     # filename = "01420.csv" # 28 29 30
-    filename = "01199.csv" # 22 23 24
+    # filename = "01197.csv" # 22 23 24
+    filename = "02531.csv" # 22 23 24
     metric_type = "MSE"
-    case_index_prefix = "10031"
+    case_index_prefix = "10033"
     date = "251120"  # 그래프 저장용 날짜 디렉토리 이름
     save_path_prefix = f"./final_comparison_plots/{date}"
     save_path = save_path_prefix + (
-        f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_32/case_31_33_comp/lstm"
+        f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_16/case_31_33_comp/lstm"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
@@ -379,28 +387,35 @@ if __name__ == "__main__":
     # case_labels = labels_lstm + labels_it
 
     # final_statistic_comparison_plot(
-    plot_bars_single_column(
-        csv_paths, case_labels, save_path=save_path, metric_type=metric_type, wrap_width=12
-    )
+
+    # plot_bars_single_column(
+    #     csv_paths, case_labels, save_path=save_path, metric_type=metric_type, wrap_width=12
+    # )
 
     # # list = ["10022", "10023"]
-    # plot_feature_comparison(
-    #     original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-    #     deepsc_path=f"./reconstruction/case{case_index_prefix}.1.1/reconstructed_rayleigh_deepsc_MSE",
-    #     lstm_path=f"./reconstruction/case{case_index_prefix}.2.1/reconstructed_rayleigh_lstm_MSE",
-    #     gru_path="./reconstruction/case9.1/reconstructed_rayleigh_deepsc_MSE",
-    #     feature_names=[
-    #         "Voltage_measured",
-    #         "Current_measured",
-    #         "Temperature_measured",
-    #         "Current_load",
-    #         "Voltage_load",
-    #         "Time",
-    #     ],
-    #     save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}",
-    #     # filename="01420.csv",
-    #     filename=filename,
-    # )
+    snr_db_index = 1
+    snr_db_list = [21, 3, 6, 9, 12, 15, 18, 21]
+    for idx in range(3):
+        snr_db_index = 1+(idx*3)
+
+        plot_feature_comparison(
+            original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
+            deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
+            # lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index+1}/reconstructed_rayleigh_lstm_MSE",
+            lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-2)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
+            gru_path="./reconstruction/case9.1/reconstructed_rayleigh_deepsc_MSE",
+            feature_names=[
+                "Voltage_measured",
+                "Current_measured",
+                "Temperature_measured",
+                "Current_load",
+                "Voltage_load",
+                "Time",
+            ],
+            save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/31_iT_33_iTcomp",
+            # filename="01420.csv",
+            filename=filename,
+        )
 
     # # plot_line_comparison(
     # #     csv_paths, case_labels, save_path=save_path, metric_type=metric_type
