@@ -357,9 +357,10 @@ if __name__ == "__main__":
     # filename = "01291.csv"
     # filename = "01420.csv" # 28 29 30
     # filename = "01197.csv" # 22 23 24
-    filename = "02531.csv" # 22 23 24
+    # filename = "02531.csv" # 22 23 24
+    filename = "07110.csv" # 22 23 24
     metric_type = "MSE"
-    case_index_prefix = "10033"
+    case_index_prefix = "10034"
     date = "251120"  # 그래프 저장용 날짜 디렉토리 이름
     save_path_prefix = f"./final_comparison_plots/{date}"
     save_path = save_path_prefix + (
@@ -402,7 +403,7 @@ if __name__ == "__main__":
             original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
             deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
             # lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index+1}/reconstructed_rayleigh_lstm_MSE",
-            lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-2)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
+            lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-3)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
             gru_path="./reconstruction/case9.1/reconstructed_rayleigh_deepsc_MSE",
             feature_names=[
                 "Voltage_measured",
@@ -412,7 +413,7 @@ if __name__ == "__main__":
                 "Voltage_load",
                 "Time",
             ],
-            save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/31_iT_33_iTcomp",
+            save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/31_iT_34_iTcomp",
             # filename="01420.csv",
             filename=filename,
         )
