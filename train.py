@@ -112,6 +112,7 @@ def prepare_data_loaders(tensor_data, batch_size, is_train=True):
         TensorDataset(noisy_data),
         batch_size=batch_size,
         shuffle=is_train,
+        # shuffle=False,
         drop_last=is_train
     )
 
@@ -395,7 +396,7 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
 def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
                        optimizer=None, is_training=True, epoch_num=1, total_epochs=1):
     """
-    Two-Pass 방식: 정규화 일관성 + End-to-End 학습
+    Two-Pass 방식: Clean + Noisy 1:1 비율로 학습
 
     Pass 1: 전력 정규화 계수 계산 (no gradient)
     Pass 2: 계수를 이용해 end-to-end 학습 (with gradient)
@@ -408,7 +409,9 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
     else:
         model.eval()
 
+    clean_iter = iter(clean_loader)
     noisy_iter = iter(noisy_loader)
+
     max_batches = min(len(clean_loader), len(noisy_loader))
     batch_size = noisy_loader.batch_size
     mode = "Train" if is_training else "Val"
@@ -420,23 +423,66 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
 
     all_tx_signals = []
     all_snr_db = []
-    all_input_batches = []  # 입력 데이터 저장 (재사용)
+    all_input_batches = []
+    all_is_clean = []  # Clean/Noisy 구분
 
     with torch.no_grad():
         pbar_pass1 = tqdm(range(max_batches), desc=f"Pass1 {epoch_num} [{mode}]")
 
         for idx in pbar_pass1:
+            # ===== Clean 배치 처리 =====
+            try:
+                clean_batch = next(clean_iter)[0].to(device)
+            except StopIteration:
+                clean_iter = iter(clean_loader)
+                clean_batch = next(clean_iter)[0].to(device)
+
+            # Clean 데이터 전처리
+            clean_batch = clean_batch[:, :, :-1]  # file_index 제거
+            clean_data_8d = clean_batch[:, :, :-1]  # SNR 제거
+
+            # Clean은 SNR=100 (정규화값 3.0)
+            clean_snr_db = 100
+            clean_snr_normalized = normalize_snr_to_range(clean_snr_db)
+
+            clean_snr_label = torch.full(
+                (clean_batch.size(0), clean_batch.size(1), 1),
+                clean_snr_normalized
+            ).to(device)
+            clean_input = torch.cat([clean_data_8d, clean_snr_label], dim=-1)
+
+            # Clean 인코딩
+            if model.model_type == 'deepsc':
+                clean_encoded = model.encoder(clean_input, None)
+            else:
+                clean_encoded, _ = model.encoder(clean_input)
+
+            clean_compressed = model.time_compressor(clean_encoded)
+            clean_channel_encoded = model.channel_encoder(clean_compressed)
+
+            # CPU로 이동
+            all_tx_signals.append(clean_channel_encoded.cpu())
+            all_snr_db.append(clean_snr_db)
+            all_input_batches.append({
+                'data_8d': clean_data_8d.cpu(),
+                'input_with_snr': clean_input.cpu()
+            })
+            all_is_clean.append(True)
+
+            del clean_batch, clean_data_8d, clean_encoded, clean_compressed, clean_channel_encoded
+
+            # ===== Noisy 배치 처리 =====
             try:
                 noisy_batch = next(noisy_iter)[0].to(device)
             except StopIteration:
                 noisy_iter = iter(noisy_loader)
                 noisy_batch = next(noisy_iter)[0].to(device)
 
-            # 데이터 전처리
+            # Noisy 데이터 전처리
             noisy_batch = noisy_batch[:, :, :-1]
-            data_8d = noisy_batch[:, :, :-1]
+            noisy_data_8d = noisy_batch[:, :, :-1]
 
-            # SNR 설정
+            # Noisy는 랜덤 SNR (3~21dB)
             snr_db = (np.random.randint(1, 8)) * 3
             snr_normalized = normalize_snr_to_range(snr_db)
 
@@ -444,37 +490,38 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
                 (noisy_batch.size(0), noisy_batch.size(1), 1),
                 snr_normalized
             ).to(device)
-            input_with_snr = torch.cat([data_8d, noisy_snr_label], dim=-1)
+            noisy_input = torch.cat([noisy_data_8d, noisy_snr_label], dim=-1)
 
-            # 인코딩
+            # Noisy 인코딩
             if model.model_type == 'deepsc':
-                encoded = model.encoder(input_with_snr, None)
+                noisy_encoded = model.encoder(noisy_input, None)
             else:
-                encoded, _ = model.encoder(input_with_snr)
+                noisy_encoded, _ = model.encoder(noisy_input)
 
-            compressed = model.time_compressor(encoded)
-            channel_encoded = model.channel_encoder(compressed)
+            noisy_compressed = model.time_compressor(noisy_encoded)
+            noisy_channel_encoded = model.channel_encoder(noisy_compressed)
 
-            # CPU로 이동 (메모리 절약)
-            all_tx_signals.append(channel_encoded.cpu())
+            # CPU로 이동
+            all_tx_signals.append(noisy_channel_encoded.cpu())
             all_snr_db.append(snr_db)
             all_input_batches.append({
-                'data_8d': data_8d.cpu(),
-                'input_with_snr': input_with_snr.cpu()
+                'data_8d': noisy_data_8d.cpu(),
+                'input_with_snr': noisy_input.cpu()
             })
+            all_is_clean.append(False)
 
-            # GPU 메모리 해제
-            del noisy_batch, data_8d, encoded, compressed, channel_encoded
+            del noisy_batch, noisy_data_8d, noisy_encoded, noisy_compressed, noisy_channel_encoded
             torch.cuda.empty_cache()
 
     # 전체 TX 신호 concat 및 정규화 계수 계산
     all_tx_concat = torch.cat(all_tx_signals, dim=0)  # CPU에서
 
-    # 정규화 계수 계산
+    # 정규화 계수 계산 (Clean + Noisy 전체)
     power = torch.mean(all_tx_concat ** 2)
-    normalization_factor = torch.sqrt(power)  # 이 값을 재사용
+    normalization_factor = torch.sqrt(power)
 
     print(f"Computed normalization factor: {normalization_factor.item():.6f}")
+    print(f"Total batches: {len(all_tx_signals)} (Clean: {sum(all_is_clean)}, Noisy: {sum(not x for x in all_is_clean)})")
 
     # 메모리 정리
     del all_tx_signals, all_tx_concat
@@ -484,9 +531,14 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
     # ========================================
     print(f"[Pass 2] End-to-end training with gradient...")
 
-    pbar_pass2 = tqdm(range(max_batches), desc=f"Pass2 {epoch_num} [{mode}]")
+    total_batches = len(all_input_batches)
+    pbar_pass2 = tqdm(range(total_batches), desc=f"Pass2 {epoch_num} [{mode}]")
 
     total_loss = 0
+    clean_loss_sum = 0
+    noisy_loss_sum = 0
+    clean_count = 0
+    noisy_count = 0
 
     if is_training:
         optimizer.zero_grad()
@@ -500,6 +552,7 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
             input_with_snr = batch_data['input_with_snr'].to(device)
             data_8d = batch_data['data_8d'].to(device)
             snr_db = all_snr_db[idx]
+            is_clean = all_is_clean[idx]
 
             if is_training:
                 with autocast():
@@ -516,7 +569,12 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
                     tx_normalized = channel_encoded / normalization_factor.to(device)
 
                     # ===== Channel =====
-                    rx_sig = model.channels.Rayleigh(tx_normalized, snr_db)
+                    if is_clean:
+                        # Clean은 노이즈 없이 통과 (또는 매우 높은 SNR)
+                        rx_sig = tx_normalized  # 노이즈 없음
+                    else:
+                        # Noisy는 Rayleigh 채널 + 노이즈
+                        rx_sig = model.channels.Rayleigh(tx_normalized, 21)
 
                     # ===== RX: Decoding (gradient 유지) =====
                     channel_decoded = torch.utils.checkpoint.checkpoint(
@@ -544,7 +602,7 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
                 # Backward
                 scaler.scale(loss).backward()
 
-                # 매 배치마다 업데이트 (또는 accumulation)
+                # 매 배치마다 업데이트
                 scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 scaler.step(optimizer)
@@ -562,7 +620,11 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
                     channel_encoded = model.channel_encoder(compressed)
                     tx_normalized = channel_encoded / normalization_factor.to(device)
 
-                    rx_sig = model.channels.Rayleigh(tx_normalized, snr_db)
+                    if is_clean:
+                        rx_sig = tx_normalized
+                    else:
+                        rx_sig = model.channels.Rayleigh(tx_normalized, snr_db)
+
                     channel_decoded = model.channel_decoder(rx_sig)
                     decompressed = model.time_decompressor(channel_decoded)
 
@@ -579,7 +641,15 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
                     output_8d = final_output[:, :, :-1]
                     loss = criterion(output_8d, data_8d)
 
+            # 손실 누적
             total_loss += loss.item() * batch_size
+
+            if is_clean:
+                clean_loss_sum += loss.item() * batch_size
+                clean_count += batch_size
+            else:
+                noisy_loss_sum += loss.item() * batch_size
+                noisy_count += batch_size
 
             # 메모리 정리
             del input_with_snr, data_8d, encoded, compressed, channel_encoded
@@ -587,15 +657,25 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
             del output, final_output, output_8d, loss
             torch.cuda.empty_cache()
 
+            # Progress bar 업데이트
+            avg_loss = total_loss / ((idx+1) * batch_size)
+            clean_avg = clean_loss_sum / clean_count if clean_count > 0 else 0
+            noisy_avg = noisy_loss_sum / noisy_count if noisy_count > 0 else 0
+
             pbar_pass2.set_postfix({
-                "Loss": f"{total_loss / ((idx+1) * batch_size):.4f}",
-                "SNR": f"{snr_db}dB"
+                "Loss": f"{avg_loss:.4f}",
+                "Clean": f"{clean_avg:.4f}",
+                "Noisy": f"{noisy_avg:.4f}"
             })
 
     # 메모리 정리
-    del all_input_batches, all_snr_db
+    del all_input_batches, all_snr_db, all_is_clean
 
-    avg_loss = total_loss / (max_batches * batch_size)
+    avg_loss = total_loss / (total_batches * batch_size)
+
+    print(f"  → Clean Loss: {clean_loss_sum / clean_count:.6f}")
+    print(f"  → Noisy Loss: {noisy_loss_sum / noisy_count:.6f}")
+
     return avg_loss
 
 def visualize_fixed_batch(fixed_batch, fixed_snr_values, model, device,

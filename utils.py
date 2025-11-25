@@ -186,7 +186,9 @@ class Channels():
         snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환 (신호 전력/노이즈 전력 값)
         signal_power = Tx_sig.pow(2).mean().item()  # 신호 평균 전력
         n_var = signal_power / snr_linear         # 잡음 분산 -> 노이즈 전력값
-        # print("노이즈 고정중")
+
+        print("noise variance:", n_var, "signal power:", signal_power)
+
         noise = torch.normal(
             mean=0,
             std=math.sqrt(n_var),
@@ -440,7 +442,6 @@ def create_masks(src, trg, padding_idx):
     return src_mask.to(device), combined_mask.to(device)
 
 def PowerNormalize(x):
-
     x_square = torch.mul(x, x)
     power = torch.mean(x_square).sqrt()
     if power > 1:

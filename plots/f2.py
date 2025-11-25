@@ -292,7 +292,7 @@ def plot_feature_comparison(
         plt.subplot(2, 3, i + 1)
         plt.plot(df_original[feature], label="Original", **plot_styles["Original"] )
         plt.plot(df_deepsc[feature], label="10039_iT", **plot_styles["DeepSC"] )
-        plt.plot(df_lstm[feature], label="10034_iT", **plot_styles["LSTM"] )
+        plt.plot(df_lstm[feature], label="10035_iT", **plot_styles["LSTM"] )
         # plt.plot(df_gru[feature], label="GRU", linestyle=":")
         plt.title(feature, fontsize=18)
         plt.xlabel("Timestep")
@@ -406,7 +406,7 @@ if __name__ == "__main__":
                 original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
                 deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
                 # lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index+1}/reconstructed_rayleigh_lstm_MSE",
-                lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-5)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
+                lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-4)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
                 gru_path="./reconstruction/case9.1/reconstructed_rayleigh_deepsc_MSE",
                 feature_names=[
                     "Voltage_measured",
@@ -416,7 +416,7 @@ if __name__ == "__main__":
                     "Voltage_load",
                     "Time",
                 ],
-                save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/34_iT_39_iTcomp",
+                save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/35_iT_39_iTcomp",
                 # filename="01420.csv",
                 filename=filename,
             )
