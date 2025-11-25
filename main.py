@@ -70,8 +70,8 @@ if __name__ == "__main__":
 
     seed = 1
     setup_seed(seed)
-    model_params["num_layers"] = 2
-    model_params["dropout"] = 0.1
+    # model_params["num_layers"] = 1
+    # model_params["dropout"] = 0
 
     for seq_len_idx, v_seq_len in enumerate(seq_len_list):
         model_params["seq_len"] = v_seq_len
@@ -85,6 +85,7 @@ if __name__ == "__main__":
             p.train_batch_size = 8 # 더 적은 배치 (배치 요소 하나가 커짐)
         else :
             model_params["compressed_len"] = v_seq_len // 4  # 압축 길이는 입력 길이의 1/4로 설정
+            p.train_batch_size = 16
         # model_params["input_dim"] = 8
         # p.input_dim = 8
         # model_params["d_comp"] = 8 // 4
@@ -101,9 +102,6 @@ if __name__ == "__main__":
             for model_type_index, v_model_type in enumerate(model_type_list):
                 p.model_type = v_model_type
                 case_number = base_case_number + len(seq_len_list) * seq_len_idx + proj_idx
-                # case_number = base_case_number + len(seq_len_list) * seq_len_idx
-                # for snr_idx, v_snr_db in enumerate(snr_list):
-                #     model_params["snr_db"] = v_snr_db
 
                 checkpoint_index = f"{case_number}.{model_type_index+1}.1"
                 # test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"

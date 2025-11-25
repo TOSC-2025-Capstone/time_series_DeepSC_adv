@@ -179,7 +179,6 @@ def power_normalize(x):
     power = torch.mean(x_square).sqrt()
     # power = (2 * torch.mean(x_square)).sqrt()
     x = torch.div(x, power)
-
     return x
 
 class Channels():

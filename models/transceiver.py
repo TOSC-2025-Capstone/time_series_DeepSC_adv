@@ -965,7 +965,6 @@ class DeepSC(nn.Module):
         # 2단계: sequence compress (downsampling) (시계열 압축)
         # (batch, max_len->compressed_len, d_model)
         # encoded.permute(0, 2, 1)  # (batch, d_model, max_len)
-
         compressed = self.time_compressor(encoded)
 
         # 3단계: 채널 인코더 (피쳐 압축)
