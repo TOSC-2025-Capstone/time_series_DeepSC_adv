@@ -75,7 +75,6 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
         on=['battery_id', 'file_index'],
         how='left'
     )
-
     file_index_col = df_cleaned["file_index"].values
     df_cleaned = df_cleaned.drop(columns=["file_index"])
     df_cleaned["battery_id"] = df_cleaned["battery_id"].str.replace(r'\D', '', regex=True).astype(int)
@@ -90,6 +89,7 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
         )
 
     scaled_df = scaler.fit_transform(df_cleaned)
+    # scaled_df = scaled_df * 6  # 1125 minmax 스케일러 사용 시 6곱하기
     scaled_df = pd.DataFrame(scaled_df, columns=df_cleaned.columns)
 
     # 0909 정규화 전후 분포 비교

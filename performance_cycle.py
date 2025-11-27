@@ -304,168 +304,6 @@ def total_performance_plot(feature_cols, all_metrics, save_dir):
 
     stats_df.to_csv(os.path.join(save_dir, "performance_statistics.csv"), index=False)
 
-def evaluate_model_two_pass(model, tensor_data, device, test_snr_db):
-    """
-    Two-Pass 방식으로 모델 평가
-
-    Pass 1: TX - 전력 정규화 계수 계산
-    Pass 2: RX - 계수를 이용해 디코딩
-
-    Args:
-        model: 평가할 모델
-        tensor_data: 입력 텐서 [batch, seq, features]
-        device: cuda/cpu
-        test_snr_db: 테스트 SNR (dB)
-
-    Returns:
-        all_output_tensors: 복원된 텐서 [total_samples, 512, 8]
-    """
-    from torch.cuda.amp import autocast
-    from utils import power_normalize
-
-    test_snr_normalized = normalize_snr_to_range(test_snr_db)
-    batch_size = p.target_length // p.segment_length_n
-
-    # SNR 레이블 추가
-    batch_size_tensor, seq_len, features = tensor_data.shape
-    main_features = tensor_data[:, :, :-1]  # [batch, seq, 8]
-    file_index = tensor_data[:, :, -1:]     # [batch, seq, 1]
-
-    snr_label = torch.full((batch_size_tensor, seq_len, 1), test_snr_normalized)
-    tensor_with_snr = torch.cat([main_features, snr_label, file_index], dim=-1)
-
-    # DataLoader 생성
-    tensor_loader = DataLoader(
-        tensor_with_snr,
-        batch_size=batch_size,
-        shuffle=False
-    )
-
-    # ========================================
-    # PASS 1: TX - 전력 정규화 계수 계산
-    # ========================================
-    print(f"\n[Pass 1] Computing power normalization factor...")
-
-    all_tx_signals = []
-    all_input_batches = []
-
-    model.eval()
-    with torch.no_grad():
-        pbar_pass1 = tqdm(tensor_loader, desc=f"TX Pass (SNR={test_snr_db}dB)")
-
-        for batch in pbar_pass1:
-            batch = batch.to(device)
-
-            # file_index 제거: [batch, seq, 10] -> [batch, seq, 9]
-            batch_without_file_idx = batch[:, :, :-1]
-            data_8d = batch_without_file_idx[:, :, :-1]  # [batch, seq, 8]
-
-            # 인코딩
-            p.is_train_phase = False
-            model.snr_db = test_snr_db
-
-            if model.model_type == 'deepsc':
-                encoded = model.encoder(batch_without_file_idx, None)
-            else:
-                encoded, _ = model.encoder(batch_without_file_idx)
-
-            compressed = model.time_compressor(encoded)
-            channel_encoded = model.channel_encoder(compressed)
-
-            # CPU로 이동 (메모리 절약)
-            all_tx_signals.append(channel_encoded.cpu())
-            all_input_batches.append(data_8d.cpu())
-
-            # GPU 메모리 해제
-            del batch, batch_without_file_idx, data_8d, encoded, compressed, channel_encoded
-            torch.cuda.empty_cache()
-
-    # 전체 TX 신호 concat 및 정규화 계수 계산
-    all_tx_concat = torch.cat(all_tx_signals, dim=0)  # CPU에서
-
-    # 정규화 계수 계산 (학습과 동일)
-    power = torch.mean(all_tx_concat ** 2)
-    normalization_factor = torch.sqrt(power)
-
-    pdb.set_trace()
-
-    print(f"Computed normalization factor: {normalization_factor.item():.6f}")
-
-    # 정규화된 TX 신호 생성
-    total_tx_normalized = all_tx_concat / normalization_factor
-
-    # 메모리 정리
-    del all_tx_signals, all_tx_concat
-
-    # ========================================
-    # PASS 2: RX - 디코딩
-    # ========================================
-    print(f"[Pass 2] Decoding with normalized signals...")
-
-    # 정규화된 TX 신호 DataLoader
-    tx_loader = DataLoader(
-        TensorDataset(total_tx_normalized),
-        batch_size=batch_size,
-        shuffle=False
-    )
-
-    # 입력 데이터 DataLoader
-    all_data_8d = torch.cat(all_input_batches, dim=0)
-    data_loader = DataLoader(
-        TensorDataset(all_data_8d),
-        batch_size=batch_size,
-        shuffle=False
-    )
-
-    all_output_tensors = []
-
-    with torch.no_grad():
-        pbar_pass2 = tqdm(
-            zip(tx_loader, data_loader),
-            total=len(tx_loader),
-            desc=f"RX Pass (SNR={test_snr_db}dB)"
-        )
-
-        for (tx_batch,), (data_batch,) in pbar_pass2:
-            tx_batch = tx_batch.to(device)
-
-            # 채널 통과
-            with autocast():
-                rx_sig = model.channels.Rayleigh(tx_batch, test_snr_db)
-
-                # 디코딩
-                channel_decoded = model.channel_decoder(rx_sig)
-                decompressed = model.time_decompressor(channel_decoded)
-
-                if model.model_type == 'deepsc':
-                    output = model.decoder(decompressed, use_mask=True)
-                else:
-                    output, _ = model.decoder(decompressed)
-
-                final_output = model.output_projection(output)
-                final_output = final_output.permute(0, 2, 1)
-                final_output = model.output_time_projection(final_output)
-                final_output = final_output.permute(0, 2, 1)
-
-                # SNR 레이블 제거: [batch, seq, 9] -> [batch, seq, 8]
-                output_8d = final_output[:, :, :-1]
-
-                # 배치 차원 펼치기
-                output_8d = output_8d.contiguous().view(-1, 512, 8)
-
-                all_output_tensors.append(output_8d.cpu())
-
-            # GPU 메모리 해제
-            del tx_batch, rx_sig, channel_decoded, decompressed
-            del output, final_output, output_8d
-            torch.cuda.empty_cache()
-
-    # 전체 출력 결합
-    final_output_tensor = torch.cat(all_output_tensors, dim=0)
-
-    print(f"✓ Evaluation complete: {final_output_tensor.shape}")
-
-    return final_output_tensor
 
 def performance_cycle(
     params: Union[TestParams, ReconstructParams],
@@ -473,9 +311,7 @@ def performance_cycle(
     device=None,
     is_full_reconstruct=False,
 ):
-    """
-    메인 평가 함수 (Two-Pass 방식 적용)
-    """
+
     # 1. 데이터 및 메타 정보 로드
     train_tensor = None
     val_tensor = None
@@ -499,6 +335,8 @@ def performance_cycle(
     if is_full_reconstruct:
         tensor_list = [train_tensor, val_tensor, test_tensor]
         tensor_type_list = ["train", "val", "test"]
+        # tensor_list = [test_tensor]
+        # tensor_type_list = ["test"]
     else:
         tensor_list = [test_tensor]
         tensor_type_list = ["test"]
@@ -516,34 +354,105 @@ def performance_cycle(
     os.makedirs(save_performance_dir, exist_ok=True)
     os.makedirs(save_reconstruction_dir, exist_ok=True)
 
-    # 2. 디바이스 및 모델 설정
+    # 2. 입력 형태 정의 및 모델 로드
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    input_dim = test_tensor.shape[2]
 
-    if model is None:
-        print("모델을 전달해주세요!")
-        return
+    # 3. 전체 배터리 시계열 복원 및 성능 평가
+    post_processed_cycles = None
 
-    # 테스트용 SNR 설정
-    test_snr_db = model_params.get("snr_db", 3)
-    print(f"\n테스트 SNR 설정: {test_snr_db}dB (normalized: {normalize_snr_to_range(test_snr_db):.2f})")
+    # 테스트용 SNR 설정 (model_parameters에서 가져옴)
+    test_snr_db = model_params.get("snr_db", 3)  # 기본값 3dB
+    test_snr_normalized = normalize_snr_to_range(test_snr_db)
 
-    # 3. 각 데이터셋에 대해 평가 수행
+    print(f"\n테스트 SNR 설정: {test_snr_db}dB (normalized: {test_snr_normalized:.2f})")
+
+    all_output_tensors = None
     for idx, tensor_data in enumerate(tensor_list):
-        print(f"\n{'='*60}")
-        print(f"Evaluating {tensor_type_list[idx].upper()} dataset...")
-        print(f"{'='*60}")
+        if model is None:
+            print("모델을 전달해주세요!")
+            return
 
-        # ===== Two-Pass 평가 =====
-        all_output_tensors = evaluate_model_two_pass(
-            model=model,
-            tensor_data=tensor_data,
-            device=device,
-            test_snr_db=test_snr_db
-        )
+        # SNR 레이블을 고정값으로 수동 추가
+        batch_size, seq_len, features = tensor_data.shape
+
+        # 피처 분리
+        main_features = tensor_data[:, :, :-1]  # [batch, seq, 8]
+        file_index = tensor_data[:, :, -1:]     # [batch, seq, 1]
+
+        # 고정 SNR 레이블 생성
+        snr_label = torch.full((batch_size, seq_len, 1), test_snr_normalized)
+
+        # 결합: [batch, seq, 10] = [8 features] + [1 SNR] + [1 file_index]
+        tensor_with_snr = torch.cat([main_features, snr_label, file_index], dim=-1)
+
+        with torch.no_grad():
+            # 데이터로더 생성
+            tensor_loader = DataLoader(
+                tensor_with_snr,
+                batch_size=p.target_length // p.segment_length_n,
+                shuffle=False
+            )
+
+            tensor_pbar = tqdm(
+                tensor_loader,
+                desc=f"[Test-{tensor_type_list[idx]}] SNR={test_snr_db}dB"
+            )
+
+            for batch in tensor_pbar:
+                batch = batch.to(device)
+                pdb.set_trace()
+                # file_index 제거: [batch, seq, 10] -> [batch, seq, 9]
+                batch = batch[:, :, :-1]
+                batch_8d = batch[:, :, :-1]  # SNR 레이블 제거: [batch, seq, 8]
+
+                # 모델 설정
+                p.is_train_phase = False  # 테스트는 노이즈 모드
+                model.snr_db = test_snr_db  # 모델에 SNR 설정
+
+                # 모델 추론 (9차원 입력: 8 features + 1 SNR label)
+                # output_tensor = model(batch)
+
+                # 출력에서 SNR 레이블 제거: [batch, seq, 9] -> [batch, seq, 8]
+                # output_tensor = output_tensor[:, :, :-1]
+
+                # 1126 8차원입력 snr 라벨 제거
+                output_tensor = model(batch_8d)
+                output_tensor = output_tensor
+
+                # 배치 차원 펼치기
+                output_tensor = output_tensor.contiguous().view(-1, 512, 8)
+
+                # 누적
+                if all_output_tensors is None:
+                    all_output_tensors = output_tensor
+                else:
+                    all_output_tensors = torch.cat((all_output_tensors, output_tensor), dim=0)
+
+        # ============= 여기까지 수정 (이후는 기존 코드 유지) =============
+    # all_output_tensors = None
+    # for idx, tensor_data in enumerate(tensor_list):
+    #     if model is None:
+    #         print("모델을 전달해주세요!")
+    #         return
+    #     else:
+    #         with torch.no_grad():
+    #             tensor_loader = DataLoader(tensor_data, batch_size=p.target_length // p.segment_length_n, shuffle=False)
+    #             tensor_pbar = tqdm(tensor_loader, desc=f"[Test]")
+    #             for batch in tensor_pbar:
+    #                 batch = batch.to(device)
+    #                 batch = batch[:, :, :-1] # 파일 인덱스 제거
+    #                 # tensor_data = tensor_data[:, :, :-1]
+    #                 output_tensor = model(batch.to(device))
+    #                 output_tensor = output_tensor.contiguous().view(-1, 512, len(batch[0][0]))
+    #                 if all_output_tensors == None :
+    #                     all_output_tensors = output_tensor
+    #                 else:
+    #                     all_output_tensors = torch.cat((all_output_tensors, output_tensor), dim=0)
 
         # 복원된 사이클 얻기
         post_processed_cycles = post_process(
-            tensor_data=all_output_tensors,
+            tensor_data=all_output_tensors.cpu(),
             scaler=scaler,
             preprocessed_folder=preprocessed_folder,
             target_length=target_length,
@@ -562,19 +471,19 @@ def performance_cycle(
         # 원본 데이터 로드 및 성능 평가
         for cycle_idx, reconstructed_df in post_processed_cycles.items():
             reconstruct_count += 1
-
-            # 원본 데이터 로드
+            # 원본 데이터 로드 (길이 제각각)
             original_path = os.path.join(
                 params.csv_origin_path, f"{int(cycle_idx):05d}.csv"
             )
-
             if os.path.exists(original_path):
                 original_df = pd.read_csv(original_path)
                 original_df = original_df.drop(columns=["file_index"])
                 original_df["battery_id"] = original_df["battery_id"].str.replace(r'\D', '', regex=True).astype(int)
 
                 if reconstruct_count % 100 == 0:
-                    print(f"사이클 {cycle_idx} 원본 데이터 로드 완료 (shape: {original_df.shape})")
+                    print(
+                        f"사이클 {cycle_idx} 원본 데이터 로드 완료 (shape: {original_df.shape})"
+                    )
 
                 # 특성 이름은 reconstructed_df의 컬럼 순서 사용
                 feature_cols = reconstructed_df.columns.tolist()
@@ -590,6 +499,7 @@ def performance_cycle(
                     ),
                     index=False,
                 )
+                # print(f"사이클 {cycle_idx} 복원 완료 및 저장")
 
                 # 시각화 (100개당 하나)
                 if is_full_reconstruct == False and reconstruct_count % 100 == 0:
@@ -614,18 +524,12 @@ def performance_cycle(
                         )
 
             else:
-                print(f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}")
+                print(
+                    f"경고: 사이클 {cycle_idx}의 원본 데이터를 찾을 수 없습니다: {original_path}"
+                )
 
-        # 전체 성능 플롯
-        if is_full_reconstruct == False:
-            total_performance_plot(feature_cols, all_metrics, save_performance_dir)
-
-    print(f"\n{'='*60}")
-    print("✓ All evaluations completed!")
-    print(f"{'='*60}")
-
-    # if is_full_reconstruct == False:
-    #     total_performance_plot(feature_cols, all_metrics, save_performance_dir)
+    if is_full_reconstruct == False:
+        total_performance_plot(feature_cols, all_metrics, save_performance_dir)
 
 
 # if __name__ == "__main__":

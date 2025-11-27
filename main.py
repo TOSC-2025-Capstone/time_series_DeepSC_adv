@@ -48,7 +48,7 @@ def count_parameters(model):
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total, trainable
 
-snr_list = [3, 6, 9, 12, 15, 18, 21]
+snr_list = [21, 3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 # model_type_list = ["deepsc", "lstm"]
 model_type_list = ["deepsc"]
@@ -69,6 +69,7 @@ if __name__ == "__main__":
 
     seed = 1
     setup_seed(seed)
+    p.channel_type = "AWGN"
     # model_params["num_layers"] = 1
     # model_params["dropout"] = 0
 
@@ -85,12 +86,12 @@ if __name__ == "__main__":
         else :
             model_params["compressed_len"] = v_seq_len // 4  # 압축 길이는 입력 길이의 1/4로 설정
             p.train_batch_size = 16
-        # model_params["input_dim"] = 8
-        # p.input_dim = 8
-        # model_params["d_comp"] = 8 // 4
-        model_params["input_dim"] = 9
-        p.input_dim = 9
-        model_params["d_comp"] = 9 // 3
+        model_params["input_dim"] = 8
+        p.input_dim = 8
+        model_params["d_comp"] = 8 // 4
+        # model_params["input_dim"] = 9
+        # p.input_dim = 9
+        # model_params["d_comp"] = 9 // 3
         p.segment_length_n = v_seq_len
 
         for proj_idx, proj_dim in enumerate(projection_list):

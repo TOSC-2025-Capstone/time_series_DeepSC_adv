@@ -1,0 +1,1 @@
+Epoch,Time(sec),AvgTime(sec),TrainLoss,ValLoss,BestValLoss,LR

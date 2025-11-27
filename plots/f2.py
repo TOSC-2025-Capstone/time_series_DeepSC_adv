@@ -291,8 +291,8 @@ def plot_feature_comparison(
     for i, feature in enumerate(feature_names):
         plt.subplot(2, 3, i + 1)
         plt.plot(df_original[feature], label="Original", **plot_styles["Original"] )
-        plt.plot(df_deepsc[feature], label="10039_iT", **plot_styles["DeepSC"] )
-        plt.plot(df_lstm[feature], label="10035_iT", **plot_styles["LSTM"] )
+        plt.plot(df_deepsc[feature], label="10043_iT", **plot_styles["DeepSC"] )
+        plt.plot(df_lstm[feature], label="10031_iT", **plot_styles["LSTM"] )
         # plt.plot(df_gru[feature], label="GRU", linestyle=":")
         plt.title(feature, fontsize=18)
         plt.xlabel("Timestep")
@@ -346,12 +346,12 @@ if __name__ == "__main__":
         # "results/performance_test/case10030.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
         # "results/performance_test/case10030.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
         # "results/performance_test/case10030.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10031.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10031.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10031.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10033.2.2/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10033.2.5/Rayleigh_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10033.2.8/Rayleigh_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10034.1.2/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10034.1.5/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10034.1.8/Rayleigh_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10043.1.2/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10043.1.5/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10043.1.8/AWGN_deepsc_MSE/performance_statistics.csv",
     ]
 
     # filename = "01291.csv"
@@ -361,11 +361,11 @@ if __name__ == "__main__":
     # filename = "07110.csv" # 22 23 24
     filename_list = [ "01197.csv", "02531.csv", "07110.csv" ]
     metric_type = "MSE"
-    case_index_prefix = "10039"
-    date = "251125"  # 그래프 저장용 날짜 디렉토리 이름
+    case_index_prefix = "10043"
+    date = "251127"  # 그래프 저장용 날짜 디렉토리 이름
     save_path_prefix = f"./final_comparison_plots/{date}"
     save_path = save_path_prefix + (
-        f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_16/case_31_33_comp/lstm"
+        f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_16/case_31_43_comp/lstm"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = ["LSTM", "GRU", "Transformer", "Inverted-Transformer"]
@@ -374,7 +374,7 @@ if __name__ == "__main__":
     # case_labels = ["snr 3", "snr 6", "snr 9", "snr 12", "snr 15", "snr 18", "snr 21"]
     # case_labels = [ "lstm-snr 3", "lstm-snr 12", "lstm-snr 21", "AWGN_iT-snr 3", "AWGN_iT-snr 12",  "AWGN_iT-snr 21",]
     # case_labels = [ "lstm-proj8", "iT-proj8", "lstm-proj64", "iT-proj64", "lstm-proj512", "iT-proj512"]
-    case_labels = ["31_iT-snr 3", "31_iT-snr 12",  "31_iT-snr 21", "39_iT-snr 3", "39_iT-snr 12",  "39_iT-snr 21",]
+    case_labels = ["34_iT-snr 3", "34_iT-snr 12",  "34_iT-snr 21", "43_iT-snr 3", "43_iT-snr 12",  "43_iT-snr 21",]
     # case_labels = [ "lstm-proj8", "iT-proj8", "lstm-proj64", "iT-proj64"]
 
     # 1. 기본 라벨 정의
@@ -390,36 +390,36 @@ if __name__ == "__main__":
 
     # final_statistic_comparison_plot(
 
-    # plot_bars_single_column(
-    #     csv_paths, case_labels, save_path=save_path, metric_type=metric_type, wrap_width=12
-    # )
+    plot_bars_single_column(
+        csv_paths, case_labels, save_path=save_path, metric_type=metric_type, wrap_width=12
+    )
 
     # # list = ["10022", "10023"]
     snr_db_index = 1
     snr_db_list = [21, 3, 6, 9, 12, 15, 18, 21]
 
-    for filename in filename_list:
-        for idx in range(3):
-            snr_db_index = 1+(idx*3)
+    # for filename in filename_list:
+    #     for idx in range(3):
+    #         snr_db_index = 1+(idx*3)
 
-            plot_feature_comparison(
-                original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-                deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
-                # lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index+1}/reconstructed_rayleigh_lstm_MSE",
-                lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-4)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
-                gru_path="./reconstruction/case9.1/reconstructed_rayleigh_deepsc_MSE",
-                feature_names=[
-                    "Voltage_measured",
-                    "Current_measured",
-                    "Temperature_measured",
-                    "Current_load",
-                    "Voltage_load",
-                    "Time",
-                ],
-                save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/35_iT_39_iTcomp",
-                # filename="01420.csv",
-                filename=filename,
-            )
+    #         plot_feature_comparison(
+    #             original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
+    #             deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_AWGN_deepsc_MSE",
+    #             # lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index+1}/reconstructed_rayleigh_lstm_MSE",
+    #             lstm_path=f"./reconstruction/case{str(int(case_index_prefix)-12)}.1.{snr_db_index+1}/reconstructed_rayleigh_deepsc_MSE",
+    #             gru_path="./reconstruction/case9.1/reconstructed_rayleigh_deepsc_MSE",
+    #             feature_names=[
+    #                 "Voltage_measured",
+    #                 "Current_measured",
+    #                 "Temperature_measured",
+    #                 "Current_load",
+    #                 "Voltage_load",
+    #                 "Time",
+    #             ],
+    #             save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}/31_iT_43_iTcomp",
+    #             # filename="01420.csv",
+    #             filename=filename,
+    #         )
 
     # # plot_line_comparison(
     # #     csv_paths, case_labels, save_path=save_path, metric_type=metric_type

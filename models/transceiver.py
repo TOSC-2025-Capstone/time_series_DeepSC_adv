@@ -703,6 +703,7 @@ class iTransformerEncoder(nn.Module):
 
     def forward(self, x, src_mask):
         # 양방향 positional encoding 추가
+        x_orig = x
         x = self.input_projection(x)
         x = x.permute(0,2,1)
         x = self.input_time_projection(x)
@@ -956,6 +957,7 @@ class DeepSC(nn.Module):
         # x: (batch_size, seq_len, input_dim) - 시계열 데이터
         # 1단계: 의미 인코더
         # (batch, max_len, input_dim->d_model)
+
         if self.model_type == 'deepsc' :
             encoded = self.encoder(x, src_mask)
         else:  # GRU/LSTM 인코더
@@ -976,8 +978,8 @@ class DeepSC(nn.Module):
         # 4단계 : 채널 상태 적용
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
-            rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
-            # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+            # rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
             # rx_sig = self.channels.fading(tx_sig, 0, n_std, detector="MMSE")
         else:
             rx_sig = tx_sig

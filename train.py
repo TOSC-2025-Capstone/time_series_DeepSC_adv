@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from torch.utils.checkpoint import checkpoint
 import joblib
 from models.transceiver import DeepSC
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -20,52 +19,15 @@ from parameters.parameters import TrainParams, LossType, channel_type
 import parameters.parameters as p
 import csv
 import time
-from utils import log_epoch_stats_csv, plot_training_logs, train_mi, Channels, power_normalize
+from utils import log_epoch_stats_csv, plot_training_logs, train_mi, Channels, PowerNormalize
 from models.mutual_info import sample_batch, mutual_information
-
-def get_curriculum_snr(epoch, total_epochs, strategy="linear"):
-    """
-    에포크에 따라 점진적으로 어려운 SNR 선택
-
-    Args:
-        epoch: 현재 에포크
-        total_epochs: 전체 에포크 수
-        strategy: "linear", "exponential", "step"
-
-    Returns:
-        (min_snr, max_snr): 현재 에포크에서 샘플링할 SNR 범위
-    """
-    progress = epoch / total_epochs  # 0 ~ 1
-
-    if strategy == "linear":
-        # 선형으로 감소: 21dB → 3dB
-        max_snr = 21 - (21 - 3) * progress
-        min_snr = max(3, max_snr - 6)  # 6dB 범위 유지
-
-    elif strategy == "exponential":
-        # 지수적으로 감소 (초반에 천천히, 후반에 빠르게)
-        max_snr = 21 - (21 - 3) * (progress ** 2)
-        min_snr = max(3, max_snr - 6)
-
-    elif strategy == "step":
-        # 단계적 감소
-        if progress < 0.25:
-            min_snr, max_snr = 15, 21  # 쉬움
-        elif progress < 0.5:
-            min_snr, max_snr = 9, 15   # 중간
-        elif progress < 0.75:
-            min_snr, max_snr = 6, 12   # 어려움
-        else:
-            min_snr, max_snr = 3, 9    # 매우 어려움
-
-    return int(min_snr), int(max_snr)
 
 def normalize_snr_to_range(snr_db):
     """SNR을 -2~2 범위로 정규화 (Clean=3)"""
     if snr_db == 100:
-        return 3.0
+        return 6.0
     else:
-        normalized = (snr_db - 3) / 18 * 4 - 2
+        normalized = ((snr_db - 3) / 6) # 3 ~ 21 -> 0 ~ 3
         return normalized
 
 def add_snr_label_to_tensor(tensor_data, is_train_data=True):
@@ -112,7 +74,6 @@ def prepare_data_loaders(tensor_data, batch_size, is_train=True):
         TensorDataset(noisy_data),
         batch_size=batch_size,
         shuffle=is_train,
-        # shuffle=False,
         drop_last=is_train
     )
 
@@ -150,7 +111,7 @@ def prepare_fixed_batch(val_tensor, device):
 
     return fixed_batch, fixed_snr_values
 
-def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_training=True, epoch=0, total_epochs=80):
+def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_training=True):
     """
     배치 처리 (Clean 또는 Noisy)
 
@@ -176,6 +137,7 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
         assert (snr_labels != 3).all(), "Noisy batch에 clean 샘플 섞임"
 
     # 차원 처리
+    pdb.set_trace()
     batch = batch[:, :, :-1]  # file_index 제거 [batch, seq, 9]
     data_8d = batch[:, :, :-1]  # SNR 제거 [batch, seq, 8]
 
@@ -185,22 +147,14 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
     if is_clean:
         # Clean 처리
         p.is_train_phase = True
-        output = model(batch)
+        # output = model(batch)
+        output = model(data_8d) # 1126 snr 제거한 8개 피쳐학습
     else:
         # Noisy 처리
         snr_db = (np.random.randint(1, 8)) * 3  # 3~21
+        # snr_db = 1 * 3  # 3~21
         model.snr_db = snr_db
         snr_normalized = normalize_snr_to_range(snr_db)
-
-        # # 커리큘럼 기반 SNR 샘플링
-        # min_snr, max_snr = get_curriculum_snr(epoch, total_epochs, strategy="linear")
-
-        # # min_snr ~ max_snr 범위에서 3의 배수 선택
-        # snr_candidates = [s for s in range(3, 22, 3) if min_snr <= s <= max_snr]
-        # snr_db = np.random.choice(snr_candidates)
-
-        # model.snr_db = snr_db
-        # snr_normalized = normalize_snr_to_range(snr_db)
 
         # SNR 레이블 교체
         noisy_snr_label = torch.full(
@@ -212,11 +166,13 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
         batch = torch.cat([batch, noisy_snr_label], dim=-1)  # 새 SNR 추가
 
         p.is_train_phase = False
-
         output = model(batch)
 
     # 손실 계산
-    output_8d = output[:, :, :-1]
+    output_8d = output # 1126
+    # output_8d = output[:, :, :-1]
+    # output_8d = torch.clamp(output_8d, min=0.0)  # 음수값 0으로 클램핑
+    # output_8d = output_8d / 6  # minmax 스케일러 사용 시 6으로 나누기
     loss = criterion(output_8d, data_8d)
 
     if optimizer and is_training:
@@ -225,187 +181,27 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
 
     return loss
 
-# def run_epoch(clean_loader, noisy_loader, model, criterion, device,
-#               optimizer=None, is_training=True, epoch_num=1, total_epochs=1):
-#     """
-#     한 에포크 실행 (학습 또는 검증)
-
-#     Args:
-#         clean_loader: Clean DataLoader
-#         noisy_loader: Noisy DataLoader
-#         model: 모델
-#         criterion: 손실 함수
-#         device: cuda/cpu
-#         optimizer: 옵티마이저 (학습 시만)
-#         is_training: 학습 모드 여부
-#         epoch_num: 현재 에포크 번호
-#         total_epochs: 전체 에포크 수
-
-#     Returns:
-#         avg_loss: 평균 손실
-#     """
-#     if is_training:
-#         model.train()
-#     else:
-#         model.eval()
-
-#     clean_iter_tx = iter(clean_loader)
-#     noisy_iter_tx = iter(noisy_loader)
-#     clean_iter = iter(clean_loader)
-#     noisy_iter = iter(noisy_loader)
-
-#     max_batches = min(len(clean_loader), len(noisy_loader))
-#     batch_size = clean_loader.batch_size
-
-#     mode = "Train" if is_training else "Val"
-#     pbar_tx = tqdm(range(max_batches), desc=f"Epoch_TX {epoch_num}/{total_epochs} [{mode}]")
-
-#     total_loss = 0
-
-#     context = torch.no_grad() if not is_training else torch.enable_grad()
-
-#     total_channel_encoded = None
-#     total_data_8d = None
-#     snr_list = []
-#     with context:
-#         # 한 에포크에 대한 모든 배치 압축본 모음
-#         for idx in pbar_tx:
-#             # Noisy batch
-#             try:
-#                 noisy_batch_tx = next(noisy_iter_tx)[0].to(device)
-#             except StopIteration:
-#                 noisy_iter_tx = iter(noisy_loader)
-#                 noisy_batch_tx = next(noisy_iter_tx)[0].to(device)
-
-#             # 모델 처리할때 normalization을 일관적으로 하기 위하여 압축시그널을 모두 모아서 처리
-#             # TX code
-#             # 차원 처리
-#             noisy_batch_tx = noisy_batch_tx[:, :, :-1]  # file_index 제거 [batch, seq, 9]
-#             data_8d = noisy_batch_tx[:, :, :-1]  # SNR 제거 [batch, seq, 8]
-
-#             # Noisy 처리
-#             snr_db = (np.random.randint(1, 8)) * 3  # 3~21
-#             model.snr_db = snr_db
-#             snr_normalized = normalize_snr_to_range(snr_db)
-#             snr_list.append(snr_db) # list에 저장
-
-#             # SNR 레이블 교체
-#             noisy_snr_label = torch.full(
-#                 (noisy_batch_tx.size(0), noisy_batch_tx.size(1), 1),
-#                 snr_normalized
-#             ).to(device)
-
-#             noisy_batch_tx = noisy_batch_tx[:, :, :-1]  # 기존 SNR 제거
-#             noisy_batch_tx = torch.cat([noisy_batch_tx, noisy_snr_label], dim=-1)  # 새 SNR 추가
-
-#             if model.model_type == 'deepsc' :
-#                 encoded = model.encoder(noisy_batch_tx, None)
-#             else:  # GRU/LSTM 인코더
-#                 encoded, _ = model.encoder(noisy_batch_tx)
-#             compressed = model.time_compressor(encoded)
-#             channel_encoded = model.channel_encoder(compressed)
-
-#             # 압축 결과 모아놓기
-#             if total_data_8d is None :
-#                 total_data_8d = data_8d.detach().cpu()
-#             else:
-#                 total_data_8d = torch.cat((total_data_8d, data_8d.detach().cpu()), dim=0)
-
-#             # 정답지도 모아놓기
-#             if total_channel_encoded is None :
-#                 total_channel_encoded = channel_encoded.detach().cpu()
-#             else:
-#                 total_channel_encoded = torch.cat((total_channel_encoded, channel_encoded.detach().cpu()), dim=0)
-
-#     total_tx_sig = power_normalize(total_channel_encoded)
-#     # total_rx_sig = model.channels.Rayleigh(total_tx_sig.to(device), model.snr_db)
-
-#     # 모델 압축본 모음 데이터로더
-#     tx_data_loader = DataLoader(
-#         TensorDataset(total_tx_sig),
-#         batch_size=batch_size,
-#         shuffle=False,
-#         drop_last=False
-#     )
-
-#     # 모델 정답(입력)
-#     data_8d_loader = DataLoader(
-#         TensorDataset(total_data_8d),
-#         batch_size=batch_size,
-#         shuffle=False,
-#         drop_last=False
-#     )
-
-#     pbar = tqdm(range(max_batches), desc=f"Epoch_RX {epoch_num}/{total_epochs} [{mode}]")
-
-#     # 모델 압축본과 정답지 이터레이터
-#     rx_iter = iter(tx_data_loader)
-#     data_8d_iter = iter(data_8d_loader)
-#     # noisy_iter = iter(noisy_loader)
-
-#     with context:
-#         for idx in pbar:
-#             try:
-#                 rx_batch = next(rx_iter)[0].to(device)
-#                 data_8d = next(data_8d_iter)[0].to(device)
-#             except StopIteration:
-#                 rx_iter = iter(tx_data_loader)
-#                 rx_batch = next(rx_iter)[0]
-
-#             rx_sig = model.channels.Rayleigh(rx_batch, snr_list[idx])
-
-#             channel_decoded = model.channel_decoder(rx_sig)
-#             decompressed = model.time_decompressor(channel_decoded)
-
-#             if model.model_type == 'deepsc' :
-#                 output = model.decoder(decompressed, use_mask=True)
-#             else:  # GRU/LSTM 인코더
-#                 output, _ = model.decoder(decompressed)
-
-#             final_output = model.output_projection(output)
-#             final_output = final_output.permute(0,2,1)
-#             final_output = model.output_time_projection(final_output)
-#             final_output = final_output.permute(0,2,1)
-
-#             # 손실 계산
-#             output_8d = final_output[:, :, :-1]
-#             loss = criterion(output_8d, data_8d)
-
-#             if optimizer and is_training:
-#                 optimizer.zero_grad()
-#                 loss.backward()
-#                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # gradient clipping 추가
-#                 optimizer.step()
-
-#             loss_clean = 0
-#             # total_loss += (loss_clean.item() + loss_noisy.item()) * batch_size
-#             # total_loss += (loss_clean + loss_noisy.item()) * batch_size
-#             total_loss += (loss.item()) * batch_size
-
-#             pbar.set_postfix({
-#                 # "Loss_clean": f"{loss_clean.item():.4f}",
-#                 # "Loss_clean": f"{loss_clean:.4f}",
-#                 # "Loss_noisy": f"{loss_noisy.item():.4f}"
-#                 "Loss_noisy": f"{loss.item():.4f}"
-#             })
-
-#     # avg_loss = total_loss / (max_batches * batch_size * 2)
-#     avg_loss = total_loss / (max_batches * batch_size)
-#     return avg_loss
-
-def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
-                       optimizer=None, is_training=True, epoch_num=1, total_epochs=1):
+def run_epoch(clean_loader, noisy_loader, model, criterion, device,
+              optimizer=None, is_training=True, epoch_num=1, total_epochs=1):
     """
-    Two-Pass 방식: Clean + Noisy 1:1 비율로 학습
+    한 에포크 실행 (학습 또는 검증)
 
-    Pass 1: 전력 정규화 계수 계산 (no gradient)
-    Pass 2: 계수를 이용해 end-to-end 학습 (with gradient)
+    Args:
+        clean_loader: Clean DataLoader
+        noisy_loader: Noisy DataLoader
+        model: 모델
+        criterion: 손실 함수
+        device: cuda/cpu
+        optimizer: 옵티마이저 (학습 시만)
+        is_training: 학습 모드 여부
+        epoch_num: 현재 에포크 번호
+        total_epochs: 전체 에포크 수
+
+    Returns:
+        avg_loss: 평균 손실
     """
-    from torch.cuda.amp import autocast, GradScaler
-
     if is_training:
         model.train()
-        scaler = GradScaler()
     else:
         model.eval()
 
@@ -413,269 +209,54 @@ def run_epoch_two_pass(clean_loader, noisy_loader, model, criterion, device,
     noisy_iter = iter(noisy_loader)
 
     max_batches = min(len(clean_loader), len(noisy_loader))
-    batch_size = noisy_loader.batch_size
+    batch_size = clean_loader.batch_size
+
     mode = "Train" if is_training else "Val"
-
-    # ========================================
-    # PASS 1: 전력 정규화 계수 계산 (no grad)
-    # ========================================
-    print(f"[Pass 1] Computing power normalization factor...")
-
-    all_tx_signals = []
-    all_snr_db = []
-    all_input_batches = []
-    all_is_clean = []  # Clean/Noisy 구분
-
-    with torch.no_grad():
-        pbar_pass1 = tqdm(range(max_batches), desc=f"Pass1 {epoch_num} [{mode}]")
-
-        for idx in pbar_pass1:
-            # ===== Clean 배치 처리 =====
-            try:
-                clean_batch = next(clean_iter)[0].to(device)
-            except StopIteration:
-                clean_iter = iter(clean_loader)
-                clean_batch = next(clean_iter)[0].to(device)
-
-            # Clean 데이터 전처리
-            clean_batch = clean_batch[:, :, :-1]  # file_index 제거
-            clean_data_8d = clean_batch[:, :, :-1]  # SNR 제거
-
-            # Clean은 SNR=100 (정규화값 3.0)
-            clean_snr_db = 100
-            clean_snr_normalized = normalize_snr_to_range(clean_snr_db)
-
-            clean_snr_label = torch.full(
-                (clean_batch.size(0), clean_batch.size(1), 1),
-                clean_snr_normalized
-            ).to(device)
-            clean_input = torch.cat([clean_data_8d, clean_snr_label], dim=-1)
-
-            # Clean 인코딩
-            if model.model_type == 'deepsc':
-                clean_encoded = model.encoder(clean_input, None)
-            else:
-                clean_encoded, _ = model.encoder(clean_input)
-
-            clean_compressed = model.time_compressor(clean_encoded)
-            clean_channel_encoded = model.channel_encoder(clean_compressed)
-
-            # CPU로 이동
-            all_tx_signals.append(clean_channel_encoded.cpu())
-            all_snr_db.append(clean_snr_db)
-            all_input_batches.append({
-                'data_8d': clean_data_8d.cpu(),
-                'input_with_snr': clean_input.cpu()
-            })
-            all_is_clean.append(True)
-
-            del clean_batch, clean_data_8d, clean_encoded, clean_compressed, clean_channel_encoded
-
-            # ===== Noisy 배치 처리 =====
-            try:
-                noisy_batch = next(noisy_iter)[0].to(device)
-            except StopIteration:
-                noisy_iter = iter(noisy_loader)
-                noisy_batch = next(noisy_iter)[0].to(device)
-
-            # Noisy 데이터 전처리
-            noisy_batch = noisy_batch[:, :, :-1]
-            noisy_data_8d = noisy_batch[:, :, :-1]
-
-            # Noisy는 랜덤 SNR (3~21dB)
-            snr_db = (np.random.randint(1, 8)) * 3
-            snr_normalized = normalize_snr_to_range(snr_db)
-
-            noisy_snr_label = torch.full(
-                (noisy_batch.size(0), noisy_batch.size(1), 1),
-                snr_normalized
-            ).to(device)
-            noisy_input = torch.cat([noisy_data_8d, noisy_snr_label], dim=-1)
-
-            # Noisy 인코딩
-            if model.model_type == 'deepsc':
-                noisy_encoded = model.encoder(noisy_input, None)
-            else:
-                noisy_encoded, _ = model.encoder(noisy_input)
-
-            noisy_compressed = model.time_compressor(noisy_encoded)
-            noisy_channel_encoded = model.channel_encoder(noisy_compressed)
-
-            # CPU로 이동
-            all_tx_signals.append(noisy_channel_encoded.cpu())
-            all_snr_db.append(snr_db)
-            all_input_batches.append({
-                'data_8d': noisy_data_8d.cpu(),
-                'input_with_snr': noisy_input.cpu()
-            })
-            all_is_clean.append(False)
-
-            del noisy_batch, noisy_data_8d, noisy_encoded, noisy_compressed, noisy_channel_encoded
-            torch.cuda.empty_cache()
-
-    # 전체 TX 신호 concat 및 정규화 계수 계산
-    all_tx_concat = torch.cat(all_tx_signals, dim=0)  # CPU에서
-
-    # 정규화 계수 계산 (Clean + Noisy 전체)
-    power = torch.mean(all_tx_concat ** 2)
-    normalization_factor = torch.sqrt(power)
-
-    print(f"Computed normalization factor: {normalization_factor.item():.6f}")
-    print(f"Total batches: {len(all_tx_signals)} (Clean: {sum(all_is_clean)}, Noisy: {sum(not x for x in all_is_clean)})")
-
-    # 메모리 정리
-    del all_tx_signals, all_tx_concat
-
-    # ========================================
-    # PASS 2: End-to-End 학습 (with grad)
-    # ========================================
-    print(f"[Pass 2] End-to-end training with gradient...")
-
-    total_batches = len(all_input_batches)
-    pbar_pass2 = tqdm(range(total_batches), desc=f"Pass2 {epoch_num} [{mode}]")
+    pbar = tqdm(range(max_batches), desc=f"Epoch {epoch_num}/{total_epochs} [{mode}]")
 
     total_loss = 0
-    clean_loss_sum = 0
-    noisy_loss_sum = 0
-    clean_count = 0
-    noisy_count = 0
-
-    if is_training:
-        optimizer.zero_grad()
 
     context = torch.no_grad() if not is_training else torch.enable_grad()
 
     with context:
-        for idx in pbar_pass2:
-            # 저장된 입력 데이터 로드
-            batch_data = all_input_batches[idx]
-            input_with_snr = batch_data['input_with_snr'].to(device)
-            data_8d = batch_data['data_8d'].to(device)
-            snr_db = all_snr_db[idx]
-            is_clean = all_is_clean[idx]
+        for _ in pbar:
+            # Clean batch
+            try:
+                clean_batch = next(clean_iter)[0]
+            except StopIteration:
+                clean_iter = iter(clean_loader)
+                clean_batch = next(clean_iter)[0]
 
-            if is_training:
-                with autocast():
-                    # ===== TX: Encoding (gradient 유지) =====
-                    if model.model_type == 'deepsc':
-                        encoded = model.encoder(input_with_snr, None)
-                    else:
-                        encoded, _ = model.encoder(input_with_snr)
+            loss_clean = process_batch(
+                clean_batch, device, is_clean=True,
+                model=model, criterion=criterion,
+                optimizer=optimizer if is_training else None,
+                is_training=is_training
+            )
 
-                    compressed = model.time_compressor(encoded)
-                    channel_encoded = model.channel_encoder(compressed)
+            # # Noisy batch
+            # try:
+            #     noisy_batch = next(noisy_iter)[0]
+            # except StopIteration:
+            #     noisy_iter = iter(noisy_loader)
+            #     noisy_batch = next(noisy_iter)[0]
 
-                    # Pass 1에서 계산한 계수로 정규화 (gradient 유지!)
-                    tx_normalized = channel_encoded / normalization_factor.to(device)
+            # loss_noisy = process_batch(
+            #     noisy_batch, device, is_clean=False,
+            #     model=model, criterion=criterion,
+            #     optimizer=optimizer if is_training else None,
+            #     is_training=is_training
+            # )
 
-                    # ===== Channel =====
-                    if is_clean:
-                        # Clean은 노이즈 없이 통과 (또는 매우 높은 SNR)
-                        rx_sig = tx_normalized  # 노이즈 없음
-                    else:
-                        # Noisy는 Rayleigh 채널 + 노이즈
-                        rx_sig = model.channels.Rayleigh(tx_normalized, 21)
+            # total_loss += (loss_clean.item() + loss_noisy.item()) * batch_size
+            total_loss += loss_clean.item() * batch_size
 
-                    # ===== RX: Decoding (gradient 유지) =====
-                    channel_decoded = torch.utils.checkpoint.checkpoint(
-                        model.channel_decoder, rx_sig, use_reentrant=False
-                    )
-                    decompressed = torch.utils.checkpoint.checkpoint(
-                        model.time_decompressor, channel_decoded, use_reentrant=False
-                    )
-
-                    if model.model_type == 'deepsc':
-                        output = torch.utils.checkpoint.checkpoint(
-                            model.decoder, decompressed, True, use_reentrant=False
-                        )
-                    else:
-                        output, _ = model.decoder(decompressed)
-
-                    final_output = model.output_projection(output)
-                    final_output = final_output.permute(0, 2, 1)
-                    final_output = model.output_time_projection(final_output)
-                    final_output = final_output.permute(0, 2, 1)
-
-                    output_8d = final_output[:, :, :-1]
-                    loss = criterion(output_8d, data_8d)
-
-                # Backward
-                scaler.scale(loss).backward()
-
-                # 매 배치마다 업데이트
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad()
-
-            else:  # Validation
-                with autocast():
-                    if model.model_type == 'deepsc':
-                        encoded = model.encoder(input_with_snr, None)
-                    else:
-                        encoded, _ = model.encoder(input_with_snr)
-
-                    compressed = model.time_compressor(encoded)
-                    channel_encoded = model.channel_encoder(compressed)
-                    tx_normalized = channel_encoded / normalization_factor.to(device)
-
-                    if is_clean:
-                        rx_sig = tx_normalized
-                    else:
-                        rx_sig = model.channels.Rayleigh(tx_normalized, snr_db)
-
-                    channel_decoded = model.channel_decoder(rx_sig)
-                    decompressed = model.time_decompressor(channel_decoded)
-
-                    if model.model_type == 'deepsc':
-                        output = model.decoder(decompressed, use_mask=True)
-                    else:
-                        output, _ = model.decoder(decompressed)
-
-                    final_output = model.output_projection(output)
-                    final_output = final_output.permute(0, 2, 1)
-                    final_output = model.output_time_projection(final_output)
-                    final_output = final_output.permute(0, 2, 1)
-
-                    output_8d = final_output[:, :, :-1]
-                    loss = criterion(output_8d, data_8d)
-
-            # 손실 누적
-            total_loss += loss.item() * batch_size
-
-            if is_clean:
-                clean_loss_sum += loss.item() * batch_size
-                clean_count += batch_size
-            else:
-                noisy_loss_sum += loss.item() * batch_size
-                noisy_count += batch_size
-
-            # 메모리 정리
-            del input_with_snr, data_8d, encoded, compressed, channel_encoded
-            del tx_normalized, rx_sig, channel_decoded, decompressed
-            del output, final_output, output_8d, loss
-            torch.cuda.empty_cache()
-
-            # Progress bar 업데이트
-            avg_loss = total_loss / ((idx+1) * batch_size)
-            clean_avg = clean_loss_sum / clean_count if clean_count > 0 else 0
-            noisy_avg = noisy_loss_sum / noisy_count if noisy_count > 0 else 0
-
-            pbar_pass2.set_postfix({
-                "Loss": f"{avg_loss:.4f}",
-                "Clean": f"{clean_avg:.4f}",
-                "Noisy": f"{noisy_avg:.4f}"
+            pbar.set_postfix({
+                "Loss_clean": f"{loss_clean.item():.4f}",
+                # "Loss_noisy": f"{loss_noisy.item():.4f}"
             })
 
-    # 메모리 정리
-    del all_input_batches, all_snr_db, all_is_clean
-
-    avg_loss = total_loss / (total_batches * batch_size)
-
-    print(f"  → Clean Loss: {clean_loss_sum / clean_count:.6f}")
-    print(f"  → Noisy Loss: {noisy_loss_sum / noisy_count:.6f}")
-
+    avg_loss = total_loss / (max_batches * batch_size * 2)
     return avg_loss
 
 def visualize_fixed_batch(fixed_batch, fixed_snr_values, model, device,
@@ -794,7 +375,7 @@ def train_model(model=None, params: TrainParams=None, device=None, mi_net=None):
         start_time = time.time()
 
         # 학습
-        avg_train_loss = run_epoch_two_pass(
+        avg_train_loss = run_epoch(
             clean_train_loader, noisy_train_loader,
             model, criterion, device,
             optimizer=optimizer,
@@ -805,7 +386,7 @@ def train_model(model=None, params: TrainParams=None, device=None, mi_net=None):
         print(f"[Epoch {epoch+1}] Train Loss: {avg_train_loss:.6f}")
 
         # 검증
-        avg_val_loss = run_epoch_two_pass(
+        avg_val_loss = run_epoch(
             val_clean_loader, val_noisy_loader,
             model, criterion, device,
             optimizer=None,
@@ -833,11 +414,11 @@ def train_model(model=None, params: TrainParams=None, device=None, mi_net=None):
         )
 
         # 시각화
-        if epoch == 0 or (epoch+1) % 40 == 0:
-            visualize_fixed_batch(
-                fixed_batch, fixed_snr_values, model, device,
-                epoch, save_fig_dir
-            )
+        # if epoch == 0 or (epoch+1) % 40 == 0:
+        #     visualize_fixed_batch(
+        #         fixed_batch, fixed_snr_values, model, device,
+        #         epoch, save_fig_dir
+        #     )
 
         # 진행 상황 출력
         print(f"Epoch {epoch+1}/{num_epochs}:")
