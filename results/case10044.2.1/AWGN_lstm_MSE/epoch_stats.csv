@@ -1,0 +1,2 @@
+Epoch,Time(sec),AvgTime(sec),TrainLoss,ValLoss,BestValLoss,LR
+1,454.46,454.46,0.103677,0.115220,0.115220,0.000010

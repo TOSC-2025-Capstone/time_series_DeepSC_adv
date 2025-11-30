@@ -186,10 +186,9 @@ class Channels():
         snr_linear = 10 ** (snr_db / 10)          # dB → 선형 변환 (신호 전력/노이즈 전력 값)
         signal_power = Tx_sig.pow(2).mean().item()  # 신호 평균 전력
         noise_std = 1 / np.sqrt(2 * snr_linear)          # 잡음 분산 -> 노이즈 전력값
-        # noise_std = math.sqrt(n_var)
-        print("noise_std:", noise_std, "signal power:", signal_power)
+        # noise_std = signal_power / np.sqrt(2 * snr_linear)          # 잡음 분산 -> 노이즈 전력값
+        print("snr:", snr_db, "noise_std:", noise_std, "signal power:", signal_power)
         # print("noise variance:", n_var, "signal power:", signal_power, "Tx sig :" , Tx_sig[0,:5])
-
         noise = torch.normal(
             mean=0,
             std=noise_std,
@@ -199,70 +198,70 @@ class Channels():
         )
         # print("mean:",torch.mean(noise),' std:' ,torch.std(noise), math.sqrt(n_var), n_var, "sigpower:", signal_power)
 
-        # 데이터 준비
-        tx_signals = torch.flatten(Tx_sig, 0, 1).detach().cpu().numpy()
-        noise_signals = torch.flatten(noise, 0, 1).detach().cpu().numpy()
-        # rx_signals = [tx_signals[i] + noise_signals[i] for i in range(3)]
-        rx_signals = tx_signals + noise_signals
+        # # 데이터 준비
+        # tx_signals = torch.flatten(Tx_sig, 0, 1).detach().cpu().numpy()
+        # noise_signals = torch.flatten(noise, 0, 1).detach().cpu().numpy()
+        # # rx_signals = [tx_signals[i] + noise_signals[i] for i in range(3)]
+        # rx_signals = tx_signals + noise_signals
 
-        # 전체 데이터의 min/max 계산 (통일된 스케일)
-        all_data = tx_signals + noise_signals + rx_signals
-        y_min = min(data.min() for data in all_data)
-        y_max = max(data.max() for data in all_data)
-        x_range = [0, 128]
+        # # 전체 데이터의 min/max 계산 (통일된 스케일)
+        # all_data = tx_signals + noise_signals + rx_signals
+        # y_min = min(data.min() for data in all_data)
+        # y_max = max(data.max() for data in all_data)
+        # x_range = [0, 128]
 
-        # 3x3 그리드 생성
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+        # # 3x3 그리드 생성
+        # fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
-        feature_names = ['Feature 0', 'Feature 1']
-        column_titles = ['Tx Signal', 'Noise', 'Rx Signal']
+        # feature_names = ['Feature 0', 'Feature 1']
+        # column_titles = ['Tx Signal', 'Noise', 'Rx Signal']
 
-        # 각 서브플롯 그리기
-        for row in range(2):  # 피처 (0, 1, 2)
-            for col in range(3):  # Tx, Noise, Rx
-                ax = axes[row, col]
+        # # 각 서브플롯 그리기
+        # for row in range(2):  # 피처 (0, 1, 2)
+        #     for col in range(3):  # Tx, Noise, Rx
+        #         ax = axes[row, col]
 
-                # 데이터 선택
-                if col == 0:  # Tx
-                    data = tx_signals[:, row]
-                    color = 'blue'
-                elif col == 1:  # Noise
-                    data = noise_signals[:, row]
-                    color = 'orange'
-                else:  # Rx
-                    data = rx_signals[:, row]
-                    color = 'red'
-                # 플롯
-                ax.plot(data, color=color, linewidth=1.5, alpha=0.8)
+        #         # 데이터 선택
+        #         if col == 0:  # Tx
+        #             data = tx_signals[:, row]
+        #             color = 'blue'
+        #         elif col == 1:  # Noise
+        #             data = noise_signals[:, row]
+        #             color = 'orange'
+        #         else:  # Rx
+        #             data = rx_signals[:, row]
+        #             color = 'red'
+        #         # 플롯
+        #         ax.plot(data, color=color, linewidth=1.5, alpha=0.8)
 
-                # 스케일 통일
-                ax.set_xlim(x_range)
-                ax.set_ylim([y_min, y_max])
+        #         # 스케일 통일
+        #         ax.set_xlim(x_range)
+        #         ax.set_ylim([y_min, y_max])
 
-                # 그리드
-                ax.grid(True, alpha=0.3)
+        #         # 그리드
+        #         ax.grid(True, alpha=0.3)
 
-                for x_pos in [i*8 for i in range(1,17)]:
-                    ax.axvline(x=x_pos, color='r', linestyle='--', label=f'Vertical line at {x_pos}')
+        #         for x_pos in [i*8 for i in range(1,17)]:
+        #             ax.axvline(x=x_pos, color='r', linestyle='--', label=f'Vertical line at {x_pos}')
 
-                # 라벨 (첫 행에만 열 제목, 첫 열에만 행 제목)
-                if row == 0:
-                    ax.set_title(column_titles[col], fontsize=12, fontweight='bold')
-                if col == 0:
-                    ax.set_ylabel(feature_names[row], fontsize=11, fontweight='bold')
+        #         # 라벨 (첫 행에만 열 제목, 첫 열에만 행 제목)
+        #         if row == 0:
+        #             ax.set_title(column_titles[col], fontsize=12, fontweight='bold')
+        #         if col == 0:
+        #             ax.set_ylabel(feature_names[row], fontsize=11, fontweight='bold')
 
-                # x축 라벨 (마지막 행에만)
-                if row == 1:
-                    ax.set_xlabel('Time Step', fontsize=10)
+        #         # x축 라벨 (마지막 행에만)
+        #         if row == 2:
+        #             ax.set_xlabel('Time Step', fontsize=10)
 
-        # 전체 타이틀
-        fig.suptitle(f'Signal Comparison (SNR={snr_db}dB)\n'
-                    f'Signal Power: {signal_power:.6f}, Noise Std: {noise_std:.6f}',
-                    fontsize=14, fontweight='bold', y=0.995)
+        # # 전체 타이틀
+        # fig.suptitle(f'Signal Comparison (SNR={snr_db}dB)\n'
+        #             f'Signal Power: {signal_power:.6f}, Noise Std: {noise_std:.6f}',
+        #             fontsize=14, fontweight='bold', y=0.995)
 
-        plt.tight_layout()
-        plt.savefig('signal_comparison_3x3.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        # plt.tight_layout()
+        # plt.savefig('signal_comparison_3x3.png', dpi=300, bbox_inches='tight')
+        # plt.show()
 
         # self.visualize_awgn_effect(Tx_sig, snr_db=15)
         return Tx_sig + noise

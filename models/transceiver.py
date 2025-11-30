@@ -978,8 +978,12 @@ class DeepSC(nn.Module):
         # 4단계 : 채널 상태 적용
         if parameters.is_train_phase == False:
             # (batch_size, compressed_len, d_comp)
-            # rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
-            rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+            rx_sig=None
+            if parameters.channel_type == 'rayleigh':
+                rx_sig = self.channels.Rayleigh(tx_sig, self.snr_db)
+            elif parameters.channel_type == 'AWGN':
+                rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
+            # rx_sig = self.channels.AWGN(tx_sig, self.snr_db)
             # rx_sig = self.channels.fading(tx_sig, 0, n_std, detector="MMSE")
         else:
             rx_sig = tx_sig

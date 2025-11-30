@@ -401,7 +401,6 @@ def performance_cycle(
 
             for batch in tensor_pbar:
                 batch = batch.to(device)
-                pdb.set_trace()
                 # file_index 제거: [batch, seq, 10] -> [batch, seq, 9]
                 batch = batch[:, :, :-1]
                 batch_8d = batch[:, :, :-1]  # SNR 레이블 제거: [batch, seq, 8]
@@ -411,14 +410,14 @@ def performance_cycle(
                 model.snr_db = test_snr_db  # 모델에 SNR 설정
 
                 # 모델 추론 (9차원 입력: 8 features + 1 SNR label)
-                # output_tensor = model(batch)
+                output_tensor = model(batch)
 
                 # 출력에서 SNR 레이블 제거: [batch, seq, 9] -> [batch, seq, 8]
-                # output_tensor = output_tensor[:, :, :-1]
+                output_tensor = output_tensor[:, :, :-1]
 
                 # 1126 8차원입력 snr 라벨 제거
-                output_tensor = model(batch_8d)
-                output_tensor = output_tensor
+                # output_tensor = model(batch_8d)
+                # output_tensor = output_tensor
 
                 # 배치 차원 펼치기
                 output_tensor = output_tensor.contiguous().view(-1, 512, 8)

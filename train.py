@@ -25,9 +25,9 @@ from models.mutual_info import sample_batch, mutual_information
 def normalize_snr_to_range(snr_db):
     """SNR을 -2~2 범위로 정규화 (Clean=3)"""
     if snr_db == 100:
-        return 6.0
+        return 3.0
     else:
-        normalized = ((snr_db - 3) / 6) # 3 ~ 21 -> 0 ~ 3
+        normalized = (snr_db - 3) / 18 * 4 - 2
         return normalized
 
 def add_snr_label_to_tensor(tensor_data, is_train_data=True):
@@ -137,7 +137,6 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
         assert (snr_labels != 3).all(), "Noisy batch에 clean 샘플 섞임"
 
     # 차원 처리
-    pdb.set_trace()
     batch = batch[:, :, :-1]  # file_index 제거 [batch, seq, 9]
     data_8d = batch[:, :, :-1]  # SNR 제거 [batch, seq, 8]
 
@@ -147,8 +146,8 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
     if is_clean:
         # Clean 처리
         p.is_train_phase = True
-        # output = model(batch)
-        output = model(data_8d) # 1126 snr 제거한 8개 피쳐학습
+        output = model(batch)
+        # output = model(data_8d) # 1126 snr 제거한 8개 피쳐학습
     else:
         # Noisy 처리
         snr_db = (np.random.randint(1, 8)) * 3  # 3~21
@@ -169,8 +168,8 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
         output = model(batch)
 
     # 손실 계산
-    output_8d = output # 1126
-    # output_8d = output[:, :, :-1]
+    # output_8d = output # 1126
+    output_8d = output[:, :, :-1] # SNR 제거
     # output_8d = torch.clamp(output_8d, min=0.0)  # 음수값 0으로 클램핑
     # output_8d = output_8d / 6  # minmax 스케일러 사용 시 6으로 나누기
     loss = criterion(output_8d, data_8d)
@@ -234,26 +233,26 @@ def run_epoch(clean_loader, noisy_loader, model, criterion, device,
                 is_training=is_training
             )
 
-            # # Noisy batch
-            # try:
-            #     noisy_batch = next(noisy_iter)[0]
-            # except StopIteration:
-            #     noisy_iter = iter(noisy_loader)
-            #     noisy_batch = next(noisy_iter)[0]
+            # Noisy batch
+            try:
+                noisy_batch = next(noisy_iter)[0]
+            except StopIteration:
+                noisy_iter = iter(noisy_loader)
+                noisy_batch = next(noisy_iter)[0]
 
-            # loss_noisy = process_batch(
-            #     noisy_batch, device, is_clean=False,
-            #     model=model, criterion=criterion,
-            #     optimizer=optimizer if is_training else None,
-            #     is_training=is_training
-            # )
+            loss_noisy = process_batch(
+                noisy_batch, device, is_clean=False,
+                model=model, criterion=criterion,
+                optimizer=optimizer if is_training else None,
+                is_training=is_training
+            )
 
-            # total_loss += (loss_clean.item() + loss_noisy.item()) * batch_size
-            total_loss += loss_clean.item() * batch_size
+            total_loss += (loss_clean.item() + loss_noisy.item()) * batch_size
+            # total_loss += loss_clean.item() * batch_size
 
             pbar.set_postfix({
                 "Loss_clean": f"{loss_clean.item():.4f}",
-                # "Loss_noisy": f"{loss_noisy.item():.4f}"
+                "Loss_noisy": f"{loss_noisy.item():.4f}"
             })
 
     avg_loss = total_loss / (max_batches * batch_size * 2)
