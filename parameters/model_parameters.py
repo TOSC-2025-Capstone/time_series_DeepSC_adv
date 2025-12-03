@@ -35,6 +35,7 @@ model_params = {
 
     # 10.04 addition
     "use_itransformer" : True,  # True=iTransformer, False=Transformer
+    # "use_itransformer" : False,  # True=iTransformer, False=Transformer
 
     # 10.12 snr_db parameter
     "snr_db": 21,  # AWGN 채널 SNR 값

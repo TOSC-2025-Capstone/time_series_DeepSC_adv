@@ -50,11 +50,12 @@ def count_parameters(model):
 
 snr_list = [3, 6, 9, 12, 15, 18, 21]
 seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-model_type_list = ["deepsc", "lstm"]
+# model_type_list = ["deepsc", "lstm"]
+model_type_list = ["deepsc", "lstm", "gru", "deepsc"]
 # model_type_list = ["deepsc"]
 batch_size_list = [1, 2, 4, 8, 16]
 base_case_number = int(case_index.split(".")[0])
-model_type_index = 1 if model_type == "deepsc" else 2
+# model_type_index = 1 if model_type == "deepsc" else 2
 # seq_len_list = [2, 8, 32] # segment length
 # projection_list = [8, 64, 512]
 seq_len_list = [16] # segment length
@@ -69,8 +70,8 @@ if __name__ == "__main__":
 
     seed = 1
     setup_seed(seed)
-    # p.channel_type = "AWGN"
-    p.channel_type = "rayleigh"
+    p.channel_type = "AWGN"
+    # p.channel_type = "rayleigh"
     # model_params["num_layers"] = 1
     # model_params["dropout"] = 0
 
@@ -90,9 +91,12 @@ if __name__ == "__main__":
         # model_params["input_dim"] = 8
         # p.input_dim = 8
         # model_params["d_comp"] = 8 // 4
-        model_params["input_dim"] = 9
-        p.input_dim = 9
-        model_params["d_comp"] = 9 // 3
+        # model_params["input_dim"] = 9
+        # p.input_dim = 9
+        # model_params["d_comp"] = 9 // 3
+        model_params["input_dim"] = 7
+        p.input_dim = 7
+        model_params["d_comp"] = 7 // 3
         p.segment_length_n = v_seq_len
 
         for proj_idx, proj_dim in enumerate(projection_list):
@@ -101,11 +105,15 @@ if __name__ == "__main__":
             model_params["hidden_dim"] = proj_dim
 
             for model_type_index, v_model_type in enumerate(model_type_list):
-
+                if model_type_index < 1:
+                    continue
+                if model_type_index == 3 :
+                    model_params["use_itransformer"] = False
                 p.model_type = v_model_type
                 case_number = base_case_number + len(seq_len_list) * seq_len_idx + proj_idx
 
                 checkpoint_index = f"{case_number}.{model_type_index+1}.1"
+
                 # test_model_checkpoint_path = f"./checkpoints/case_{p.case_index}/{loss_type}/{model_type}/{model_type}_battery_epoch"
                 test_model_checkpoint_path = f"./checkpoints/case_{checkpoint_index}/{loss_type}/{p.model_type}/{p.model_type}_battery_epoch"
 

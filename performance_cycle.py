@@ -91,7 +91,8 @@ def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
             os.path.join(preprocessed_folder, "csv/total_preprocessed", sample_file)
         ).columns
 
-    result_df =  pd.DataFrame(data_original_scale, columns=feature_names).drop(columns=["cycle_sequence"])
+    # result_df =  pd.DataFrame(data_original_scale, columns=feature_names).drop(columns=["cycle_sequence"])
+    result_df = pd.DataFrame(data_original_scale, columns=feature_names)
 
     return result_df
 
@@ -420,7 +421,7 @@ def performance_cycle(
                 # output_tensor = output_tensor
 
                 # 배치 차원 펼치기
-                output_tensor = output_tensor.contiguous().view(-1, 512, 8)
+                output_tensor = output_tensor.contiguous().view(-1, 512, 6)
 
                 # 누적
                 if all_output_tensors is None:

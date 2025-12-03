@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from parameters.parameters import PreprocessParams,case_index
 import parameters.parameters as p
+import parameters.model_parameters as mp
 
 from .cycle_reshape import resample_to_fixed_length
 from .methods import *
@@ -37,7 +38,6 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     outlier_threshold = preprocess_params.outlier_threshold
     # Current 피쳐에서 제거할 그룹 설정 (첫 번째 코드의 정확한 로직)
     current_remove_groups = preprocess_params.current_remove_groups
-    segment_length_n = preprocess_params.segment_length_n
 
     # P1
     # Current 관련 컬럼명
@@ -60,24 +60,10 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     # P2 : prepare_dataset.py (스케일 정규화)
     # 1. P1의 통합된 데이터프레임을 사용하여 피쳐 별 스케일 정규화를 진행
     # 이 때 file_index 컬럼은 스케일링에서 제외 후 다시 추가
-    # 2. 이 고유한 테이블에 'battery_id' 그룹별로 0부터 시작하는 카운트 추가
-
-    unique_cycles = df_cleaned[['battery_id', 'file_index']].drop_duplicates()
-
-    unique_cycles['cycle_sequence'] = unique_cycles.groupby('battery_id').cumcount() + 1 # 1부터 시작
-
-    # 3. 원본 df_cleaned에 이 순서 정보가 담긴 테이블을 병합(merge)
-    #    on=['battery_id', 'file_index'] : 두 키가 모두 일치하는 곳에
-    #    how='left' : 원본(df_cleaned) 기준으로 병합
-    df_cleaned = pd.merge(
-        df_cleaned,
-        unique_cycles,
-        on=['battery_id', 'file_index'],
-        how='left'
-    )
     file_index_col = df_cleaned["file_index"].values
-    df_cleaned = df_cleaned.drop(columns=["file_index"])
-    df_cleaned["battery_id"] = df_cleaned["battery_id"].str.replace(r'\D', '', regex=True).astype(int)
+
+    df_cleaned = df_cleaned.drop(columns="file_index")
+    df_cleaned = df_cleaned.drop(columns="battery_id")
 
     if scaler_type == "minmax":
         scaler = MinMaxScaler()
@@ -88,26 +74,25 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
             "지원하지 않는 스케일러 타입입니다. 'minmax' 또는 'zscore'를 선택하세요."
         )
 
+
     scaled_df = scaler.fit_transform(df_cleaned)
-    # scaled_df = scaled_df * 6  # 1125 minmax 스케일러 사용 시 6곱하기
     scaled_df = pd.DataFrame(scaled_df, columns=df_cleaned.columns)
 
     # 0909 정규화 전후 분포 비교
     feature_names = [col for col in df_cleaned.columns if col != "file_index"]
 
     os.makedirs(f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}", exist_ok=True)
-    # visualize_data_comparison(scaled_df,
-    #                             scaled_df,
-    #                             feature_names=feature_names,
-    #                             output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}",
-    #                         )
+    visualize_data_comparison(scaled_df,
+                                scaled_df,
+                                feature_names=feature_names,
+                                output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}",
+                            )
 
     # 다시 scaled_df에 저장했던 file_index 컬럼 복원
     scaled_df["file_index"] = file_index_col
 
     # 2. 정규화를 마친 통합 데이터프레임을 파일 단위로 분리 후
     grouped_dfs = grouping_df(scaled_df)
-    segment_trimmed_dfs = {}
     resampled_dfs = {}
 
     # 3. 각 파일을 target_length개 샘플로 리샘플링하고 resampled_dfs에 저장
@@ -118,47 +103,27 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
             # resampled_output_folder=resampled_csv_folder,
         )
         resampled_dfs[file_index] = resampled_df
-
-    # 251112 기준 512로 보간하면서 8로 나누어떨어짐, 필요없는 로직
-    # for file_index, discharge_df in tqdm(grouped_dfs.items(), desc="Trimming segments"):
-    #     cycle_length = len(discharge_df)
-
-    #     # 꼬리 제거: segment_length_n으로 나눈 나머지 제거
-    #     tail = cycle_length % p.segment_length_n
-    #     trimmed_df = discharge_df[:-tail] if tail > 0 else discharge_df
-    #     segment_trimmed_dfs[file_index] = trimmed_df
-
     # 3.1 resampled_dfs 순회하면서 전처리 완료된 사이클 별 csv 파일 저장
-    total_preprocessed_csv_folder = f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}"
+    # total_preprocessed_csv_folder = f"cycle_preprocess/csv/total_preprocessed/processed_{scaler_type}"
     os.makedirs(preprocessed_csv_path, exist_ok=True)
-    # for file_index, resampled_df in resampled_dfs.items():
     for file_index, resampled_df in resampled_dfs.items():
         output_path = os.path.join(preprocessed_csv_path, f"{int(file_index):05d}.csv")
         resampled_df.to_csv(output_path, index=False)
         # print(f"파일 저장 완료: {output_path} ({len(resampled_df)} rows)")
 
     # 4. 각 샘플들을 텐서로 변환
-    trimmed_total_df_indices = {}
-    # for file_index, discharge_df in tqdm(segment_trimmed_dfs.items()):
-    for file_index, discharge_df in tqdm(resampled_dfs.items()):
-        trimmed_total_df_indices[file_index] = len(discharge_df)
+    # resmapled_dfs를 모두 합쳐서 하나의 데이터프레임으로 변경
+    resampled_total_df = pd.concat(resampled_dfs.values(), ignore_index=True)
 
-    # trimmed_total_df = pd.concat(segment_trimmed_dfs.values(), ignore_index=True)
-    trimmed_total_df = pd.concat(resampled_dfs.values(), ignore_index=True)
-
-    # # 4.2 데이터를 train/val/test로 분할 (6:2:2)
+    # 4.2 데이터를 train/val/test로 분할 (6:2:2)
     train_data, val_data, test_data, train_indices, val_indices, test_indices = (
         split_and_transform_data(
-            # grouped_total_df,
-            trimmed_total_df,
-            # list(grouped_dfs.keys()),
-            # list(segment_trimmed_dfs.keys()),
-            list(resampled_dfs.keys()),
-            trimmed_total_df_indices,
+            resampled_total_df,
+            list(grouped_dfs.keys()),
             val_ratio=val_ratio,
             test_ratio=test_ratio,
-            segment_target_len=segment_length_n,
-            # target_length=target_length,
+            target_length=target_length,
+            segment_target_len=mp.model_params["seq_len"],
         )
     )
 

@@ -5,7 +5,7 @@ from tqdm import tqdm
 import pdb
 
 class CycleDataComparator:
-    # ✨ 수정: threshold_method 파라미터 추가 (문자열로 방식 지정)
+    # 수정: threshold_method 파라미터 추가 (문자열로 방식 지정)
     def __init__(self, original_path, reconstructed_path, threshold_percent=5, threshold_method="mean", min_absolute_threshold=1e-9):
         """
         Parameters:
@@ -353,18 +353,19 @@ class CycleDataComparator:
 
 
 def main():
-    case_number = "46.1.10"
+    case_number = "10046.1.1"
     model_type = "deepsc"
-    threshold_percent = 15
+    channel_type = "AWGN"
+    threshold_percent = 20
 
-    # comparison_method = "mean"
+    comparison_method = "mean"
     # comparison_method = "range_center"
-    comparison_method = "point_wise"
+    # comparison_method = "point_wise"
 
     min_abs_thresh = 1e-6 # 예시 값, 필요시 조정
 
     original_path = r"./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512"
-    reconstructed_path = f"./reconstruction/case{case_number}/reconstructed_rayleigh_{model_type}_MSE"
+    reconstructed_path = f"./reconstruction/case{case_number}/reconstructed_{channel_type}_{model_type}_MSE"
 
     comparator = CycleDataComparator(
         original_path=original_path,
