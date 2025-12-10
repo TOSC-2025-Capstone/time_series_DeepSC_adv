@@ -164,7 +164,7 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     plt.figure(figsize=(15, 10))
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
-            plt.subplot(2, 3, i + 1)
+            plt.subplot(2, len(total_df.columns)//2 + 1, i + 1)
             plt.hist(
                 total_df[col],
                 bins=50,
@@ -195,7 +195,7 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     first_file_cleaned = cleaned_df.iloc[:256]
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
-            plt.subplot(2, 3, i + 1)
+            plt.subplot(2, 3, len(total_df.columns)//2 + 1)
             plt.plot(
                 first_file_data[col],
                 alpha=0.8,
@@ -223,7 +223,7 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     sample_size = min(1000, len(total_df))
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
-            plt.subplot(2, 3, i + 1)
+            plt.subplot(2, 3, len(total_df.columns)//2 + 1)
             plt.scatter(
                 range(sample_size),
                 total_df[col].iloc[:sample_size],

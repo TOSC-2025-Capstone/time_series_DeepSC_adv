@@ -60,6 +60,21 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
     # P2 : prepare_dataset.py (스케일 정규화)
     # 1. P1의 통합된 데이터프레임을 사용하여 피쳐 별 스케일 정규화를 진행
     # 이 때 file_index 컬럼은 스케일링에서 제외 후 다시 추가
+
+    # unique_cycles = df_cleaned[['battery_id', 'file_index']].drop_duplicates()
+
+    # unique_cycles['cycle_sequence'] = unique_cycles.groupby('battery_id').cumcount() + 1 # 1부터 시작
+
+    # # 3. 원본 df_cleaned에 이 순서 정보가 담긴 테이블을 병합(merge)
+    # #    on=['battery_id', 'file_index'] : 두 키가 모두 일치하는 곳에
+    # #    how='left' : 원본(df_cleaned) 기준으로 병합
+    # df_cleaned = pd.merge(
+    #     df_cleaned,
+    #     unique_cycles,
+    #     on=['battery_id', 'file_index'],
+    #     how='left'
+    # )
+
     file_index_col = df_cleaned["file_index"].values
 
     df_cleaned = df_cleaned.drop(columns="file_index")
@@ -74,19 +89,18 @@ def cycle_preprocess(preprocess_params: PreprocessParams = None):
             "지원하지 않는 스케일러 타입입니다. 'minmax' 또는 'zscore'를 선택하세요."
         )
 
-
     scaled_df = scaler.fit_transform(df_cleaned)
     scaled_df = pd.DataFrame(scaled_df, columns=df_cleaned.columns)
 
     # 0909 정규화 전후 분포 비교
     feature_names = [col for col in df_cleaned.columns if col != "file_index"]
 
-    os.makedirs(f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}", exist_ok=True)
-    visualize_data_comparison(scaled_df,
-                                scaled_df,
-                                feature_names=feature_names,
-                                output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}",
-                            )
+    # os.makedirs(f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}", exist_ok=True)
+    # visualize_data_comparison(scaled_df,
+    #                             scaled_df,
+    #                             feature_names=feature_names,
+    #                             output_dir=f"cycle_preprocess/analysis/normalize_comparison/case_{p.case_index}",
+    #                         )
 
     # 다시 scaled_df에 저장했던 file_index 컬럼 복원
     scaled_df["file_index"] = file_index_col

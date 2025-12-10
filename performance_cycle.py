@@ -402,6 +402,7 @@ def performance_cycle(
 
             for batch in tensor_pbar:
                 batch = batch.to(device)
+
                 # file_index 제거: [batch, seq, 10] -> [batch, seq, 9]
                 batch = batch[:, :, :-1]
                 batch_8d = batch[:, :, :-1]  # SNR 레이블 제거: [batch, seq, 8]
@@ -421,7 +422,7 @@ def performance_cycle(
                 # output_tensor = output_tensor
 
                 # 배치 차원 펼치기
-                output_tensor = output_tensor.contiguous().view(-1, 512, 6)
+                output_tensor = output_tensor.contiguous().view(-1, 512, p.input_dim-1)
 
                 # 누적
                 if all_output_tensors is None:
@@ -486,7 +487,8 @@ def performance_cycle(
                     )
 
                 # 특성 이름은 reconstructed_df의 컬럼 순서 사용
-                feature_cols = reconstructed_df.columns.tolist()
+                # feature_cols = reconstructed_df.columns.tolist()
+                feature_cols = ['Voltage_measured','Current_measured','Temperature_measured','Current_load','Voltage_load','Time']
 
                 # reverse sampling (256 -> 각 사이클 원래 길이)
                 reversed_df = reverse_resample(reconstructed_df, len(original_df))
@@ -510,7 +512,6 @@ def performance_cycle(
                         save_performance_dir,
                         cycle_idx,
                     )
-
                 # 성능 지표 계산 및 저장
                 metrics = calculate_performance_metrics(
                     original_df, reversed_df, feature_cols

@@ -91,12 +91,18 @@ if __name__ == "__main__":
         # model_params["input_dim"] = 8
         # p.input_dim = 8
         # model_params["d_comp"] = 8 // 4
-        # model_params["input_dim"] = 9
-        # p.input_dim = 9
-        # model_params["d_comp"] = 9 // 3
-        model_params["input_dim"] = 7
-        p.input_dim = 7
-        model_params["d_comp"] = 7 // 3
+        # case 10044
+        model_params["input_dim"] = 9
+        p.input_dim = 9
+        model_params["d_comp"] = 9 // 3
+        # case 10046
+        # model_params["input_dim"] = 7
+        # p.input_dim = 7
+        # model_params["d_comp"] = 7 // 3
+        # case 10047
+        # model_params["input_dim"] = 8
+        # p.input_dim = 8
+        # model_params["d_comp"] = 8 // 3
         p.segment_length_n = v_seq_len
 
         for proj_idx, proj_dim in enumerate(projection_list):
@@ -105,8 +111,8 @@ if __name__ == "__main__":
             model_params["hidden_dim"] = proj_dim
 
             for model_type_index, v_model_type in enumerate(model_type_list):
-                if model_type_index < 1:
-                    continue
+                # if model_type_index >= 2:
+                #     continue
                 if model_type_index == 3 :
                     model_params["use_itransformer"] = False
                 p.model_type = v_model_type

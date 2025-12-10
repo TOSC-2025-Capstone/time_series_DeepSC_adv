@@ -656,8 +656,8 @@ class iTransformerEncoderLayer(nn.Module):
         # window_size에 따라 Attention 선택
         self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
 
-        # self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
-        self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
+        self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        # self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
 
@@ -729,8 +729,8 @@ class InvertedDecoderLayer(nn.Module):
         super().__init__()
         self.self_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
         self.cross_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-        # self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
-        self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
+        self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        # self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
 
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
@@ -927,7 +927,8 @@ class DeepSC(nn.Module):
                     d_model=self.d_model,
                     num_heads=self.num_heads,
                     dff=self.dff,
-                    max_len=self.max_len,
+                    # max_len=self.max_len,
+                    max_len=self.d_seq,
                     # max_len=self.compressed_len, # time_decompressor에서 복원
                     dropout=self.dropout
                 )
