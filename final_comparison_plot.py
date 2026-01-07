@@ -23,7 +23,7 @@ plt.rcParams.update(
         "figure.dpi": 150,
         "savefig.dpi": 300,
         "figure.titlesize": 22, # 전체 그림 제목 크기 조정
-        "axes.titlesize": 20,   # ★ 개별 플롯 제목 크기 조정
+        "axes.titlesize": 18,   # ★ 개별 플롯 제목 크기 조정
         "axes.labelsize": 18,   # ★ 축 레이블 크기 조정
         "xtick.labelsize": 16,  # X축 틱 라벨 크기
         "ytick.labelsize": 16,  # Y축 틱 라벨 크기
@@ -43,12 +43,22 @@ plt.rcParams.update(
     }
 )
 # 전문적인 색상 팔레트 (Seaborn colorblind 확장) + 검정
-publication_palette = [
-    "#0173B2", "#DE8F05", "#029E73", "#D55E00",
-    "#CC78BC", "#CA9161", "#FBAFE4", "#949494",
-    "#ECE133", "#56B4E9", "#000000" # 검정 추가
-]
+# publication_palette = [
+#     "#0173B2", "#DE8F05", "#029E73", "#D55E00",
+#     "#CC78BC", "#CA9161", "#FBAFE4", "#949494",
+#     "#ECE133", "#56B4E9", "#000000" # 검정 추가
+# ]
 
+publication_palette = [
+    # "#000000",  # Pure Black (검정)
+    # "#2C2C2C",  # Very Dark Gray (매우 짙은 회색)
+    # "#4A4A4A",  # Dark Gray (짙은 회색)
+    "#6B6B6B",  # Medium-Dark Gray (중간-짙은 회색)
+    "#8B8B8B",  # Medium Gray (중간 회색)
+    "#ABABAB",  # Medium-Light Gray (중간-밝은 회색)
+    "#1A1A1A",  # Almost Black (거의 검정)
+    "#5A5A5A",  # Dark-Medium Gray (짙은-중간 회색)
+]
 
 # === 1. 막대 차트 함수 (상대 성능 비교) ===
 # (plot_metric_comparison_bars 함수는 이전과 동일)
@@ -126,7 +136,9 @@ def plot_metric_comparison_bars(csv_paths, case_labels=None, save_path=None, met
 
     # 그래프 꾸미기
     ax.set_xticks(x)
-    ax.set_xticklabels(features_label, rotation=0, ha="center") # 회전 제거, 중앙 정렬
+    # ax.set_xticklabels(features_label, rotation=0, ha="center") # 회전 제거, 중앙 정렬
+    wrapped_labels = [textwrap.fill(label, width=12) for label in features_label]
+    ax.set_xticklabels(wrapped_labels)
     ax.set_ylabel(f"Relative {metric}\n(Ratio to {base_label})")
     ax.axhline(y=1.0, color='black', linestyle='--', linewidth=1, label=f"{base_label} Baseline (1.0)") # 기준선
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter('%.2f')) # Y축 포맷
@@ -410,12 +422,17 @@ def print_avg_metric_excluding_time(csv_paths, labels, metric_type="MSE"):
 if __name__ == "__main__":
     # --- 설정 ---
     prefix = "./results/performance_test"
-    case_id_lstm = "case46.2.1"
-    case_id_gru = "case46.3.1"
-    case_id_transformer = "case46.4.1"
-    case_id_itransformer = "case46.1.1"
-    channel = "Rayleigh"
+    case_id_lstm = "case10045.2.8"
+    case_id_gru = "case10045.3.8"
+    case_id_transformer = "case10050.4.8"
+    case_id_itransformer = "case10045.1.8"
+    channel = "AWGN"
     metric_loss = "MSE" # 학습 시 사용된 손실 함수 (경로명에 사용됨)
+
+    # filename_to_compare = "01197.csv" # 비교할 특정 사이클 파일명
+    filename_to_compare = "02531.csv" # 비교할 특정 사이클 파일명
+    snr_condition = "21db" # 결과 저장 경로에 사용할 조건명
+    date = "251227"
 
     # 모델별 통계 CSV 경로
     csv_paths = [
@@ -443,11 +460,8 @@ if __name__ == "__main__":
         "Current_load", "Voltage_load", # "Time", # Time은 보통 제외
     ]
 
-    filename_to_compare = "01291.csv" # 비교할 특정 사이클 파일명
-    snr_condition = "snr5db" # 결과 저장 경로에 사용할 조건명
-
     # 저장 경로 설정
-    save_path_base = f"./final_comparison_plots/case{str(case_index).split('.')[0]}/{filename_to_compare.replace('.csv','')}/{snr_condition}/"
+    save_path_base = f"./final_comparison_plots/{date}_10050.4/case{str(case_index).split('.')[0]}/{filename_to_compare.replace('.csv','')}/{snr_condition}/"
 
     # --- 실행 ---
     print("[📊] Starting Plot Generation...")

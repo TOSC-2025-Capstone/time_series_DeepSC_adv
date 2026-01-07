@@ -3,7 +3,7 @@ import pickle
 
 model_params = {
     # 공통
-    "input_dim": 7,  # 모든 모델의 입력 피쳐 수
+    "input_dim": 9,  # 모든 모델의 입력 피쳐 수
     # "output_dim" : 6,
     # "input_dim": 5,  # 모든 모델의 입력 피쳐 수
     # 여기

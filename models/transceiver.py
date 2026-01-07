@@ -330,8 +330,8 @@ class EncoderLayer(nn.Module):
 
         self.mha = MultiHeadedAttention(num_heads, d_model, dropout, max_len=max_len)
 
-        self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
-        # self.ffn = Conv1dFeedForward(d_model, dff, dropout, kernel_size=5)
+        # self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
+        self.ffn = Conv1dFeedForward(d_model, dff, dropout, kernel_size=3)
         self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
         self.layernorm2 = nn.LayerNorm(d_model, eps=1e-6)
 

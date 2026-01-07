@@ -9,17 +9,20 @@ import os
 # 비교할 지표를 선택함 ('MSE', 'MAE', 'RMSE' 중 하나).
 SELECTED_METRIC = 'MSE'
 
-date = "251105"  # 그래프 저장용 날짜 디렉토리 이름
+date = "260101"  # 그래프 저장용 날짜 디렉토리 이름
 
 # 모델별 인덱스와 기본 경로 템플릿을 설정함.
+# 모델별 인덱스와 case_id를 함께 설정
 MODEL_CONFIG = {
-    'Inverted-Transformer': 1,
-    # 'LSTM': 2,
-    # 'GRU': 3,
-    # 'Transformer': 4,
+    'Inverted-Transformer': {"case_id": 10031, "model_idx": 1},
+    'LSTM':                 {"case_id": 10031, "model_idx": 2},
+    'GRU':                  {"case_id": 10031, "model_idx": 3},
+    'Transformer':          {"case_id": 10031, "model_idx": 4},
 }
+
 # BASE_PATH_TEMPLATE = "results/performance_test/case{case_idx}.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
-BASE_PATH_TEMPLATE = "results/performance_test/case60.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
+# BASE_PATH_TEMPLATE = "results/performance_test/case10045.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
+BASE_PATH_TEMPLATE = "results/performance_test/case{case_id}.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
 
 # 비교할 SNR 리스트를 정의함.
 SNRS = [3, 6, 9, 12, 15, 18, 21]
@@ -35,21 +38,9 @@ SNR_TO_INDEX_MAP = {
     21: 8,
 }
 
-CASE_TO_INDEX_MAP = {
-    60: 1,
-    61: 2,
-    62: 3,
-    63: 4,
-    64: 5,
-    65: 6,
-    66: 7,
-    67: 8,
-    68: 9,
-    69: 10,
-}
-
 # 각 모델의 하위 디렉토리 이름 (경로에 따라 수정 필요함).
-SUB_DIR_TEMPLATE = "rayleigh_{model_name_lower}_MSE"
+# SUB_DIR_TEMPLATE = "rayleigh_{model_name_lower}_MSE"
+SUB_DIR_TEMPLATE = "AWGN_{model_name_lower}_MSE"
 
 
 # --- 2. 파일 경로 자동 생성 ---
@@ -61,12 +52,15 @@ def generate_file_paths(snrs, model_config, snr_map):
             print(f"Warning: SNR value {snr_val} is not in the SNR_TO_INDEX_MAP. Skipping.")
             continue
 
-        snr_idx = snr_map[snr_val] # 맵에서 인덱스를 조회함.
+        snr_idx = snr_map[snr_val]
 
-        for model_name, model_idx in model_config.items():
+        for model_name, cfg in model_config.items():
+            case_id  = cfg["case_id"]
+            model_idx = cfg["model_idx"]
+
             key = f"{model_name}_{snr_val}db"
 
-            # 하위 디렉토리 이름 결정 (Inverted-Transformer와 Transformer는 'deepsc' 사용을 가정함).
+            # Inverted-Transformer / Transformer 는 deepsc, 나머지는 소문자
             if 'Transformer' in model_name:
                 sub_dir_model_name = 'deepsc'
             else:
@@ -75,12 +69,14 @@ def generate_file_paths(snrs, model_config, snr_map):
             sub_dir = SUB_DIR_TEMPLATE.format(model_name_lower=sub_dir_model_name)
 
             path = BASE_PATH_TEMPLATE.format(
+                case_id=case_id,
                 model_idx=model_idx,
                 snr_idx=snr_idx,
                 sub_dir=sub_dir
             )
             paths[key] = path
     return paths
+
 
 FILE_PATHS = generate_file_paths(SNRS, MODEL_CONFIG, SNR_TO_INDEX_MAP)
 
@@ -221,8 +217,8 @@ if __name__ == "__main__":
     if not df_results.empty:
         # 모델 순서 지정 (LSTM이 맨 앞에 오도록)
         # ordered_models = ['LSTM'] + [m for m in MODEL_CONFIG.keys() if m != 'LSTM']
-        # plot_comparison(df_results, SELECTED_METRIC, ordered_models, baseline_model='LSTM')
+        plot_comparison(df_results, SELECTED_METRIC, MODEL_CONFIG.keys(), baseline_model='LSTM')
         # ordered_models = ['LSTM'] + [m for m in MODEL_CONFIG.keys() if m != 'LSTM']
-        plot_comparison(df_results, SELECTED_METRIC, MODEL_CONFIG.keys(), baseline_model='Inverted-Transformer')
+        # plot_comparison(df_results, SELECTED_METRIC, MODEL_CONFIG.keys(), baseline_model='Inverted-Transformer')
     else:
         print("No data available to generate a plot.")
