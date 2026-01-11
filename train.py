@@ -183,7 +183,6 @@ def process_batch(batch, device, is_clean, model, criterion, optimizer=None, is_
 def run_epoch(clean_loader, noisy_loader, model, criterion, device,
               optimizer=None, is_training=True, epoch_num=1, total_epochs=1):
     """
-
     한 에포크 실행 (학습 또는 검증)
 
     Args:

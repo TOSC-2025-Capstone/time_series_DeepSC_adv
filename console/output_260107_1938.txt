@@ -1,0 +1,327 @@
+1.12.1+cu116
+11.6
+cuda:0 현재 사용중인 디바이스
+========================== case_10051.1.1 start ==========================
+
+seed=2, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10051.1.1,
+, batch_size=16, test_path=./checkpoints/case_10051.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//scaler.pkl', model_save_path='./checkpoints/case_10051.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10051.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10051.2.1 start ==========================
+
+seed=2, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10051.2.1,
+, batch_size=16, test_path=./checkpoints/case_10051.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//scaler.pkl', model_save_path='./checkpoints/case_10051.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10051.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10051.3.1 start ==========================
+
+seed=2, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10051.3.1,
+, batch_size=16, test_path=./checkpoints/case_10051.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//scaler.pkl', model_save_path='./checkpoints/case_10051.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10051.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10051.4.1 start ==========================
+
+seed=2, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10051.4.1,
+, batch_size=16, test_path=./checkpoints/case_10051.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10051//scaler.pkl', model_save_path='./checkpoints/case_10051.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10051.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10052.1.1 start ==========================
+
+seed=3, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10052.1.1,
+, batch_size=16, test_path=./checkpoints/case_10052.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//scaler.pkl', model_save_path='./checkpoints/case_10052.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10052.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10052.2.1 start ==========================
+
+seed=3, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10052.2.1,
+, batch_size=16, test_path=./checkpoints/case_10052.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//scaler.pkl', model_save_path='./checkpoints/case_10052.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10052.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10052.3.1 start ==========================
+
+seed=3, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10052.3.1,
+, batch_size=16, test_path=./checkpoints/case_10052.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//scaler.pkl', model_save_path='./checkpoints/case_10052.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10052.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10052.4.1 start ==========================
+
+seed=3, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10052.4.1,
+, batch_size=16, test_path=./checkpoints/case_10052.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//scaler.pkl', model_save_path='./checkpoints/case_10052.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10052.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10053.1.1 start ==========================
+
+seed=4, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10053.1.1,
+, batch_size=16, test_path=./checkpoints/case_10053.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//scaler.pkl', model_save_path='./checkpoints/case_10053.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10053.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10053.2.1 start ==========================
+
+seed=4, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10053.2.1,
+, batch_size=16, test_path=./checkpoints/case_10053.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//scaler.pkl', model_save_path='./checkpoints/case_10053.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10053.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10053.3.1 start ==========================
+
+seed=4, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10053.3.1,
+, batch_size=16, test_path=./checkpoints/case_10053.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//scaler.pkl', model_save_path='./checkpoints/case_10053.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10053.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10053.4.1 start ==========================
+
+seed=4, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10053.4.1,
+, batch_size=16, test_path=./checkpoints/case_10053.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10053//scaler.pkl', model_save_path='./checkpoints/case_10053.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10053.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10054.1.1 start ==========================
+
+seed=5, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10054.1.1,
+, batch_size=16, test_path=./checkpoints/case_10054.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//scaler.pkl', model_save_path='./checkpoints/case_10054.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10054.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10054.2.1 start ==========================
+
+seed=5, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10054.2.1,
+, batch_size=16, test_path=./checkpoints/case_10054.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//scaler.pkl', model_save_path='./checkpoints/case_10054.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10054.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10054.3.1 start ==========================
+
+seed=5, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10054.3.1,
+, batch_size=16, test_path=./checkpoints/case_10054.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//scaler.pkl', model_save_path='./checkpoints/case_10054.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10054.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10054.4.1 start ==========================
+
+seed=5, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10054.4.1,
+, batch_size=16, test_path=./checkpoints/case_10054.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10054//scaler.pkl', model_save_path='./checkpoints/case_10054.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10054.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10055.1.1 start ==========================
+
+seed=6, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10055.1.1,
+, batch_size=16, test_path=./checkpoints/case_10055.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//scaler.pkl', model_save_path='./checkpoints/case_10055.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10055.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10055.2.1 start ==========================
+
+seed=6, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10055.2.1,
+, batch_size=16, test_path=./checkpoints/case_10055.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//scaler.pkl', model_save_path='./checkpoints/case_10055.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10055.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10055.3.1 start ==========================
+
+seed=6, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10055.3.1,
+, batch_size=16, test_path=./checkpoints/case_10055.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//scaler.pkl', model_save_path='./checkpoints/case_10055.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10055.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10055.4.1 start ==========================
+
+seed=6, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10055.4.1,
+, batch_size=16, test_path=./checkpoints/case_10055.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10055//scaler.pkl', model_save_path='./checkpoints/case_10055.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10055.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10056.1.1 start ==========================
+
+seed=7, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10056.1.1,
+, batch_size=16, test_path=./checkpoints/case_10056.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//scaler.pkl', model_save_path='./checkpoints/case_10056.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10056.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10056.2.1 start ==========================
+
+seed=7, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10056.2.1,
+, batch_size=16, test_path=./checkpoints/case_10056.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//scaler.pkl', model_save_path='./checkpoints/case_10056.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10056.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10056.3.1 start ==========================
+
+seed=7, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10056.3.1,
+, batch_size=16, test_path=./checkpoints/case_10056.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//scaler.pkl', model_save_path='./checkpoints/case_10056.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10056.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10056.4.1 start ==========================
+
+seed=7, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10056.4.1,
+, batch_size=16, test_path=./checkpoints/case_10056.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10056//scaler.pkl', model_save_path='./checkpoints/case_10056.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10056.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10057.1.1 start ==========================
+
+seed=8, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10057.1.1,
+, batch_size=16, test_path=./checkpoints/case_10057.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//scaler.pkl', model_save_path='./checkpoints/case_10057.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10057.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10057.2.1 start ==========================
+
+seed=8, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10057.2.1,
+, batch_size=16, test_path=./checkpoints/case_10057.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//scaler.pkl', model_save_path='./checkpoints/case_10057.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10057.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10057.3.1 start ==========================
+
+seed=8, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10057.3.1,
+, batch_size=16, test_path=./checkpoints/case_10057.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//scaler.pkl', model_save_path='./checkpoints/case_10057.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10057.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10057.4.1 start ==========================
+
+seed=8, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10057.4.1,
+, batch_size=16, test_path=./checkpoints/case_10057.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10057//scaler.pkl', model_save_path='./checkpoints/case_10057.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10057.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10058.1.1 start ==========================
+
+seed=9, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10058.1.1,
+, batch_size=16, test_path=./checkpoints/case_10058.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//scaler.pkl', model_save_path='./checkpoints/case_10058.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10058.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10058.2.1 start ==========================
+
+seed=9, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10058.2.1,
+, batch_size=16, test_path=./checkpoints/case_10058.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//scaler.pkl', model_save_path='./checkpoints/case_10058.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10058.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10058.3.1 start ==========================
+
+seed=9, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10058.3.1,
+, batch_size=16, test_path=./checkpoints/case_10058.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//scaler.pkl', model_save_path='./checkpoints/case_10058.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10058.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10058.4.1 start ==========================
+
+seed=9, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10058.4.1,
+, batch_size=16, test_path=./checkpoints/case_10058.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10058//scaler.pkl', model_save_path='./checkpoints/case_10058.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10058.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10059.1.1 start ==========================
+
+seed=10, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10059.1.1,
+, batch_size=16, test_path=./checkpoints/case_10059.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//scaler.pkl', model_save_path='./checkpoints/case_10059.1.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10059.1.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10059.2.1 start ==========================
+
+seed=10, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=lstm, snr_db=21, compressed_len=4, caseindex: 10059.2.1,
+, batch_size=16, test_path=./checkpoints/case_10059.2.1/MSE/lstm/lstm_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//scaler.pkl', model_save_path='./checkpoints/case_10059.2.1/MSE/lstm/lstm_battery_epoch', save_fig_dir='results/case10059.2.1/AWGN_lstm_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10059.3.1 start ==========================
+
+seed=10, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=gru, snr_db=21, compressed_len=4, caseindex: 10059.3.1,
+, batch_size=16, test_path=./checkpoints/case_10059.3.1/MSE/gru/gru_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//scaler.pkl', model_save_path='./checkpoints/case_10059.3.1/MSE/gru/gru_battery_epoch', save_fig_dir='results/case10059.3.1/AWGN_gru_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== case_10059.4.1 start ==========================
+
+seed=10, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=21, compressed_len=4, caseindex: 10059.4.1,
+, batch_size=16, test_path=./checkpoints/case_10059.4.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10059//scaler.pkl', model_save_path='./checkpoints/case_10059.4.1/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10059.4.1/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.

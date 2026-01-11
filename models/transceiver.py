@@ -352,8 +352,8 @@ class DecoderLayer(nn.Module):
         # 기존 MultiHeadedAttention 사용
         self.self_attn = MultiHeadedAttention(num_heads, d_model, dropout, max_len)
         self.cross_attn = MultiHeadedAttention(num_heads, d_model, dropout, max_len)
-        self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
-        # self.ffn = Conv1dFeedForward(d_model, dff, dropout, kernel_size=5)
+        # self.ffn = PositionwiseFeedForward(d_model, dff, dropout)
+        self.ffn = Conv1dFeedForward(d_model, dff, dropout, kernel_size=5)
 
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -656,8 +656,8 @@ class iTransformerEncoderLayer(nn.Module):
         # window_size에 따라 Attention 선택
         self.inverted_attention = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
 
-        self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
-        # self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
+        # self.inverted_ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        self.inverted_ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)
 
@@ -729,8 +729,8 @@ class InvertedDecoderLayer(nn.Module):
         super().__init__()
         self.self_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
         self.cross_attn = InvertedMultiHeadAttention(num_heads, seq_len, dropout)
-        self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
-        # self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
+        # self.ffn = InvertedFeedForward(seq_len, d_ff, dropout)
+        self.ffn = Conv1dInvertedFeedForward(seq_len, d_ff, dropout, kernel_size=mparams.model_params.get("kernel_size"))
 
         self.norm1 = nn.LayerNorm(num_features)
         self.norm2 = nn.LayerNorm(num_features)

@@ -91,8 +91,7 @@ def inverse_transform_tensor(tensor_data, scaler, preprocessed_folder):
             os.path.join(preprocessed_folder, "csv/total_preprocessed", sample_file)
         ).columns
 
-    # result_df =  pd.DataFrame(data_original_scale, columns=feature_names).drop(columns=["cycle_sequence"])
-    result_df = pd.DataFrame(data_original_scale, columns=feature_names)
+    result_df =  pd.DataFrame(data_original_scale, columns=feature_names).drop(columns=["cycle_sequence"])
 
     return result_df
 
@@ -402,7 +401,6 @@ def performance_cycle(
 
             for batch in tensor_pbar:
                 batch = batch.to(device)
-
                 # file_index 제거: [batch, seq, 10] -> [batch, seq, 9]
                 batch = batch[:, :, :-1]
                 batch_8d = batch[:, :, :-1]  # SNR 레이블 제거: [batch, seq, 8]
@@ -512,6 +510,7 @@ def performance_cycle(
                         save_performance_dir,
                         cycle_idx,
                     )
+
                 # 성능 지표 계산 및 저장
                 metrics = calculate_performance_metrics(
                     original_df, reversed_df, feature_cols

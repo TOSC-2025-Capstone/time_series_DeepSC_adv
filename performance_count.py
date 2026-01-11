@@ -1,26 +1,20 @@
+import pdb
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from pathlib import Path
 from tqdm import tqdm
-import pdb
+import re
+import os
+
+# --- 폰트 설정 (영어 및 기본 설정) ---
+plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial', 'sans-serif']
+plt.rcParams['axes.unicode_minus'] = False
+flag = 0
 
 class CycleDataComparator:
-    # 수정: threshold_method 파라미터 추가 (문자열로 방식 지정)
-    def __init__(self, original_path, reconstructed_path, threshold_percent=5, threshold_method="mean", min_absolute_threshold=1e-9):
-        """
-        Parameters:
-        -----------
-        original_path : str
-            이상치 제거된 원본 CSV 경로
-        reconstructed_path : str
-            복원된 CSV 경로
-        threshold_percent : float
-            비교 기준 퍼센트 (5, 10, 15 등)
-        threshold_method : str, optional
-            임계값 계산 방식: "mean", "range_center", "point_wise" (default: "mean")
-        min_absolute_threshold : float, optional
-             "point_wise" 방식에서 원본 값이 0에 가까울 때 사용할 최소 절대 임계값 (default: 1e-9)
-        """
+    def __init__(self, original_path, reconstructed_path, threshold_percent=15, threshold_method="mean", min_absolute_threshold=1e-9):
         if threshold_method not in ["mean", "range_center", "point_wise"]:
             raise ValueError("threshold_method must be one of 'mean', 'range_center', or 'point_wise'")
 
@@ -28,382 +22,237 @@ class CycleDataComparator:
         self.reconstructed_path = Path(reconstructed_path)
         self.threshold_percent = threshold_percent
         self.threshold_method = threshold_method
-        self.min_absolute_threshold = min_absolute_threshold # point_wise용 최소 절대 임계값
-        self.threshold_ratio = self.threshold_percent / 100.0 # 미리 계산
+        self.min_absolute_threshold = min_absolute_threshold
+        self.threshold_ratio = self.threshold_percent / 100.0
 
-        # 비교할 피쳐 리스트
-        self.features = [
-            'Voltage_measured',
-            'Current_measured',
-            'Temperature_measured',
-            'Current_load',
-            'Voltage_load'
-        ]
+        self.target_features = ['Voltage_measured', 'Current_measured', 'Temperature_measured', 'Current_load', 'Voltage_load']
+        self.voltage_features = ['Voltage_measured', 'Voltage_load']
+        self.current_features = ['Current_measured', 'Current_load']
 
-        # 결과 저장용
-        self.results = {}
+        self.discrete_configs = {
+            'Current_measured': {'levels': np.array([-4, -2, -1, 0]), 'midpoints': np.array([-3.0, -1.5, -0.5])},
+            'Current_load': {'levels': np.array([-2, 0, 1, 2, 4]), 'midpoints': np.array([-1.0, 0.5, 1.5, 3.0])}
+        }
 
     def get_reconstructed_files(self):
-        """복원본 CSV 파일 목록 가져오기"""
-        reconstructed_files = sorted(self.reconstructed_path.glob('*_reconstructed.csv'))
-        return reconstructed_files
-
-    def extract_file_number(self, file_path):
-        """파일명에서 번호 추출"""
-        file_name = file_path.stem
-        if '_reconstructed' in file_name:
-            return file_name.split('_reconstructed')[0]
-        return file_name
+        return sorted(self.reconstructed_path.glob('*_reconstructed.csv'))
 
     def load_data_pair(self, reconstructed_file):
-        """복원본과 원본 데이터 쌍 로드"""
-        file_number = self.extract_file_number(reconstructed_file)
+        file_name = reconstructed_file.stem
+        file_number = file_name.split('_reconstructed')[0]
         original_file = self.original_path / f"{file_number}.csv"
-
-        if not original_file.exists():
-            print(f"Warning: Original file not found - {original_file}")
-            return None, None, file_number
-
+        if not original_file.exists(): return None, None, file_number
         try:
-            original_df = pd.read_csv(original_file)
-            reconstructed_df = pd.read_csv(reconstructed_file)
-            return original_df, reconstructed_df, file_number
-        except Exception as e:
-            print(f"Error loading {file_number}: {e}")
-            return None, None, file_number
+            return pd.read_csv(original_file), pd.read_csv(reconstructed_file), file_number
+        except Exception: return None, None, file_number
 
-    def calculate_feature_mean(self, df, feature):
-        """피쳐 평균 계산"""
-        if feature not in df.columns: return None
-        return df[feature].mean()
-
-    def calculate_feature_range_center(self, df, feature):
-        """피쳐 Min/Max 평균 계산"""
-        if feature not in df.columns: return None
-        min_val = df[feature].min()
-        max_val = df[feature].max()
-        return (min_val + max_val) / 2
+    def perform_hard_decision(self, recon_series, config):
+        indices = np.digitize(recon_series, config['midpoints'])
+        return config['levels'][indices]
 
     def compare_data(self):
-        """모든 데이터 쌍 비교 및 분석 (선택된 threshold_method 사용)"""
         reconstructed_files = self.get_reconstructed_files()
-        print(f"Found {len(reconstructed_files)} reconstructed files")
-        print(f"Threshold: {self.threshold_percent}% based on {self.threshold_method}")
-        print(f"\n")
+        total_mse_list, total_rows_global = [], 0
+        feature_fail_counts = {f: 0 for f in self.target_features}
 
-        for reconstructed_file in tqdm(reconstructed_files, desc=f"Processing files ({self.threshold_method} threshold)"):
-            original_df, reconstructed_df, file_number = self.load_data_pair(reconstructed_file)
+        if not reconstructed_files:
+            return 0, 0, 0, 0, feature_fail_counts
 
-            if original_df is None or reconstructed_df is None:
-                continue
+        for reconstructed_file in tqdm(reconstructed_files, desc="Comparing", leave=False):
+            orig_df, recon_df, _ = self.load_data_pair(reconstructed_file)
+            if orig_df is None: continue
 
-            n_rows = len(original_df)
-            if len(reconstructed_df) != n_rows:
-                print(f"Warning: Row count mismatch in {file_number} (Original: {n_rows}, Reconstructed: {len(reconstructed_df)}). Using min length.")
-                n_rows = min(n_rows, len(reconstructed_df))
-                original_df = original_df.iloc[:n_rows]
-                reconstructed_df = reconstructed_df.iloc[:n_rows]
+            n_rows = min(len(orig_df), len(recon_df))
+            orig_df, recon_df = orig_df.iloc[:n_rows].reset_index(drop=True), recon_df.iloc[:n_rows].reset_index(drop=True)
 
+            file_mse_sum = 0
+            for feature in self.target_features:
+                if feature not in orig_df.columns: continue
+                diff = (orig_df[feature] - recon_df[feature]).abs()
+                file_mse_sum += (diff**2).mean()
 
-            result_df = pd.DataFrame({'row_index': range(n_rows), 'prediction_success': [True] * n_rows})
-            feature_result_df = pd.DataFrame({'row_index': range(n_rows)})
-            for feature in self.features:
-                feature_result_df[f'{feature}_success'] = True
-
-            for feature in self.features:
-                if feature not in original_df.columns or feature not in reconstructed_df.columns:
-                    print(f"Warning: Feature {feature} not found in {file_number}")
-                    feature_result_df[f'{feature}_success'] = False # 피쳐 없으면 전체 False 처리
-                    result_df['prediction_success'] = False # 전체 결과에도 영향
-                    continue
-
-                # ✨ 임계값 계산 (방식별 분기) ✨
-                absolute_threshold = None # mean, range_center 용
-                if self.threshold_method in ["mean", "range_center"]:
-                    reference_value = None
-                    if self.threshold_method == "mean":
-                        reference_value = self.calculate_feature_mean(original_df, feature)
-                    else: # "range_center"
-                        reference_value = self.calculate_feature_range_center(original_df, feature)
-
-                    if reference_value is None:
-                        print(f"Warning: Could not calculate {self.threshold_method} reference for {feature} in {file_number}. Marking as failed.")
-                        feature_result_df[f'{feature}_success'] = False
-                        result_df['prediction_success'] = False
-                        continue
-
-                    absolute_threshold = abs(reference_value) * self.threshold_ratio if reference_value != 0 else 0
-
-
-                # 각 행별로 비교
-                for idx in range(n_rows):
-                    original_value = original_df.loc[idx, feature]
-                    reconstructed_value = reconstructed_df.loc[idx, feature]
-
-                    # NaN 값 처리: 하나라도 NaN이면 False
-                    if pd.isna(original_value) or pd.isna(reconstructed_value):
-                         is_false = True
-                    else:
-                        diff = abs(original_value - reconstructed_value)
-                        is_false = False
-
-                        # ✨ 실패 조건 판정 (방식별 분기) ✨
-                        if self.threshold_method == "point_wise":
-                            # 원본 값이 0에 가까운 경우: 최소 절대 임계값 사용
-                            if abs(original_value) < self.min_absolute_threshold:
-                                if diff > self.min_absolute_threshold:
-                                    is_false = True
-                            # 원본 값이 0이 아닌 경우: 상대 임계값 사용
-                            else:
-                                relative_threshold = abs(original_value) * self.threshold_ratio
-                                if diff > relative_threshold:
-                                    is_false = True
-                        else: # "mean" or "range_center"
-                            # 미리 계산된 절대 임계값 사용
-                            if absolute_threshold is not None and diff > absolute_threshold:
-                                is_false = True
-
-                    # False 판정 시 결과 업데이트
-                    if is_false:
-                        result_df.loc[idx, 'prediction_success'] = False
-                        feature_result_df.loc[idx, f'{feature}_success'] = False
-
-
-            # 결과 저장
-            self.results[file_number] = {
-                'overall': result_df,
-                'by_feature': feature_result_df
-            }
-
-    # get_false_counts, get_feature_wise_false_counts 함수는 수정 없이 사용 가능
-
-    def get_false_counts(self):
-        """각 파일별 False 개수 집계"""
-        false_counts = {}
-        total_false = 0
-        total_rows = 0
-
-        for file_number, result_data in self.results.items():
-            result_df = result_data['overall']
-            false_count = (~result_df['prediction_success']).sum()
-            total_count = len(result_df)
-            false_counts[file_number] = {
-                'false_count': false_count,
-                'total_count': total_count,
-                'false_percentage': (false_count / total_count * 100) if total_count > 0 else 0
-            }
-            total_false += false_count
-            total_rows += total_count
-
-        return false_counts, total_false, total_rows
-
-    def get_feature_wise_false_counts(self):
-        """피쳐별 False 개수 집계 (DataFrame 반환)"""
-        feature_wise_data = []
-
-        for file_number, result_data in sorted(self.results.items()):
-            feature_df = result_data['by_feature']
-            total_count = len(feature_df)
-
-            row_data = {'file_number': file_number, 'total_rows': total_count}
-
-            overall_false = (~result_data['overall']['prediction_success']).sum()
-            row_data['overall_false'] = overall_false
-            row_data['overall_false_percentage'] = (overall_false / total_count * 100) if total_count > 0 else 0
-
-            for feature in self.features:
-                feature_col = f'{feature}_success'
-                if feature_col in feature_df.columns:
-                    false_count = (~feature_df[feature_col]).sum()
-                    row_data[f'{feature}_false'] = false_count
-                    row_data[f'{feature}_false_percentage'] = (false_count / total_count * 100) if total_count > 0 else 0
+                if feature in self.discrete_configs:
+                    config = self.discrete_configs[feature]
+                    success_mask = (self.perform_hard_decision(orig_df[feature], config) == self.perform_hard_decision(recon_df[feature], config))
+                    # global flag
+                    # if flag == 1 and success_mask.sum() <= len(orig_df[feature])-10 :
+                    #     pdb.set_trace()
+                elif feature in self.voltage_features:
+                    success_mask = diff <= (orig_df[feature].max() * self.threshold_ratio)
                 else:
-                    row_data[f'{feature}_false'] = np.nan
-                    row_data[f'{feature}_false_percentage'] = np.nan
+                    ref = abs(orig_df[feature].mean()) if self.threshold_method == "mean" else (orig_df[feature].max() - orig_df[feature].min())/2
+                    success_mask = diff <= (ref * self.threshold_ratio)
+                feature_fail_counts[feature] += (~success_mask).sum()
 
-            feature_wise_data.append(row_data)
+            total_mse_list.append(file_mse_sum / len(self.target_features))
+            total_rows_global += n_rows
 
-        return pd.DataFrame(feature_wise_data)
+        total_failed_cells = sum(feature_fail_counts.values())
+        total_cells = total_rows_global * len(self.target_features)
+        cell_fail_rate = (total_failed_cells / total_cells * 100) if total_cells > 0 else 0
+        return np.mean(total_mse_list), cell_fail_rate, total_failed_cells, total_rows_global, feature_fail_counts
 
+    def analyze_reconstructed_distributions(self, model_name, snr_val):
+        """모든 테스트 파일의 Current 복원값 분포 수집 및 시각화"""
+        reconstructed_files = self.get_reconstructed_files()
+        collected_values = {feat: [] for feat in self.current_features}
 
-    # ✨ 수정: 요약 출력 시 threshold_method 명시
-    def print_summary(self):
-        """결과 요약 출력"""
-        false_counts, total_false, total_rows = self.get_false_counts()
+        for recon_file in tqdm(reconstructed_files, desc=f"Collecting {model_name}", leave=False):
+            _, recon_df, _ = self.load_data_pair(recon_file)
+            if recon_df is None: continue
+            for feat in self.current_features:
+                if feat in recon_df.columns:
+                    collected_values[feat].extend(recon_df[feat].tolist())
 
-        print("\n" + "="*80)
-        print(f"SUMMARY - Threshold: {self.threshold_percent}% (based on {self.threshold_method})")
-        print("="*80)
-        # ... (이하 동일)
-        print(f"\nTotal files processed: {len(self.results)}")
-        print(f"Total rows analyzed: {total_rows}")
-        print(f"Total prediction failures (False): {total_false}")
-        if total_rows > 0:
-            print(f"Overall failure rate: {(total_false/total_rows*100):.2f}%")
-        else:
-             print("Overall failure rate: N/A (no rows analyzed)")
+        for feat in self.current_features:
+            data = collected_values[feat]
+            if not data: continue
+            plt.figure(figsize=(10, 6))
+            plt.hist(data, bins=100, color='darkgray', edgecolor='white', alpha=0.8, density=True)
+            if feat in self.discrete_configs:
+                for level in self.discrete_configs[feat]['levels']:
+                    plt.axvline(x=level, color='red', linestyle='--', linewidth=1, alpha=0.6)
+            plt.title(f'Distribution of Reconstructed {feat} ({model_name}, SNR {snr_val}dB)', fontsize=16, pad=15)
+            plt.xlabel('Reconstructed Value', fontsize=14)
+            plt.ylabel('Density', fontsize=14)
+            plt.grid(axis='y', linestyle=':', alpha=0.5)
+            output_dir = Path(f"./comparison_results/distributions/{model_name}")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            save_path = output_dir / f"dist_{feat}_snr{snr_val}.png"
+            plt.tight_layout()
+            plt.savefig(save_path, dpi=300)
+            plt.close()
 
+    def save_results(self, output_base, avg_mse, fail_rate, fail_count, total_rows, feature_fails):
+        output_base = Path(output_base)
+        threshold_folder = output_base / f"threshold_{self.threshold_percent}percent_{self.threshold_method}"
+        threshold_folder.mkdir(parents=True, exist_ok=True)
 
-        print("\n" + "-"*80)
-        print("Per-file False counts:")
-        print("-"*80)
+        txt_path = threshold_folder / "summary_feature_wise_text.txt"
+        total_cells = total_rows * len(self.target_features)
+        # 텍스트 리포트에도 정확도 정보 추가
+        accuracy = 100 - fail_rate
 
-        sorted_files = sorted(false_counts.items())
-        for file_number, counts in sorted_files:
-            print(f"File {file_number}: {counts['false_count']:4d} / {counts['total_count']:4d} "
-                  f"({counts['false_percentage']:6.2f}%)")
+        lines = ["="*80, f"SUMMARY REPORT - Threshold: {self.threshold_percent}% ({self.threshold_method})", f"Logic: Cell-wise Accuracy (Total Cells: {total_cells})", "="*80, "\nFailure Counts by Feature (Cell-wise):", "-"*80]
+        for f in self.target_features:
+            count = feature_fails.get(f, 0)
+            percent = (count / total_rows * 100) if total_rows > 0 else 0
+            lines.append(f"{f:30s}: {count:8d} / {total_rows:8d} ({percent:6.2f}%)")
+        lines.append("\nOverall Cell-wise Results:")
+        lines.append("-"*80)
+        lines.append(f"{'Failed Cells':30s}: {fail_count:8d} / {total_cells:8d} ({fail_rate:6.2f}%)")
+        lines.append(f"{'Accuracy':30s}: {total_cells - fail_count:8d} / {total_cells:8d} ({accuracy:6.2f}%)")
+        lines.append("-"*80)
+        lines.append(f"Average MSE Across Features: {avg_mse:.6f}\n" + "="*80)
 
-        print("="*80)
+        with open(txt_path, 'w', encoding='utf-8') as f:
+            f.write("\n".join(lines))
+        print(f"   [SUCCESS] Text summary saved to: {txt_path}")
+        return threshold_folder
 
-    # ✨ 수정: 요약 출력 시 threshold_method 명시
-    def print_feature_wise_summary(self, save_path=None):
-        """피쳐별 False 개수 요약 출력 및 저장"""
-        feature_df = self.get_feature_wise_false_counts()
+def plot_individual_results(df, output_dir, snr_list):
+    """범례 순서, 색상 진도, 마커 스타일이 최적화된 그래프 생성"""
 
-        if feature_df.empty:
-            print("No feature-wise data to summarize.")
-            return
+    # [1] 범례 표시 순서 설정 (사용자 요청: LSTM -> GRU -> Transformer -> Inverted-Transformer)
+    model_names_ordered = ['LSTM', 'GRU', 'Transformer', 'Inverted-Transformer']
 
-        summary_lines = []
-        summary_lines.append("\n" + "="*80)
-        summary_lines.append(f"FEATURE-WISE SUMMARY - Threshold: {self.threshold_percent}% (based on {self.threshold_method})")
-        summary_lines.append("="*80)
-        # ... (이하 동일)
-        summary_lines.append("\nTotal False counts by feature:")
-        summary_lines.append("-"*80)
-        total_rows_overall = feature_df['total_rows'].sum()
+    # [2] Grayscale 테마 설정
+    # np.linspace(0.3, 0.9)를 사용하여 뒤로 갈수록(Inverted-Transformer 쪽) 색이 진해짐 (0.9가 가장 진함)
+    cmap = cm.get_cmap('Greys')
+    grayscale_colors = [cmap(i) for i in np.linspace(0.3, 0.9, len(model_names_ordered))]
 
-        for feature in self.features:
-            false_col = f'{feature}_false'
-            if false_col in feature_df.columns and not feature_df[false_col].isnull().all(): # NaN 체크 추가
-                total_false = feature_df[false_col].sum()
-                percentage = (total_false / total_rows_overall * 100) if total_rows_overall > 0 else 0
-                line = f"{feature:30s}: {int(total_false):6d} / {total_rows_overall:6d} ({percentage:6.2f}%)"
-            else:
-                 line = f"{feature:30s}: Data N/A"
-            summary_lines.append(line)
+    # [3] 마커 설정 (사용자 요청: Inverted-Transformer가 동그라미 'o'가 되도록 마지막에 배치)
+    # 순서대로 LSTM: 's', GRU: '^', Transformer: 'D', Inverted-Transformer: 'o'
+    markers = ['s', '^', 'D', 'o']
+    linestyles = ['--', ':', '-.', '-'] # Inverted-Transformer를 실선(-)으로 강조
 
+    # 모델별 스타일 매핑
+    style_map = {model: {'color': grayscale_colors[i],
+                         'marker': markers[i],
+                         'linestyle': linestyles[i]}
+                 for i, model in enumerate(model_names_ordered)}
 
-        summary_lines.append("\nOverall (any feature failed):")
-        summary_lines.append("-"*80)
-        if 'overall_false' in feature_df.columns and not feature_df['overall_false'].isnull().all(): # NaN 체크 추가
-            total_overall_false = feature_df['overall_false'].sum()
-            percentage = (total_overall_false / total_rows_overall * 100) if total_rows_overall > 0 else 0
-            line = f"{'Overall':30s}: {int(total_overall_false):6d} / {total_rows_overall:6d} ({percentage:6.2f}%)"
-        else:
-             line = f"{'Overall':30s}: Data N/A"
-        summary_lines.append(line)
-        summary_lines.append("="*80)
+    metrics = {
+        'MSE': ('Reconstruction MSE vs. SNR', 'Average MSE', 'model_comparison_MSE.png'),
+        'Fail_Rate': ('Cell-wise Accuracy vs. SNR', 'Cell-wise Accuracy (%)', 'model_comparison_Accuracy.png')
+    }
 
-        for line in summary_lines:
-            print(line)
+    for column, (title, ylabel, filename) in metrics.items():
+        fig, ax = plt.subplots(figsize=(10, 6))
 
-        if save_path:
-            save_path = Path(save_path)
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                with open(save_path, 'w', encoding='utf-8') as f:
-                    f.write('\n'.join(summary_lines))
-                print(f"\nFeature-wise summary saved to: {save_path}")
-            except Exception as e:
-                print(f"Error saving feature-wise summary to {save_path}: {e}")
+        for model in model_names_ordered:
+            subset = df[df['Model'] == model].sort_values(by='SNR')
+            if subset.empty: continue
+            style = style_map[model]
 
-    # 수정: 저장 경로에 threshold_method 포함
-    def save_results(self, output_path):
-        """결과를 CSV 파일로 저장"""
-        output_path = Path(output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
+            # 정확도 변환 로직 (필요 시)
+            plot_data = subset[column]
+            if column == 'Fail_Rate':
+                plot_data = 100 - plot_data
 
-        # threshold 방법 폴더 생성 (더 명확한 이름)
-        threshold_method_folder = f"threshold_{self.threshold_percent}percent_{self.threshold_method}"
-        method_output_path = output_path / threshold_method_folder
-        method_output_path.mkdir(parents=True, exist_ok=True)
+            ax.plot(subset['SNR'], plot_data,
+                    color=style['color'],
+                    marker=style['marker'],
+                    linestyle=style['linestyle'],
+                    label=model,
+                    linewidth=2.5,  # 가시성을 위해 선 두께 소폭 강화
+                    markersize=9)
 
-        csv_results_path = method_output_path / "csv_results"
-        csv_results_path.mkdir(parents=True, exist_ok=True)
+        # 타이틀 및 레이블 설정 (볼드체 제거 유지)
+        ax.set_title(title, fontsize=16, pad=15)
+        ax.set_xlabel('SNR (dB)', fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=14)
+        ax.set_xticks(snr_list)
+        ax.tick_params(axis='both', which='major', labelsize=11)
+        ax.grid(True, linestyle='--', alpha=0.6)
 
-        for file_number, result_data in self.results.items():
-            feature_output_file = csv_results_path / f"{file_number}_feature_wise_result.csv"
-            result_data['by_feature'].to_csv(feature_output_file, index=False)
+        # 범례 설정: 상단 요청 순서대로 표시됨
+        ax.legend(title='Model', fontsize=12, title_fontsize=13, loc='best', frameon=True, shadow=True)
 
-        false_counts, _, _ = self.get_false_counts()
-        summary_data = []
-        for file_number, counts in sorted(false_counts.items()):
-            summary_data.append({
-                'file_number': file_number,
-                'false_count': counts['false_count'],
-                'total_count': counts['total_count'],
-                'false_percentage': counts['false_percentage']
-            })
-        summary_df = pd.DataFrame(summary_data)
-        summary_file = method_output_path / f"summary_per_file.csv"
-        summary_df.to_csv(summary_file, index=False)
-
-        feature_wise_df = self.get_feature_wise_false_counts()
-        feature_wise_file = method_output_path / f"summary_feature_wise.csv"
-        feature_wise_df.to_csv(feature_wise_file, index=False)
-
-        print(f"\nResults saved to: {method_output_path}")
-        print(f"  - Overall summary (per file): {summary_file.name}")
-        print(f"  - Feature-wise summary: {feature_wise_file.name}")
-        print(f"  - Individual CSV files in: {csv_results_path.name}/")
-
-        summary_text_file = method_output_path / f"summary_feature_wise_text.txt"
-        return summary_text_file
-
+        plt.tight_layout()
+        save_path = Path(output_dir) / filename
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+        print(f"   [GRAPH] Saved: {save_path}")
 
 def main():
-    case_number = "10046.1.1"
-    model_type = "deepsc"
-    channel_type = "AWGN"
-    threshold_percent = 20
+    global flag
+    case_id_prefix = "10045"
+    orig_path = "./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512"
+    model_map = {'1': 'Inverted-Transformer', '2': 'LSTM', '3': 'GRU', '4': 'Transformer'}
+    snr_map = {'2': 3, '3': 6, '4': 9, '5': 12, '6': 15, '7': 18, '8': 21}
+    model_type_map = {'1': 'deepsc', '4': 'deepsc', '2': 'lstm', '3': 'gru'}
 
-    comparison_method = "mean"
-    # comparison_method = "range_center"
-    # comparison_method = "point_wise"
+    aggregated_results = []
+    snr_values = sorted(list(snr_map.values()))
 
-    min_abs_thresh = 1e-6 # 예시 값, 필요시 조정
+    for m_idx, m_name in model_map.items():
+        for s_idx, s_val in snr_map.items():
+            model_type = model_type_map.get(m_idx, "unknown")
+            recon_path = f"./reconstruction/case{case_id_prefix}.{m_idx}.{s_idx}/reconstructed_AWGN_{model_type}_MSE"
+            if not Path(recon_path).exists(): continue
 
-    original_path = r"./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512"
-    reconstructed_path = f"./reconstruction/case{case_number}/reconstructed_{channel_type}_{model_type}_MSE"
+            print(f"\nAnalyzing: {m_name} | SNR: {s_val}dB")
+            comparator = CycleDataComparator(orig_path, recon_path, threshold_percent=10, threshold_method="mean")
+            if s_idx == '8':
+                flag = 1
+            avg_mse, cell_fail_rate, total_f_cells, t_rows, f_fails = comparator.compare_data()
 
-    comparator = CycleDataComparator(
-        original_path=original_path,
-        reconstructed_path=reconstructed_path,
-        threshold_percent=threshold_percent,
-        threshold_method=comparison_method, # 선택된 방법 전달
-        min_absolute_threshold=min_abs_thresh # point_wise용 임계값 전달
-    )
+            flag = 0
 
-    print("Starting comparison...")
-    comparator.compare_data()
-    comparator.print_summary()
+            output_dir = f"./comparison_results/case_{case_id_prefix}_{m_name}_snr{s_val}"
+            comparator.save_results(output_dir, avg_mse, cell_fail_rate, total_f_cells, t_rows, f_fails)
 
-    output_path_base = f"./comparison_results/case_{case_number}"
-    summary_text_path = comparator.save_results(output_path_base)
-    comparator.print_feature_wise_summary(save_path=summary_text_path)
+            # 전류 분포 분석 (필요 시 주석 처리)
+            # if s_idx == '8':  # SNR 21dB에서만 분석
+            #     comparator.analyze_reconstructed_distributions(m_name, s_val)
 
-    # 여러 임계값과 방법으로 실행하는 예제
-    # print("\n" + "="*80)
-    # print("Running comparison with multiple thresholds and methods...")
-    # print("="*80)
+            aggregated_results.append({'Model': m_name, 'SNR': s_val, 'MSE': avg_mse, 'Fail_Rate': cell_fail_rate})
 
-    # for threshold in [5, 10, 15]:
-    #     for method in ["mean", "range_center", "point_wise"]:
-    #         print(f"\n\nAnalyzing with {threshold}% threshold (based on {method})...")
-    #         comparator = CycleDataComparator(
-    #             original_path=original_path,
-    #             reconstructed_path=reconstructed_path,
-    #             threshold_percent=threshold,
-    #             threshold_method=method,
-    #             min_absolute_threshold=min_abs_thresh # 항상 전달
-    #         )
-    #         comparator.compare_data()
-    #         # comparator.print_summary() # 요약 출력은 선택적
-    #         output_path_base = f"./comparison_results/case_{case_number}"
-    #         summary_text_path = comparator.save_results(output_path_base)
-    #         comparator.print_feature_wise_summary(save_path=summary_text_path)
-
+    if aggregated_results:
+        results_df = pd.DataFrame(aggregated_results)
+        # 개별 파일 저장 함수 호출
+        plot_individual_results(results_df, "./comparison_results", snr_values)
 
 if __name__ == "__main__":
     main()

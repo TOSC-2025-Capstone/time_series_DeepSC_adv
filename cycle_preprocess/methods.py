@@ -164,7 +164,7 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     plt.figure(figsize=(15, 10))
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
-            plt.subplot(2, len(total_df.columns)//2 + 1, i + 1)
+            plt.subplot(2, 3, i + 1)
             plt.hist(
                 total_df[col],
                 bins=50,
@@ -195,7 +195,7 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     first_file_cleaned = cleaned_df.iloc[:256]
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
-            plt.subplot(2, 3, len(total_df.columns)//2 + 1)
+            plt.subplot(2, 3, i + 1)
             plt.plot(
                 first_file_data[col],
                 alpha=0.8,
@@ -223,7 +223,7 @@ def visualize_data_comparison(total_df, cleaned_df, feature_names, output_dir):
     sample_size = min(1000, len(total_df))
     for i, col in enumerate(total_df.columns):
         if col != "cycle_idx":
-            plt.subplot(2, 3, len(total_df.columns)//2 + 1)
+            plt.subplot(2, 3, i + 1)
             plt.scatter(
                 range(sample_size),
                 total_df[col].iloc[:sample_size],
@@ -371,7 +371,7 @@ def grouping_df(df):
 
 # P2.4
 def split_and_transform_data(
-    scaled_df, discharge_files, val_ratio=0.2, test_ratio=0.2, target_length=512, segment_target_len=None
+    scaled_df, discharge_files, grouped_total_df_indices, val_ratio=0.2, test_ratio=0.2, segment_target_len=None
 ):
     """
     데이터를 학습/검증/테스트 세트로 분할하고 텐서로 변환 (6:2:2 비율)
@@ -395,12 +395,12 @@ def split_and_transform_data(
     # file_indices는 실제 파일명의 숫자만 가져온 리스트 1,5,7,9 ... 7564
 
     n_files = len(discharge_files)
-    # target_length = 256 -> 가변으로 변함
+    # segment_target_len = 256 -> 가변으로 변함
     n_features = len(scaled_df.columns)
 
     # 파일 인덱스 추출 (discharge_files는 00001 부터 담긴 리스트)
-    file_indices = discharge_files
-    all_indices = np.arange(n_files)
+    file_indices = discharge_files # 1 3 5 ... 7564
+    all_indices = np.arange(n_files) # 0 ~ 2693
 
     # 테스트 세트 선택
     n_test = int(n_files * test_ratio)
@@ -410,6 +410,7 @@ def split_and_transform_data(
     # 검증 세트 선택
     n_val = int(n_files * val_ratio)
     val_file_idx = np.random.choice(remaining_idx, size=n_val, replace=False)
+
     # 여기 (학습 비율 train 100%)
     train_file_idx = np.array([i for i in remaining_idx if i not in val_file_idx])
     # train_file_idx = all_indices
@@ -420,16 +421,36 @@ def split_and_transform_data(
     train_file_indices = [file_indices[i] for i in train_file_idx]
 
     # 데이터 인덱스로 변환
-    def create_data_indices(file_idx):
+    def create_data_indices(dataset_file_idx):
         indices = []
-        for idx in file_idx:
-            start_idx = idx * target_length
-            indices.extend(range(start_idx, start_idx + target_length))
+
+        # 'file_index'를 기준으로 DataFrame을 그룹화합니다.
+        # sort=False는 DataFrame의 원래 순서를 유지합니다.
+        # groups는 딕셔너리를 반환합니다.
+        # 예: { 1: [0, 1, 2, ...],  2: [500, 501, ...], ... , 7564: [..., 745602] }
+        #    여기서 [0, 1, 2...]는 scaled_df의 '병합된' 원본 인덱스입니다.
+        group_indices_dict = scaled_df.groupby('file_index', sort=False).groups
+
+        # 딕셔너리를 순회합니다.
+        for idx in dataset_file_idx:
+            # 딕셔너리에서 'idx' 키로 값을 직접 찾습니다. idx는 원래 파일명 인덱스임 (1~2694 아니고 1,3,5 ... 7564까지 있는거)
+            if idx in group_indices_dict:
+                # original_indices_list는 [500, 501, 502, ...] 같은
+                # '원본 인덱스 리스트'입니다.
+                original_indices_list = group_indices_dict[idx]
+
+                # 이 리스트를 'indices'에 통째로 추가합니다.
+                indices.extend(original_indices_list)
+            else:
+                print(f"경고: file_index {idx}를 scaled_df에서 찾을 수 없습니다.")
         return indices
 
-    test_data_indices = create_data_indices(test_file_idx)
-    val_data_indices = create_data_indices(val_file_idx)
-    train_data_indices = create_data_indices(train_file_idx)
+    # test_data_indices = create_data_indices(test_file_idx)
+    # val_data_indices = create_data_indices(val_file_idx)
+    # train_data_indices = create_data_indices(train_file_idx)
+    test_data_indices = create_data_indices(test_file_indices)
+    val_data_indices = create_data_indices(val_file_indices)
+    train_data_indices = create_data_indices(train_file_indices)
 
     # 마스크 생성 및 데이터 분할
     def create_mask_and_transform(indices, total_length):
@@ -450,6 +471,10 @@ def split_and_transform_data(
     train_data = torch.FloatTensor(train_samples).view(-1, segment_target_len, n_features)
     val_data = torch.FloatTensor(val_samples).view(-1, segment_target_len, n_features)
     test_data = torch.FloatTensor(test_samples).view(-1, segment_target_len, n_features)
+
+    # final_train_data = add_segment_index(train_data)
+    # final_val_data = add_segment_index(val_data)
+    # final_test_data = add_segment_index(test_data)
 
     return (
         train_data,

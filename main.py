@@ -5,10 +5,10 @@ import os
 import pdb
 import random
 import time
-
+import sys
 import gc
 import torch
-
+from datetime import datetime
 import numpy as np
 
 # from pandas.compat.pyarrow import pa
@@ -48,8 +48,10 @@ def count_parameters(model):
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total, trainable
 
+
 snr_list = [3, 6, 9, 12, 15, 18, 21]
-seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+seed_list = [1]
+# seed_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 # model_type_list = ["deepsc", "lstm"]
 model_type_list = ["deepsc", "lstm", "gru", "deepsc"]
 # model_type_list = ["deepsc"]
@@ -61,6 +63,26 @@ base_case_number = int(case_index.split(".")[0])
 seq_len_list = [16] # segment length
 projection_list = [512]
 # seq_len_list = [8]
+
+class Tee:
+    def __init__(self, filename, mode="w"):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)  # 디렉터리 없으면 생성[web:29][web:35]
+        self.file = open(filename, mode, encoding='utf-8')
+        self.stdout = sys.stdout
+
+    def write(self, message):
+        self.stdout.write(message)
+        self.file.write(message)
+
+    def flush(self):
+        self.stdout.flush()
+        self.file.flush()
+
+# 오늘 날짜+시간: yymmdd_HHMM
+now_str = datetime.now().strftime("%y%m%d_%H%M")  # 예: 250107_1912[web:42][web:54]
+
+log_path = f"console/output_{now_str}.txt"
+sys.stdout = Tee(log_path)
 
 if __name__ == "__main__":
     print(torch.__version__)  # PyTorch 버전 확인
@@ -97,18 +119,22 @@ if __name__ == "__main__":
         model_params["num_layers"] = 1
         model_params["dropout"] = 0
 
-        for proj_idx, proj_dim in enumerate(projection_list):
+        # for proj_idx, proj_dim in enumerate(projection_list):
+        proj_idx = 0
+        proj_dim = projection_list[0]
+        for seed_idx, seed in enumerate(seed_list):
+            setup_seed(seed)
             model_params["d_model"] = proj_dim
             model_params["d_seq"] = proj_dim
             model_params["hidden_dim"] = proj_dim
 
             for model_type_index, v_model_type in enumerate(model_type_list):
-                if model_type_index <= 2:
-                    continue
+                if model_type_index == 0 :
+                    model_params["use_itransformer"] = True
                 if model_type_index == 3 :
                     model_params["use_itransformer"] = False
                 p.model_type = v_model_type
-                case_number = base_case_number + len(seq_len_list) * seq_len_idx + proj_idx
+                case_number = base_case_number + len(seq_len_list) * seq_len_idx + seed_idx
 
                 checkpoint_index = f"{case_number}.{model_type_index+1}.1"
 
@@ -126,9 +152,12 @@ if __name__ == "__main__":
                     test3 = model_params["d_model"]
                     test4 = model_params["seq_len"]
                     test5 = p.segment_length_n
+                    test6 = seed
+                    test7 = TrainParams()
 
                     print(f"========================== case_{p.case_index} start ==========================\n")
-                    print(f"params={p.channel_type}, segment_length={test5}, seq_len={test4}, d_model={test3}, \n, model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index},\n, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+                    print(f"seed={seed}, params={p.channel_type}, segment_length={test5}, seq_len={test4}, d_model={test3}, \n, model_type={p.model_type}, snr_db={test1}, compressed_len={test2}, caseindex: {p.case_index},\n, batch_size={p.train_batch_size}, test_path={test_model_checkpoint_path} 으로 설정되었습니다.")
+                    print(test7)
 
                     # 파라미터 클래스 가져오기
                     preprocess_params = PreprocessParams()
