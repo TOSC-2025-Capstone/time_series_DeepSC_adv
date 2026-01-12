@@ -1,0 +1,35 @@
+    SNR                 Model       MSE  Relative_MSE
+0     3                   GRU  1.697505      1.245807
+1     3  Inverted-Transformer  1.013230      0.743614
+2     3                  LSTM  1.362575      1.000000
+3     3           Transformer  1.557504      1.143059
+
+4     6                   GRU  0.727517      1.303310
+5     6  Inverted-Transformer  0.373869      0.669767
+6     6                  LSTM  0.558207      1.000000
+7     6           Transformer  0.548132      0.981951
+
+8     9                   GRU  0.360095      1.475609
+9     9  Inverted-Transformer  0.206016      0.844220
+10    9                  LSTM  0.244032      1.000000
+11    9           Transformer  0.284930      1.167595
+
+12   12                   GRU  0.241125      1.527860
+13   12  Inverted-Transformer  0.138756      0.879208
+14   12                  LSTM  0.157819      1.000000
+15   12           Transformer  0.168026      1.064679
+
+16   15                   GRU  0.172182      1.582523
+17   15  Inverted-Transformer  0.105303      0.967836
+18   15                  LSTM  0.108802      1.000000
+19   15           Transformer  0.114003      1.047800
+
+20   18                   GRU  0.139918      1.555779
+21   18  Inverted-Transformer  0.086639      0.963355
+22   18                  LSTM  0.089934      1.000000
+23   18           Transformer  0.089162      0.991415
+
+24   21                   GRU  0.121946      1.598674
+25   21  Inverted-Transformer  0.075913      0.995193
+26   21                  LSTM  0.076280      1.000000
+27   21           Transformer  0.073281      0.960693

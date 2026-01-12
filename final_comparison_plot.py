@@ -43,11 +43,11 @@ plt.rcParams.update(
     }
 )
 # 전문적인 색상 팔레트 (Seaborn colorblind 확장) + 검정
-# publication_palette = [
-#     "#0173B2", "#DE8F05", "#029E73", "#D55E00",
-#     "#CC78BC", "#CA9161", "#FBAFE4", "#949494",
-#     "#ECE133", "#56B4E9", "#000000" # 검정 추가
-# ]
+publication_palette_line = [
+    "#0173B2", "#DE8F05", "#029E73", "#D55E00",
+    "#CC78BC", "#CA9161", "#FBAFE4", "#949494",
+    "#ECE133", "#56B4E9", "#000000" # 검정 추가
+]
 
 publication_palette = [
     # "#000000",  # Pure Black (검정)
@@ -190,7 +190,7 @@ def plot_reconstruction_comparison(
 
     # 라인 스타일 및 마커 정의 (모델별로 고정)
     linestyles = ['--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 5)), (0, (1, 1))]
-    colors = publication_palette[1:] # 첫 번째 색상(파랑)은 다른 용도로 사용 가능
+    colors = publication_palette_line[1:] # 첫 번째 색상(파랑)은 다른 용도로 사용 가능
 
     # 각 피처별로 subplot 그리기
     for i, feature in enumerate(feature_names):
@@ -265,7 +265,7 @@ def plot_residual_comparison(
 
     # 스타일 정의 (reconstruction과 동일하게 유지)
     linestyles = ['--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 5)), (0, (1, 1))]
-    colors = publication_palette[1:]
+    colors = publication_palette_line[1:]
 
     # 각 피처별로 subplot 그리기
     for i, feature in enumerate(feature_names):
@@ -344,7 +344,7 @@ def plot_individual_feature_comparison(
 
     # 스타일 정의 (다른 플롯과 일관성 유지)
     linestyles = ['--', '-.', ':', (0, (3, 1, 1, 1)), (0, (5, 5)), (0, (1, 1))]
-    colors = publication_palette[1:] # publication_palette 사용
+    colors = publication_palette_line[1:] # publication_palette 사용
 
     # 각 피처별로 개별 그림 생성
     for feature in feature_names:
@@ -417,22 +417,143 @@ def print_avg_metric_excluding_time(csv_paths, labels, metric_type="MSE"):
             results[label] = np.nan
     return results
 
+import glob
+
+def get_global_mape_statistics(original_path, model_paths, feature_names, threshold=0.1):
+    """
+    폴더 내의 모든 CSV 파일을 순회하며, 임계값(threshold) 이상의
+    유효 구간에 대해 전역 평균 MAPE를 계산합니다.
+    """
+    # 1. 원본 데이터 폴더 내의 모든 CSV 파일 목록 추출
+    original_files = glob.glob(os.path.join(original_path, "*.csv"))
+    all_results = []
+
+    print(f" 총 {len(original_files)}개 파일에 대해 전역 MAPE(Threshold >= {threshold}) 계산 시작...")
+
+    for model_name, path in model_paths.items():
+        # 모델별로 피처마다 모든 파일에서 나온 MAPE 값을 저장할 리스트
+        model_mape_accumulator = {feat: [] for feat in feature_names}
+
+        for orig_file_path in original_files:
+            filename = os.path.basename(orig_file_path)
+            recon_file = os.path.join(path, filename.replace(".csv", "_reconstructed.csv"))
+
+            # 복원 파일이 존재하는 경우에만 계산
+            if os.path.exists(recon_file):
+                try:
+                    df_orig = pd.read_csv(orig_file_path)
+                    df_recon = pd.read_csv(recon_file)
+
+                    for feature in feature_names:
+                        if feature in df_orig.columns and feature in df_recon.columns:
+                            y_true = df_orig[feature].values
+                            y_pred = df_recon[feature].values
+
+                            # 임계값 필터링 마스크 적용
+                            mask = (np.abs(y_true) >= threshold) & (~np.isnan(y_true))
+
+                            if np.any(mask):
+                                mape = np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+                                model_mape_accumulator[feature].append(mape)
+                except Exception as e:
+                    continue
+
+        # 모든 파일에 대한 계산이 끝나면 피처별 최종 평균 산출
+        for feature in feature_names:
+            if model_mape_accumulator[feature]:
+                avg_mape = np.mean(model_mape_accumulator[feature])
+                all_results.append({"Model": model_name, "Feature": feature, "MAPE": avg_mape})
+
+    return pd.DataFrame(all_results)
+
+def plot_mape_comparison_bars(mape_df, save_path):
+    """
+    계산된 MAPE 결과를 상대 비율이 아닌
+    실제 백분율(%) 수치 그대로 막대 차트로 시각화
+    """
+    if mape_df.empty:
+        print("Warning: MAPE dataframe is empty. Skipping plot.")
+        return
+
+    models = mape_df["Model"].unique().tolist()
+    features = mape_df["Feature"].unique().tolist()
+    features.append("Average") # 평균 항목 추가
+
+    x = np.arange(len(features))
+    bar_width = 0.18 # 막대 너비 약간 조정
+    fig, ax = plt.subplots(figsize=(18, 7))
+
+    for i, model in enumerate(models):
+        model_data = mape_df[mape_df["Model"] == model]
+        actual_values = []
+
+        # 1. 각 피처별 실제 MAPE 값 추출
+        for feature in features[:-1]:
+            val_row = model_data[model_data["Feature"] == feature]
+            v = val_row["MAPE"].values[0] if not val_row.empty else np.nan
+            actual_values.append(v)
+
+        # 2. 전역 평균 MAPE 계산 및 추가
+        avg_mape = np.nanmean(actual_values)
+        actual_values.append(avg_mape)
+
+        # 3. 막대 그리기
+        offset = (i - (len(models) - 1) / 2) * bar_width
+        color = publication_palette[i % len(publication_palette)]
+
+        bars = ax.bar(x + offset, actual_values, width=bar_width,
+                      label=model, color=color,
+                      edgecolor="black", linewidth=0.6)
+
+        # Average 막대에 해치(빗금) 추가하여 구분
+        bars[-1].set_hatch("///")
+
+        # 막대 위에 실제 % 수치 표시 (소수점 둘째 자리)
+        ax.bar_label(bars, fmt='%.2f%%', padding=3, fontsize=11, fontweight='bold')
+
+    # 그래프 스타일링
+    ax.set_xticks(x)
+    # 피처 이름 줄바꿈 처리
+    wrapped_labels = [textwrap.fill(f.replace("_", " "), width=10) for f in features]
+    ax.set_xticklabels(wrapped_labels, fontsize=14)
+
+    ax.set_ylabel("Mean Absolute Percentage Error (%)", fontsize=16)
+    ax.set_title("Feature-wise MAPE Comparison (Lower is Better)", fontsize=20, pad=20)
+
+    # Y축 눈금에 % 붙이기
+    ax.yaxis.set_major_formatter(mticker.PercentFormatter())
+
+    # 범례 설정 (상단 중앙)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.12),
+              ncol=len(models), frameon=True, fontsize=14, shadow=True)
+
+    plt.tight_layout()
+
+    if save_path:
+        save_file = os.path.join(save_path, "MAPE_absolute_value_comparison.png")
+        plt.savefig(save_file, dpi=300, bbox_inches='tight')
+        print(f"[✓] 저장 완료 (MAPE 백분율): {save_file}")
+    plt.close(fig)
 
 # === 실행 블록 ===
 if __name__ == "__main__":
     # --- 설정 ---
     prefix = "./results/performance_test"
-    case_id_lstm = "case10045.2.8"
-    case_id_gru = "case10045.3.8"
-    case_id_transformer = "case10050.4.8"
-    case_id_itransformer = "case10045.1.8"
+    case_id_lstm = "case10052.2.2"
+    case_id_gru = "case10052.3.2"
+    case_id_transformer = "case10052.4.2"
+    case_id_itransformer = "case10052.1.2"
     channel = "AWGN"
     metric_loss = "MSE" # 학습 시 사용된 손실 함수 (경로명에 사용됨)
 
     # filename_to_compare = "01197.csv" # 비교할 특정 사이클 파일명
-    filename_to_compare = "02531.csv" # 비교할 특정 사이클 파일명
-    snr_condition = "21db" # 결과 저장 경로에 사용할 조건명
-    date = "251227"
+    filename_to_compare = "02733.csv" # 비교할 특정 사이클 파일명
+    # filename_to_compare = "02659.csv" # 비교할 특정 사이클 파일명
+    # filename_to_compare = "03982.csv" # 비교할 특정 사이클 파일명
+    # filename_to_compare = "07176.csv" # 비교할 특정 사이클 파일명
+    # filename_to_compare = "07414.csv" # 비교할 특정 사이클 파일명
+    snr_condition = "3db" # 결과 저장 경로에 사용할 조건명
+    date = "260112"
 
     # 모델별 통계 CSV 경로
     csv_paths = [
@@ -466,45 +587,57 @@ if __name__ == "__main__":
     # --- 실행 ---
     print("[📊] Starting Plot Generation...")
 
-    # 1. 상대 성능 막대 차트 생성 (MSE 기준)
-    print("\n--- Plotting: Relative Metric Bars (MSE) ---")
-    plot_metric_comparison_bars(
-        csv_paths, case_labels, save_path=save_path_base, metric_type="MSE", wrap_width=10
-    )
-    # (필요시 MAE, RMSE 추가)
+    # # 1. 상대 성능 막대 차트 생성 (MSE 기준)
+    # print("\n--- Plotting: Relative Metric Bars (MSE) ---")
+    # plot_metric_comparison_bars(
+    #     csv_paths, case_labels, save_path=save_path_base, metric_type="MSE", wrap_width=10
+    # )
+    # # (필요시 MAE, RMSE 추가)
 
-    # 2. 원본 vs 복원 시계열 비교 플롯 생성 (서브플롯 버전)
-    print("\n--- Plotting: Reconstruction Comparison (Subplots) ---")
-    plot_reconstruction_comparison(
-        original_path=original_data_path,
-        model_paths=model_reconstruction_paths,
-        feature_names=feature_names_to_plot,
-        save_path=save_path_base,
-        filename=filename_to_compare,
-    )
+    # # 2. 원본 vs 복원 시계열 비교 플롯 생성 (서브플롯 버전)
+    # print("\n--- Plotting: Reconstruction Comparison (Subplots) ---")
+    # plot_reconstruction_comparison(
+    #     original_path=original_data_path,
+    #     model_paths=model_reconstruction_paths,
+    #     feature_names=feature_names_to_plot,
+    #     save_path=save_path_base,
+    #     filename=filename_to_compare,
+    # )
 
-    # 3. 잔차 제곱 비교 플롯 생성 (서브플롯 버전)
-    print("\n--- Plotting: Residual Squared Comparison (Subplots) ---")
-    plot_residual_comparison(
-        original_path=original_data_path,
-        model_paths=model_reconstruction_paths,
-        feature_names=feature_names_to_plot,
-        save_path=save_path_base,
-        filename=filename_to_compare,
-    )
+    # # 3. 잔차 제곱 비교 플롯 생성 (서브플롯 버전)
+    # print("\n--- Plotting: Residual Squared Comparison (Subplots) ---")
+    # plot_residual_comparison(
+    #     original_path=original_data_path,
+    #     model_paths=model_reconstruction_paths,
+    #     feature_names=feature_names_to_plot,
+    #     save_path=save_path_base,
+    #     filename=filename_to_compare,
+    # )
 
-    # 🚀 4. 개별 피처 비교 플롯 생성 (신규 추가된 함수 호출)
-    print("\n--- Plotting: Individual Feature Comparisons ---")
-    plot_individual_feature_comparison(
-        original_path=original_data_path,
-        model_paths=model_reconstruction_paths,
-        feature_names=feature_names_to_plot,
-        save_path=save_path_base, # 기본 저장 경로 전달
-        filename=filename_to_compare,
-    )
+    # # 🚀 4. 개별 피처 비교 플롯 생성 (신규 추가된 함수 호출)
+    # print("\n--- Plotting: Individual Feature Comparisons ---")
+    # plot_individual_feature_comparison(
+    #     original_path=original_data_path,
+    #     model_paths=model_reconstruction_paths,
+    #     feature_names=feature_names_to_plot,
+    #     save_path=save_path_base, # 기본 저장 경로 전달
+    #     filename=filename_to_compare,
+    # )
 
     # 5. 평균 지표 계산 및 출력 (MSE)
     avg_results_mse = print_avg_metric_excluding_time(csv_paths, case_labels, metric_type="MSE")
     # (필요시 MAE, RMSE 추가)
+
+    # MAPE 계산 실행
+    # [수정] 특정 파일이 아닌 전체 파일 대상 전역 MAPE 계산
+    print("\n--- Calculating: Global MAPE across all test files ---")
+    global_mape_df = get_global_mape_statistics(
+        original_data_path, model_reconstruction_paths, feature_names_to_plot
+    )
+
+    # [수정] 전역 MAPE 막대 차트 생성
+    if not global_mape_df.empty:
+        print("--- Plotting: Global Relative MAPE Bars ---")
+        plot_mape_comparison_bars(global_mape_df, save_path_base)
 
     print("\n[🎉] All plots and calculations completed.")

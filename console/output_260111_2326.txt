@@ -1,0 +1,33 @@
+1.12.1+cu116
+11.6
+cuda:0 현재 사용중인 디바이스
+========================== case_10052.1.2 start ==========================
+
+seed=1, params=AWGN, segment_length=16, seq_len=16, d_model=512, 
+, model_type=deepsc, snr_db=3, compressed_len=4, caseindex: 10052.1.2,
+, batch_size=16, test_path=./checkpoints/case_10052.1.1/MSE/deepsc/deepsc_battery_epoch 으로 설정되었습니다.
+TrainParams(train_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//train_data.pt', validate_pt='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//val_data.pt', scaler_path='./cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//scaler.pkl', model_save_path='./checkpoints/case_10052.1.2/MSE/deepsc/deepsc_battery_epoch', save_fig_dir='results/case10052.1.2/AWGN_deepsc_MSE', num_epochs=80, batch_size=16, lr=1e-05, loss_type='MSE', lambda_feat=3, segment_length_n=16)
+========================== preprocess ==========================
+
+사이클 전처리가 이미 완료되었습니다. 기존 데이터를 사용합니다.
+========================== model_select ==========================
+
+Transformer 모델이 선택되었습니다.
+Total params: 10,468,655
+Trainable params: 10,468,655
+========================== train ==========================
+
+현재 모델은 training 모드입니다.
+Loading from: C:\Users\ksshin\Desktop\ChanminLee\time_series_DeepSC_adv\cycle_preprocess/total_preprocessed/processed_zscore_512/case_10052//train_data.pt
+Train - Clean: 49600, Noisy: 49600
+Val - Clean: 16512, Noisy: 16512
+
+Fixed batch SNR labels:
+  Sample 0: 3dB (normalized: -2.00)
+  Sample 1: 12dB (normalized: 0.00)
+  Sample 2: 21dB (normalized: 2.00)
+학습 로스로 MSE가 설정되었습니다.
+snr: 18 noise_std: 0.08901946956877224 signal power: 1.0000001192092896
+snr: 12 noise_std: 0.17761719292909026 signal power: 0.9999998807907104
+snr: 15 noise_std: 0.12574334296829354 signal power: 1.0
+snr: 3 noise_std: 0.5005932648504534 signal power: 1.0

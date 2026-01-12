@@ -3,21 +3,22 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 import os
+import pdb
 
 # --- 1. 사용자 설정 영역 ---
 
 # 비교할 지표를 선택함 ('MSE', 'MAE', 'RMSE' 중 하나).
 SELECTED_METRIC = 'MSE'
 
-date = "260101"  # 그래프 저장용 날짜 디렉토리 이름
+date = "260112"  # 그래프 저장용 날짜 디렉토리 이름
 
 # 모델별 인덱스와 기본 경로 템플릿을 설정함.
 # 모델별 인덱스와 case_id를 함께 설정
 MODEL_CONFIG = {
-    'Inverted-Transformer': {"case_id": 10031, "model_idx": 1},
-    'LSTM':                 {"case_id": 10031, "model_idx": 2},
-    'GRU':                  {"case_id": 10031, "model_idx": 3},
-    'Transformer':          {"case_id": 10031, "model_idx": 4},
+    'Inverted-Transformer': {"case_id": 10052, "model_idx": 1},
+    'LSTM':                 {"case_id": 10052, "model_idx": 2},
+    'GRU':                  {"case_id": 10052, "model_idx": 3},
+    'Transformer':          {"case_id": 10052, "model_idx": 4},
 }
 
 # BASE_PATH_TEMPLATE = "results/performance_test/case{case_idx}.{model_idx}.{snr_idx}/{sub_dir}/performance_statistics.csv"
@@ -96,8 +97,8 @@ def load_and_preprocess_data(file_paths, selected_metric):
             if metric_rows.empty:
                 print(f"Warning: Metric '{selected_metric}' not found in {path}")
                 continue
-
-            avg_value = metric_rows[PLOT_VALUE].mean()
+            metric_rows_no_time = metric_rows[metric_rows['Feature'] != 'Time']
+            avg_value = metric_rows_no_time[PLOT_VALUE].mean()
             results.append({
                 'SNR': snr,
                 'Model': model_name,

@@ -217,7 +217,7 @@ def plot_individual_results(df, output_dir, snr_list):
 
 def main():
     global flag
-    case_id_prefix = "10045"
+    case_id_prefix = "10052"
     orig_path = "./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512"
     model_map = {'1': 'Inverted-Transformer', '2': 'LSTM', '3': 'GRU', '4': 'Transformer'}
     snr_map = {'2': 3, '3': 6, '4': 9, '5': 12, '6': 15, '7': 18, '8': 21}
@@ -233,7 +233,7 @@ def main():
             if not Path(recon_path).exists(): continue
 
             print(f"\nAnalyzing: {m_name} | SNR: {s_val}dB")
-            comparator = CycleDataComparator(orig_path, recon_path, threshold_percent=10, threshold_method="mean")
+            comparator = CycleDataComparator(orig_path, recon_path, threshold_percent=1, threshold_method="mean")
             if s_idx == '8':
                 flag = 1
             avg_mse, cell_fail_rate, total_f_cells, t_rows, f_fails = comparator.compare_data()

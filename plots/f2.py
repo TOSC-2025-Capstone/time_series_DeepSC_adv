@@ -348,25 +348,25 @@ if __name__ == "__main__":
         # "results/performance_test/case10045.1.5/AWGN_deepsc_MSE/performance_statistics.csv",
         # "results/performance_test/case10045.1.8/AWGN_deepsc_MSE/performance_statistics.csv",
 
-        "results/performance_test/case10045.2.2/AWGN_lstm_MSE/performance_statistics.csv",
-        "results/performance_test/case10045.3.2/AWGN_gru_MSE/performance_statistics.csv",
-        "results/performance_test/case10050.4.2/AWGN_deepsc_MSE/performance_statistics.csv",
-        "results/performance_test/case10045.1.2/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10052.2.2/AWGN_lstm_MSE/performance_statistics.csv",
+        "results/performance_test/case10052.3.2/AWGN_gru_MSE/performance_statistics.csv",
+        "results/performance_test/case10052.4.2/AWGN_deepsc_MSE/performance_statistics.csv",
+        "results/performance_test/case10052.1.2/AWGN_deepsc_MSE/performance_statistics.csv",
     ]
 
     # filename = "01291.csv"
     # filename = "01420.csv" # 28 29 30
-    filename = "01197.csv" # 22 23 24
+    filename = "01354.csv" # 22 23 24
     # filename = "02531.csv" # 22 23 24
     # filename = "07110.csv" # 22 23 24
     # filename_list = [ "01197.csv", "02531.csv", "07110.csv" ]
     # filename_list = [ "01319.csv", "02645.csv", "07184.csv" ]
     metric_type = "MSE"
-    case_index_prefix = "10045"
-    date = "251228"  # 그래프 저장용 날짜 디렉토리 이름
+    case_index_prefix = "10052"
+    date = "260112"  # 그래프 저장용 날짜 디렉토리 이름
     save_path_prefix = f"./final_comparison_plots/{date}"
     save_path = save_path_prefix + (
-        f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_16/10045_10050_comp"
+        f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_16/10052_comp"
     )
     # case_labels = ["snr 5", "snr 10", "snr 15"]
     # case_labels = ["10034_lstm_snr 3", "10034_lstm_snr 12",  "10034_lstm_snr 21", "10034_iT-snr 3", "10034_iT-snr 12",  "10034_iT-snr 21",]
@@ -392,40 +392,40 @@ if __name__ == "__main__":
     )
 
     # # # list = ["10022", "10023"]
-    snr_db_index = 1
-    snr_db_list = [21, 3, 6, 9, 12, 15, 18, 21]
-    snr_db_index_list_a = [5, 8, 10]
-    snr_db_index_list_b = [2, 5, 8]
+    # snr_db_index = 1
+    # snr_db_list = [21, 3, 6, 9, 12, 15, 18, 21]
+    # snr_db_index_list_a = [5, 8, 10]
+    # snr_db_index_list_b = [2, 5, 8]
 
-    # for filename in filename_list:
-    for idx in range(3):
-        snr_db_index = 1+(idx*3)
-        snr_db_index_a = snr_db_index_list_a[idx]
-        snr_db_index_b = snr_db_index_list_b[idx]
+    # # for filename in filename_list:
+    # for idx in range(3):
+    #     snr_db_index = 1+(idx*3)
+    #     snr_db_index_a = snr_db_index_list_a[idx]
+    #     snr_db_index_b = snr_db_index_list_b[idx]
 
-        plot_feature_comparison(
-            original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
-            # deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_AWGN_deepsc_MSE",
-            deepsc_path=f"./reconstruction/case{10050}.4.{snr_db_index_b}/reconstructed_AWGN_deepsc_MSE",
-            lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index_b}/reconstructed_AWGN_lstm_MSE",
-            gru_path=f"./reconstruction/case{case_index_prefix}.3.{snr_db_index_b}/reconstructed_AWGN_gru_MSE",
-            inverted_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index_b}/reconstructed_AWGN_deepsc_MSE",
-            feature_names=[
-                "Voltage_measured",
-                "Current_measured",
-                "Temperature_measured",
-                "Current_load",
-                "Voltage_load",
-                "Time",
-            ],
-            save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}",
-            # filename="01420.csv",
-            filename=filename,
-        )
+    #     plot_feature_comparison(
+    #         original_path="./cycle_preprocess/csv/outlier_cut/threshold_7/cycle_len_512",
+    #         # deepsc_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index+1}/reconstructed_AWGN_deepsc_MSE",
+    #         deepsc_path=f"./reconstruction/case{10050}.4.{snr_db_index_b}/reconstructed_AWGN_deepsc_MSE",
+    #         lstm_path=f"./reconstruction/case{case_index_prefix}.2.{snr_db_index_b}/reconstructed_AWGN_lstm_MSE",
+    #         gru_path=f"./reconstruction/case{case_index_prefix}.3.{snr_db_index_b}/reconstructed_AWGN_gru_MSE",
+    #         inverted_path=f"./reconstruction/case{case_index_prefix}.1.{snr_db_index_b}/reconstructed_AWGN_deepsc_MSE",
+    #         feature_names=[
+    #             "Voltage_measured",
+    #             "Current_measured",
+    #             "Temperature_measured",
+    #             "Current_load",
+    #             "Voltage_load",
+    #             "Time",
+    #         ],
+    #         save_path=save_path_prefix + f"/final_comparision/case{case_index_prefix}/{filename}/{snr_db_list[snr_db_index]}",
+    #         # filename="01420.csv",
+    #         filename=filename,
+    #     )
 
-    plot_line_comparison(
-        csv_paths, case_labels, save_path=save_path, metric_type=metric_type
-    )
+    # plot_line_comparison(
+    #     csv_paths, case_labels, save_path=save_path, metric_type=metric_type
+    # )
 
-    # # # 모델별 평균 MSE (Feature != 'Time') 출력
-    # print_avg_mse_excluding_time(csv_paths, case_labels)
+    # # # # 모델별 평균 MSE (Feature != 'Time') 출력
+    print_avg_mse_excluding_time(csv_paths, case_labels)

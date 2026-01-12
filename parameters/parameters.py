@@ -37,8 +37,8 @@ is_preprocessed = True
 is_skip_outlier_eliminate = False
 
 # 학습이 완료되었는지 여부 -> True면 학습된 모델로 평가, False면 학습 진행
-# is_trained = True
-is_trained = False
+is_trained = True
+# is_trained = False
 
 # 성능평가를 진행하지 않게 만듦
 # is_skip_performance = True
