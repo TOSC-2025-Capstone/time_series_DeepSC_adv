@@ -16,3 +16,5 @@ analysis/outlier_comparison/case0.6
 .vscode/settings.json
 data/full_recons
 comparison_results
+
+console
