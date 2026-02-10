@@ -9,7 +9,8 @@ import pdb
 # [plot] 전처리 된 데이터 피쳐의 모든 사이클을 한번에 그려보는 함수
 def plot_all_features_distribution():
     # 데이터 폴더 경로
-    data_dir = "./cycle_preprocess/csv/total_preprocessed"
+    # data_dir = "../csv/outlier_cut/threshold_7/cycle_len_512"
+    data_dir = "../csv/total_preprocessed/processed_zscore_512_threshold_7"
 
     # 피처 이름 정의
     feature_names = [
@@ -22,7 +23,7 @@ def plot_all_features_distribution():
     ]
 
     # 결과 저장 폴더 생성
-    save_dir = "./cycle_preprocess/analysis/feature_distribution_plots"
+    save_dir = "../analysis/260210_feature_distribution_plots"
     os.makedirs(save_dir, exist_ok=True)
 
     # 모든 CSV 파일 목록 가져오기
@@ -67,13 +68,12 @@ def plot_all_features_distribution():
             plt.plot(cycle_data, alpha=0.4, color=colors[idx], linewidth=0.8)
 
         # 평균선 추가 (검정색으로 변경하여 더 잘 보이게)
-        pdb.set_trace()
         mean_data = np.mean(all_feature_data[feature], axis=0)
         plt.plot(mean_data, color="black", linewidth=2, label="Mean", linestyle="--")
 
-        plt.title(f"{feature} Distribution")
-        plt.xlabel("Time Step (0-255)")
-        plt.ylabel("Value")
+        plt.title(f"{feature} Distribution", fontsize=17)
+        plt.xlabel("Time Step (0-511)", fontsize=14)
+        plt.ylabel("Value", fontsize=14)
         plt.grid(True, alpha=0.3)
 
     plt.tight_layout()

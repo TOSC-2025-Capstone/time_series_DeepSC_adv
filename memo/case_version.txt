@@ -1036,3 +1036,5 @@ case 10051~60 : case 10045(AWGN + conv1d_trnasformers) seed 테스트
 
 ->25 26 27 28 지터링 데이터 추가 제외 후 재학습 seed 1부터 10까지
 case 10052~61 : 지터링 데이터 추가 제외후 재학습 및 시드평가
+
+case 10062 : semantic layer 제거

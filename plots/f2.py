@@ -142,7 +142,12 @@ def plot_bars_single_column(csv_paths, case_labels=None, save_path=None, metric_
 
         # --- 범례 위치 변경 (그림 우측 상단 내부) ---
         all_labels = case_labels + [f"{base_label} Baseline (1.0)"]
-        ax.legend(handles=all_handles, labels=all_labels, loc='upper right', bbox_to_anchor=(1.0, 1.0))
+        ax.legend(
+            handles=all_handles,
+            labels=all_labels,
+            loc='lower right',           # 범례 상자의 기준점을 '오른쪽 아래'로 설정
+            bbox_to_anchor=(1.0, 0.0)    # 해당 기준점을 그래프 좌표의 (1.0, 0.0) 위치에 고정
+        )
 
         # --- 레이아웃 조정 (표준 tight_layout) ---
         plt.tight_layout()
@@ -363,7 +368,7 @@ if __name__ == "__main__":
     # filename_list = [ "01319.csv", "02645.csv", "07184.csv" ]
     metric_type = "MSE"
     case_index_prefix = "10052"
-    date = "260112"  # 그래프 저장용 날짜 디렉토리 이름
+    date = "260113"  # 그래프 저장용 날짜 디렉토리 이름
     save_path_prefix = f"./final_comparison_plots/{date}"
     save_path = save_path_prefix + (
         f"/stats/case{case_index_prefix}/{metric_type}/{filename}/segment_16/10052_comp"
